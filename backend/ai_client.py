@@ -1,7 +1,7 @@
 import httpx
 import os
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union, Tuple
 
 class AIClient:
     """Client for AI-powered track curation using OpenRouter"""
@@ -16,17 +16,19 @@ class AIClient:
         self, 
         artist_name: str, 
         tracks_json: List[Dict[str, Any]], 
-        num_tracks: int = 20
-    ) -> List[str]:
+        num_tracks: int = 20,
+        include_reasoning: bool = False
+    ) -> Union[List[str], Tuple[List[str], str]]:
         """Curate a radio-style playlist for an artist using AI
         
         Args:
             artist_name: Name of the artist
             tracks_json: List of track dictionaries with id, title, album, year, play_count
             num_tracks: Number of tracks to select (default: 20)
+            include_reasoning: Whether to return AI's reasoning along with track IDs
             
         Returns:
-            List of track IDs in curated order
+            List of track IDs in curated order, or tuple of (track_ids, reasoning) if include_reasoning=True
         """
         
         if not self.api_key:
@@ -38,7 +40,13 @@ class AIClient:
                 key=lambda x: x.get("play_count", 0), 
                 reverse=True
             )
-            return [track["id"] for track in sorted_tracks[:num_tracks]]
+            track_ids = [track["id"] for track in sorted_tracks[:num_tracks]]
+            
+            if include_reasoning:
+                fallback_reasoning = f"Used fallback curation for {artist_name} (no AI API key). Selected {len(track_ids)} tracks sorted by play count (highest first)."
+                return track_ids, fallback_reasoning
+            else:
+                return track_ids
         
         try:
             print(f"Using AI to curate playlist for {artist_name} from {len(tracks_json)} available tracks")
@@ -46,7 +54,34 @@ class AIClient:
             # Prepare the tracks data for the AI prompt
             tracks_data = json.dumps(tracks_json, indent=2)
             
-            prompt = f"""
+            if include_reasoning:
+                prompt = f"""
+You are an expert music curator creating a radio playlist for {artist_name}.
+
+Available tracks with metadata:
+{tracks_data}
+
+Create a {num_tracks}-track radio playlist by selecting track IDs. Consider:
+
+CURATION STRATEGY:
+- Start with 2-3 of their most popular tracks (highest play_count) as anchors
+- Include variety across different albums and years to show artistic evolution
+- Balance popular hits with quality deep cuts (moderate play_count)
+- Consider flow: alternate energetic and mellow tracks for good pacing
+- End with a strong, memorable track
+
+TRACK SELECTION CRITERIA:
+- play_count indicates popularity/quality (prioritize tracks with play_count > 0)
+- Mix tracks from different albums/years when possible
+- Avoid too many tracks from the same album in sequence
+
+Return your response in this JSON format:
+{{
+  "track_ids": ["track_id_1", "track_id_2", "track_id_3"],
+  "reasoning": "Explain your curation choices: why you selected these tracks, the flow you created, how you balanced hits vs deep cuts, and any notable decisions about sequencing."
+}}"""
+            else:
+                prompt = f"""
 You are an expert music curator creating a radio playlist for {artist_name}.
 
 Available tracks with metadata:
@@ -105,38 +140,59 @@ No explanations or additional text."""
                 
                 # Parse the JSON response
                 try:
-                    track_ids = json.loads(content)
-                    
-                    # Validate that it's a list of strings
-                    if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
-                        # Ensure we only return valid track IDs that exist in the input
-                        valid_ids = {track["id"] for track in tracks_json}
-                        filtered_ids = [tid for tid in track_ids if tid in valid_ids]
+                    if include_reasoning:
+                        # Parse response with reasoning
+                        response_data = json.loads(content)
+                        track_ids = response_data.get("track_ids", [])
+                        reasoning = response_data.get("reasoning", "No reasoning provided")
                         
-                        # Return up to num_tracks
-                        final_selection = filtered_ids[:num_tracks]
-                        print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
-                        return final_selection
+                        # Validate that it's a list of strings
+                        if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
+                            # Ensure we only return valid track IDs that exist in the input
+                            valid_ids = {track["id"] for track in tracks_json}
+                            filtered_ids = [tid for tid in track_ids if tid in valid_ids]
+                            
+                            # Return up to num_tracks
+                            final_selection = filtered_ids[:num_tracks]
+                            print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
+                            print(f"AI reasoning: {reasoning[:200]}...")  # Log first 200 chars
+                            return final_selection, reasoning
+                        else:
+                            raise ValueError("Invalid track_ids format in response")
                     else:
-                        raise ValueError("Invalid response format")
+                        # Parse simple track list
+                        track_ids = json.loads(content)
+                        
+                        # Validate that it's a list of strings
+                        if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
+                            # Ensure we only return valid track IDs that exist in the input
+                            valid_ids = {track["id"] for track in tracks_json}
+                            filtered_ids = [tid for tid in track_ids if tid in valid_ids]
+                            
+                            # Return up to num_tracks
+                            final_selection = filtered_ids[:num_tracks]
+                            print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
+                            return final_selection
+                        else:
+                            raise ValueError("Invalid response format")
                         
                 except (json.JSONDecodeError, ValueError) as e:
                     print(f"Failed to parse AI response: {e}")
                     print(f"Response content: {content}")
                     # Fall back to simple selection
-                    return self._fallback_selection(tracks_json, num_tracks)
+                    return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
                 
         except httpx.RequestError as e:
             print(f"Network error calling AI API: {e}")
-            return self._fallback_selection(tracks_json, num_tracks)
+            return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
         except httpx.HTTPStatusError as e:
             print(f"HTTP error from AI API: {e.response.status_code}")
-            return self._fallback_selection(tracks_json, num_tracks)
+            return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
         except Exception as e:
             print(f"Unexpected error in AI curation: {e}")
-            return self._fallback_selection(tracks_json, num_tracks)
+            return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
     
-    def _fallback_selection(self, tracks_json: List[Dict[str, Any]], num_tracks: int) -> List[str]:
+    def _fallback_selection(self, tracks_json: List[Dict[str, Any]], num_tracks: int, include_reasoning: bool = False) -> Union[List[str], Tuple[List[str], str]]:
         """Fallback selection algorithm when AI is unavailable"""
         # Sort by play count (descending) then by year (descending for newer songs)
         sorted_tracks = sorted(
@@ -145,7 +201,13 @@ No explanations or additional text."""
             reverse=True
         )
         
-        return [track["id"] for track in sorted_tracks[:num_tracks]]
+        track_ids = [track["id"] for track in sorted_tracks[:num_tracks]]
+        
+        if include_reasoning:
+            reasoning = f"Fallback curation: Selected {len(track_ids)} tracks sorted by play count and year (most popular and recent first). AI service was unavailable."
+            return track_ids, reasoning
+        else:
+            return track_ids
     
     async def close(self):
         """Close the HTTP client"""

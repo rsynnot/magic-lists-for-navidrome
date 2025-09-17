@@ -8,37 +8,32 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - NAVIDROME_URL=https://music.itsricky.com
-      - NAVIDROME_TOKEN=${NAVIDROME_TOKEN}
+      # Navidrome Configuration
+      - NAVIDROME_URL=${NAVIDROME_URL:-https://music.itsricky.com}
+      - NAVIDROME_USERNAME=${NAVIDROME_USERNAME}
+      - NAVIDROME_PASSWORD=${NAVIDROME_PASSWORD}
+      - NAVIDROME_API_KEY=${NAVIDROME_API_KEY}
+      
+      # AI Configuration (OpenRouter)
       - AI_API_KEY=${AI_API_KEY}
-      - AI_MODEL=${AI_MODEL}
+      - AI_MODEL=${AI_MODEL:-openai/gpt-3.5-turbo}
+      
+      # Database Configuration
       - DATABASE_PATH=/app/data/magiclists.db
     volumes:
       - magiclists_data:/app/data
-    depends_on:
-      - navidrome
-    networks:
-      - magiclists_network
-
-  navidrome:
-    image: deluan/navidrome:latest
-    ports:
-      - "4533:4533"
-    environment:
-      - ND_SCANSCHEDULE=1h
-      - ND_LOGLEVEL=info
-      - ND_SESSIONTIMEOUT=24h
-      - ND_BASEURL=""
-    volumes:
-      - navidrome_data:/data
-      - ${MUSIC_PATH:-./music}:/music:ro
-    networks:
-      - magiclists_network
+      - type: bind
+        source: .env
+        target: /app/.env
+        read_only: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/artists"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   magiclists_data:
-  navidrome_data:
-
-networks:
-  magiclists_network:
-    driver: bridge
+    driver: local

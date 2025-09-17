@@ -129,5 +129,74 @@ async def create_playlist(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create playlist: {str(e)}")
 
+@app.post("/api/create_playlist_with_reasoning")
+async def create_playlist_with_reasoning(
+    request: CreatePlaylistRequest,
+    db: DatabaseManager = Depends(get_db)
+):
+    """Create an AI-curated artist radio playlist with AI reasoning explanation"""
+    try:
+        # Get clients
+        nav_client = get_navidrome_client()
+        ai_client_instance = get_ai_client()
+        
+        # Get artist info
+        artists = await nav_client.get_artists()
+        artist = next((a for a in artists if a["id"] == request.artist_id), None)
+        
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+        
+        artist_name = artist["name"]
+        
+        # Generate playlist name if not provided
+        playlist_name = getattr(request, 'playlist_name', None) or f"{artist_name} Radio"
+        
+        # Get tracks for the artist
+        tracks = await nav_client.get_tracks_by_artist(request.artist_id)
+        
+        if not tracks:
+            raise HTTPException(status_code=404, detail="No tracks found for this artist")
+        
+        # Use AI to curate the playlist WITH reasoning
+        curated_track_ids, reasoning = await ai_client_instance.curate_artist_radio(
+            artist_name=artist_name,
+            tracks_json=tracks,
+            num_tracks=20,
+            include_reasoning=True
+        )
+        
+        # Create playlist in Navidrome
+        navidrome_playlist_id = await nav_client.create_playlist(
+            name=playlist_name,
+            track_ids=curated_track_ids
+        )
+        
+        # Get track titles for database storage
+        track_titles = []
+        track_id_to_title = {track["id"]: track["title"] for track in tracks}
+        for track_id in curated_track_ids:
+            if track_id in track_id_to_title:
+                track_titles.append(track_id_to_title[track_id])
+        
+        # Store playlist in local database
+        playlist = await db.create_playlist(
+            artist_id=request.artist_id,
+            playlist_name=playlist_name,
+            songs=track_titles
+        )
+        
+        # Add Navidrome playlist ID and AI reasoning to response
+        playlist_dict = playlist.dict() if hasattr(playlist, 'dict') else playlist.__dict__
+        playlist_dict["navidrome_playlist_id"] = navidrome_playlist_id
+        playlist_dict["ai_reasoning"] = reasoning
+        
+        return playlist_dict
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create playlist with reasoning: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
