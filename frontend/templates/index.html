@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MagicLists - Artist Radio</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -102,7 +103,8 @@
         
         <form hx-post="/api/create_playlist" 
               hx-target="#result" 
-              hx-indicator="#loading">
+              hx-indicator="#loading"
+              hx-ext="json-enc">
             
             <div class="form-group">
                 <label for="artist-select">Select Artist:</label>
@@ -187,9 +189,17 @@
                 let errorMessage = 'Failed to create artist radio. Please try again.';
                 try {
                     const errorResponse = JSON.parse(event.detail.xhr.responseText);
-                    errorMessage = errorResponse.detail || errorMessage;
+                    if (typeof errorResponse === 'object' && errorResponse.detail) {
+                        errorMessage = errorResponse.detail;
+                    } else if (Array.isArray(errorResponse.detail)) {
+                        // Handle validation errors
+                        errorMessage = errorResponse.detail.map(err => err.msg || err).join(', ');
+                    } else if (typeof errorResponse.detail === 'object') {
+                        errorMessage = JSON.stringify(errorResponse.detail);
+                    }
                 } catch (e) {
-                    // Use default message if response can't be parsed
+                    console.error('Error parsing response:', e);
+                    errorMessage = `HTTP ${event.detail.xhr.status}: ${event.detail.xhr.statusText}`;
                 }
                 
                 document.getElementById('result').innerHTML = `
