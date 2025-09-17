@@ -36,3 +36,19 @@ class PlaylistResponse(BaseModel):
     """Response schema for playlist operations"""
     playlist: Playlist
     message: str
+
+class RediscoverTrack(BaseModel):
+    """Schema for a Re-Discover Weekly track"""
+    id: str
+    title: str
+    artist: str
+    album: str
+    score: float
+    historical_plays: int
+    days_since_last_play: str
+
+class RediscoverWeeklyResponse(BaseModel):
+    """Response schema for Re-Discover Weekly"""
+    tracks: List[RediscoverTrack]
+    total_tracks: int
+    message: str

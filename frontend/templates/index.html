@@ -95,11 +95,74 @@
             border-radius: 5px;
             margin-top: 20px;
         }
+        
+        .rediscover-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #eee;
+        }
+        
+        .rediscover-button {
+            background: #28a745;
+            margin-bottom: 20px;
+        }
+        
+        .rediscover-button:hover {
+            background: #218838;
+        }
+        
+        .track-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        
+        .track-item {
+            padding: 8px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .track-item:last-child {
+            border-bottom: none;
+        }
+        
+        .track-info {
+            flex-grow: 1;
+        }
+        
+        .track-title {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .track-artist {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .track-score {
+            font-size: 0.8em;
+            color: #007bff;
+            text-align: right;
+        }
+        
+        .section-divider {
+            text-align: center;
+            margin: 30px 0;
+            color: #666;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎵 Artist Radio Generator</h1>
+        <h1>🎵 MagicLists</h1>
         
         <form hx-post="/api/create_playlist" 
               hx-target="#result" 
@@ -121,6 +184,23 @@
         </div>
         
         <div id="result"></div>
+        
+        <div class="rediscover-section">
+            <div class="section-divider">✨ OR ✨</div>
+            
+            <h2>🔄 Re-Discover Weekly</h2>
+            <p>Find tracks you've loved before but haven't heard recently!</p>
+            
+            <button class="rediscover-button" onclick="generateRediscoverWeekly()">
+                Generate Re-Discover Weekly
+            </button>
+            
+            <div id="rediscover-loading" class="loading" style="display: none;">
+                Analyzing your listening history...
+            </div>
+            
+            <div id="rediscover-result"></div>
+        </div>
     </div>
 
     <script>
@@ -211,6 +291,145 @@
                 `;
             }
         });
+        
+        // Re-Discover Weekly functions
+        async function generateRediscoverWeekly() {
+            const loadingDiv = document.getElementById('rediscover-loading');
+            const resultDiv = document.getElementById('rediscover-result');
+            const button = document.querySelector('.rediscover-button');
+            
+            // Show loading state
+            loadingDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/api/rediscover-weekly');
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                    throw new Error(errorData.detail || 'Failed to generate Re-Discover Weekly');
+                }
+                
+                const data = await response.json();
+                
+                // Display the generated playlist
+                displayRediscoverWeekly(data);
+                
+            } catch (error) {
+                console.error('Error generating Re-Discover Weekly:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Error Generating Re-Discover Weekly</h3>
+                        <p>${error.message}</p>
+                        ${error.message.includes('No listening history') ? 
+                            '<p>Make sure you have played some music in Navidrome recently.</p>' : ''}
+                    </div>
+                `;
+            } finally {
+                loadingDiv.style.display = 'none';
+                button.disabled = false;
+            }
+        }
+        
+        function displayRediscoverWeekly(data) {
+            const resultDiv = document.getElementById('rediscover-result');
+            
+            if (!data.tracks || data.tracks.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>🎵 No Tracks Found</h3>
+                        <p>No tracks found for re-discovery. Try listening to more music first!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let tracksHtml = '';
+            data.tracks.forEach((track, index) => {
+                tracksHtml += `
+                    <div class="track-item">
+                        <div class="track-info">
+                            <div class="track-title">${index + 1}. ${track.title}</div>
+                            <div class="track-artist">${track.artist} - ${track.album}</div>
+                        </div>
+                        <div class="track-score">
+                            Score: ${track.score}<br>
+                            ${track.historical_plays} plays<br>
+                            ${track.days_since_last_play} days ago
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultDiv.innerHTML = `
+                <div class="success">
+                    <h3>🎵 Re-Discover Weekly Generated!</h3>
+                    <p><strong>Found ${data.total_tracks} tracks</strong> you might want to rediscover.</p>
+                    
+                    <div class="track-list">
+                        ${tracksHtml}
+                    </div>
+                    
+                    <button onclick="createRediscoverPlaylist()" style="margin-top: 15px;">
+                        🎶 Create Playlist in Navidrome
+                    </button>
+                </div>
+            `;
+        }
+        
+        async function createRediscoverPlaylist() {
+            const loadingDiv = document.getElementById('rediscover-loading');
+            const resultDiv = document.getElementById('rediscover-result');
+            
+            // Show loading state
+            loadingDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/create-rediscover-playlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                    throw new Error(errorData.detail || 'Failed to create playlist');
+                }
+                
+                const data = await response.json();
+                
+                // Update the result to show success
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h3>✅ Re-Discover Weekly Playlist Created!</h3>
+                        <p><strong>Playlist:</strong> ${data.playlist_name}</p>
+                        <p><strong>Tracks:</strong> ${data.songs ? data.songs.length : 0} songs</p>
+                        <p><strong>Navidrome ID:</strong> ${data.navidrome_playlist_id}</p>
+                        <p>Your Re-Discover Weekly playlist has been created in Navidrome!</p>
+                        
+                        <button onclick="generateRediscoverWeekly()" style="margin-top: 15px;">
+                            🔄 Generate New Re-Discover Weekly
+                        </button>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error creating playlist:', error);
+                
+                // Show error but keep the track list
+                const existingContent = resultDiv.innerHTML;
+                resultDiv.innerHTML = existingContent + `
+                    <div class="error" style="margin-top: 15px;">
+                        <h3>❌ Error Creating Playlist</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>

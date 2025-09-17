@@ -14,7 +14,8 @@ load_dotenv()
 from .navidrome_client import NavidromeClient
 from .ai_client import AIClient
 from .database import DatabaseManager, get_db
-from .schemas import CreatePlaylistRequest, Playlist
+from .schemas import CreatePlaylistRequest, Playlist, RediscoverWeeklyResponse
+from .rediscover import RediscoverWeekly
 
 app = FastAPI(title="MagicLists Navidrome MVP")
 
@@ -197,6 +198,92 @@ async def create_playlist_with_reasoning(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create playlist with reasoning: {str(e)}")
+
+@app.get("/api/rediscover-weekly", response_model=RediscoverWeeklyResponse)
+async def get_rediscover_weekly():
+    """Generate Re-Discover Weekly playlist based on listening history"""
+    try:
+        # Get Navidrome client
+        nav_client = get_navidrome_client()
+        
+        # Create RediscoverWeekly instance
+        rediscover = RediscoverWeekly(nav_client)
+        
+        # Generate the playlist
+        tracks = await rediscover.generate_rediscover_weekly()
+        
+        return RediscoverWeeklyResponse(
+            tracks=tracks,
+            total_tracks=len(tracks),
+            message=f"Generated Re-Discover Weekly with {len(tracks)} tracks"
+        )
+        
+    except Exception as e:
+        error_msg = str(e)
+        if "No listening history found" in error_msg:
+            raise HTTPException(status_code=404, detail="No listening history found. Make sure you've played some music in Navidrome.")
+        elif "No tracks found for re-discovery" in error_msg:
+            raise HTTPException(status_code=404, detail="No tracks found for re-discovery. Try listening to more music first.")
+        elif "Invalid username or password" in error_msg or "No authentication method available" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to generate Re-Discover Weekly: {error_msg}")
+
+@app.post("/api/create-rediscover-playlist")
+async def create_rediscover_playlist(
+    db: DatabaseManager = Depends(get_db)
+):
+    """Create a Re-Discover Weekly playlist in Navidrome"""
+    try:
+        # Get Navidrome client
+        nav_client = get_navidrome_client()
+        
+        # Create RediscoverWeekly instance
+        rediscover = RediscoverWeekly(nav_client)
+        
+        # Generate the playlist tracks
+        tracks = await rediscover.generate_rediscover_weekly()
+        
+        if not tracks:
+            raise HTTPException(status_code=404, detail="No tracks found for Re-Discover Weekly")
+        
+        # Create playlist name with current date
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        playlist_name = f"Re-Discover Weekly - {current_date}"
+        
+        # Extract track IDs
+        track_ids = [track["id"] for track in tracks]
+        
+        # Create playlist in Navidrome
+        navidrome_playlist_id = await nav_client.create_playlist(
+            name=playlist_name,
+            track_ids=track_ids
+        )
+        
+        # Get track titles for database storage
+        track_titles = [track["title"] for track in tracks]
+        
+        # Store playlist in local database (using a synthetic artist_id for rediscover playlists)
+        playlist = await db.create_playlist(
+            artist_id="rediscover_weekly",
+            playlist_name=playlist_name,
+            songs=track_titles
+        )
+        
+        # Add Navidrome playlist ID to response
+        playlist_dict = playlist.dict() if hasattr(playlist, 'dict') else playlist.__dict__
+        playlist_dict["navidrome_playlist_id"] = navidrome_playlist_id
+        playlist_dict["tracks"] = tracks
+        
+        return playlist_dict
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create Re-Discover Weekly playlist: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
