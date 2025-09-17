@@ -4,12 +4,12 @@ import json
 from typing import List, Dict, Any
 
 class AIClient:
-    """Client for AI-powered track curation"""
+    """Client for AI-powered track curation using OpenRouter"""
     
     def __init__(self):
         self.api_key = os.getenv("AI_API_KEY")
-        self.model = os.getenv("AI_MODEL", "gpt-3.5-turbo")
-        self.base_url = "https://api.openai.com/v1"
+        self.model = os.getenv("AI_MODEL", "openai/gpt-3.5-turbo")
+        self.base_url = "https://openrouter.ai/api/v1"
         self.client = httpx.AsyncClient()
         
     async def curate_artist_radio(
@@ -30,6 +30,8 @@ class AIClient:
         """
         
         if not self.api_key:
+            print(f"No AI API key configured, using fallback curation for {artist_name}")
+            print(f"Processing {len(tracks_json)} tracks for curation")
             # Fallback: return first num_tracks by play count
             sorted_tracks = sorted(
                 tracks_json, 
@@ -39,26 +41,35 @@ class AIClient:
             return [track["id"] for track in sorted_tracks[:num_tracks]]
         
         try:
+            print(f"Using AI to curate playlist for {artist_name} from {len(tracks_json)} available tracks")
+            
             # Prepare the tracks data for the AI prompt
             tracks_data = json.dumps(tracks_json, indent=2)
             
             prompt = f"""
-You are a music curator creating a radio playlist for {artist_name}.
+You are an expert music curator creating a radio playlist for {artist_name}.
 
-Here are all available tracks:
+Available tracks with metadata:
 {tracks_data}
 
-Please select exactly {num_tracks} tracks that would make the best radio playlist for this artist. Consider:
-- Song quality and popularity (play_count)
-- Variety across different albums and eras
-- Flow and pacing for radio play
-- Mix of well-known hits and deep cuts
+Create a {num_tracks}-track radio playlist by selecting track IDs. Consider:
 
-Return ONLY a JSON array of track IDs in the order they should be played. Example format:
+CURATION STRATEGY:
+- Start with 2-3 of their most popular tracks (highest play_count) as anchors
+- Include variety across different albums and years to show artistic evolution
+- Balance popular hits with quality deep cuts (moderate play_count)
+- Consider flow: alternate energetic and mellow tracks for good pacing
+- End with a strong, memorable track
+
+TRACK SELECTION CRITERIA:
+- play_count indicates popularity/quality (prioritize tracks with play_count > 0)
+- Mix tracks from different albums/years when possible
+- Avoid too many tracks from the same album in sequence
+
+Return ONLY a JSON array of exactly {num_tracks} track IDs in playlist order:
 ["track_id_1", "track_id_2", "track_id_3"]
 
-Do not include any other text or explanation.
-"""
+No explanations or additional text."""
             
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -103,7 +114,9 @@ Do not include any other text or explanation.
                         filtered_ids = [tid for tid in track_ids if tid in valid_ids]
                         
                         # Return up to num_tracks
-                        return filtered_ids[:num_tracks]
+                        final_selection = filtered_ids[:num_tracks]
+                        print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
+                        return final_selection
                     else:
                         raise ValueError("Invalid response format")
                         
