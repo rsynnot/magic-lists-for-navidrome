@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  magiclists:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - NAVIDROME_URL=https://music.itsricky.com
+      - NAVIDROME_TOKEN=${NAVIDROME_TOKEN}
+      - AI_API_KEY=${AI_API_KEY}
+      - AI_MODEL=${AI_MODEL}
+      - DATABASE_PATH=/app/data/magiclists.db
+    volumes:
+      - magiclists_data:/app/data
+    depends_on:
+      - navidrome
+    networks:
+      - magiclists_network
+
+  navidrome:
+    image: deluan/navidrome:latest
+    ports:
+      - "4533:4533"
+    environment:
+      - ND_SCANSCHEDULE=1h
+      - ND_LOGLEVEL=info
+      - ND_SESSIONTIMEOUT=24h
+      - ND_BASEURL=""
+    volumes:
+      - navidrome_data:/data
+      - ${MUSIC_PATH:-./music}:/music:ro
+    networks:
+      - magiclists_network
+
+volumes:
+  magiclists_data:
+  navidrome_data:
+
+networks:
+  magiclists_network:
+    driver: bridge
