@@ -160,4 +160,6 @@ dmypy.json
 cython_debug/
 
 # Temporary files
-tmp_*
+tmp_*venv/
+test_env/
+tmp_rovodev_validate_docker.py
