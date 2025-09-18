@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MagicLists - Smart Playlists for Navidrome</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script defer src="https://umami.itsricky.com/script.js" data-website-id="e5a08463-74dd-4b83-b7ef-da5f5e088430"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
     <style>
@@ -418,6 +419,11 @@
                 const artistSelect = document.getElementById('artist-select');
                 const selectedArtist = artistSelect.options[artistSelect.selectedIndex].text;
                 
+                // Track successful artist playlist creation
+                if (typeof umami !== 'undefined') {
+                    umami.track('artist_playlist_created');
+                }
+                
                 document.getElementById('result').innerHTML = `
                     <div class="success">
                         <h3>🎉 ${selectedArtist} Radio Created!</h3>
@@ -477,6 +483,11 @@
                 }
                 
                 const data = await response.json();
+                
+                // Track successful Re-Discover Weekly generation
+                if (typeof umami !== 'undefined') {
+                    umami.track('rediscover_weekly_generated');
+                }
                 
                 // Display the generated playlist
                 displayRediscoverWeekly(data);
