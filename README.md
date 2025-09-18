@@ -7,6 +7,7 @@ A FastAPI web application that integrates with Navidrome to create AI-powered pl
 - 🎵 Browse artists from your Navidrome library
 - 📝 Create custom playlists for any artist
 - 🤖 AI-powered playlist generation (optional)
+- 🔄 **Re-Discover Weekly** - Find tracks you loved but haven't heard recently
 - 💾 SQLite database for playlist storage
 - 🐳 Docker support for easy deployment
 
@@ -34,32 +35,43 @@ magiclists-navidrome-mvp/
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: Running with Docker (Recommended)
 
-1. **Clone and setup:**
+1. **Clone the repository:**
    ```bash
+   git clone <repository-url>
    cd magiclists-navidrome-mvp
+   ```
+
+2. **Create your environment file:**
+   ```bash
    cp .env.example .env
    ```
 
-2. **Configure environment variables in `.env`:**
+3. **Configure your `.env` file with your Navidrome details:**
    ```bash
-   NAVIDROME_TOKEN=your_navidrome_api_token
-   MUSIC_PATH=/path/to/your/music/library
-   AI_API_KEY=your_openai_api_key  # Optional
-   AI_MODEL=gpt-3.5-turbo  # Optional
+   # Required - Your Navidrome server details
+   NAVIDROME_URL=https://your-navidrome-server.com
+   NAVIDROME_USERNAME=your_username
+   NAVIDROME_PASSWORD=your_password
+   
+   # Optional - AI features (OpenRouter API)
+   AI_API_KEY=your_openrouter_api_key
+   AI_MODEL=openai/gpt-3.5-turbo
    ```
 
-3. **Start services:**
+4. **Start the application:**
    ```bash
-   docker-compose -f docker/docker-compose.yml up -d
+   docker-compose up --build
    ```
 
-4. **Access the application:**
-   - MagicLists: http://localhost:8000
-   - Navidrome: http://localhost:4533
+5. **Access the application:**
+   - Open http://localhost:4545 in your browser
+   - The app will connect to your Navidrome server using the credentials in `.env`
 
-### Option 2: Local Development
+**That's it!** The application will be running in a Docker container with all dependencies included.
+
+### Option 2: Local Development (Advanced)
 
 1. **Install dependencies:**
    ```bash
@@ -91,6 +103,21 @@ magiclists-navidrome-mvp/
     "playlist_name": "My Favorite Songs"
   }
   ```
+- `GET /api/rediscover-weekly` - Generate Re-Discover Weekly recommendations
+- `POST /api/create-rediscover-playlist` - Create Re-Discover Weekly playlist in Navidrome
+
+## Re-Discover Weekly Feature
+
+The **Re-Discover Weekly** feature analyzes your Navidrome listening history to find tracks you've loved but haven't heard recently:
+
+- 📊 **Analyzes last 30 days** of listening history
+- 🎯 **Finds forgotten favorites** - tracks with high play counts but not played in 7+ days
+- 🧮 **Smart scoring** - ranks tracks by `(play count × days since last play)`
+- 🎨 **Artist diversity** - limits each artist to maximum 3 tracks
+- 📝 **Top 20 tracks** - returns the highest-scored tracks as a playlist
+- ⚡ **Lightweight** - no embedding libraries, just play counts and dates
+
+Simply click "Generate Re-Discover Weekly" in the web interface to discover tracks you might want to hear again!
 
 ## Configuration
 
@@ -99,9 +126,11 @@ magiclists-navidrome-mvp/
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `NAVIDROME_URL` | Navidrome server URL | Yes |
-| `NAVIDROME_TOKEN` | Navidrome API token | Yes |
-| `AI_API_KEY` | OpenAI API key for AI curation | No |
-| `AI_MODEL` | AI model name (default: gpt-3.5-turbo) | No |
+| `NAVIDROME_USERNAME` | Navidrome username | Yes |
+| `NAVIDROME_PASSWORD` | Navidrome password | Yes |
+| `NAVIDROME_API_KEY` | Navidrome API key (future feature) | No |
+| `AI_API_KEY` | OpenRouter API key for AI curation | No |
+| `AI_MODEL` | AI model name (default: openai/gpt-3.5-turbo) | No |
 | `DATABASE_PATH` | SQLite database file path | No |
 
 ### Navidrome Setup

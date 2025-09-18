@@ -1,3 +1,8 @@
+# Environment files (NEVER include secrets!)
+.env
+.env.*
+!.env.example
+
 # Git
 .git
 .gitignore
@@ -7,8 +12,7 @@ Dockerfile*
 docker-compose*
 .dockerignore
 
-# Documentation
-README.md
+# Documentation (keep README.md for reference)
 SETUP.md
 
 # Virtual environments
