@@ -55,8 +55,8 @@ magiclists-navidrome-mvp/
    NAVIDROME_USERNAME=your_username
    NAVIDROME_PASSWORD=your_password
    
-   # Optional - AI features (OpenRouter API)
-   AI_API_KEY=your_openrouter_api_key
+   # Optional - AI features (see AI Configuration section below)
+   AI_API_KEY=your_api_key_here
    AI_MODEL=openai/gpt-3.5-turbo
    ```
 
@@ -120,6 +120,32 @@ The **Re-Discover Weekly** feature analyzes your Navidrome listening history to 
 Simply click "Generate Re-Discover Weekly" in the web interface to discover tracks you might want to hear again!
 
 ## Configuration
+
+### AI Configuration (Optional)
+
+The AI features enhance playlist curation with intelligent track selection. You can choose from free, low-cost, or premium models:
+
+**Getting an API Key:**
+- **[OpenRouter](https://openrouter.ai)** - Provides access to many models with free tiers
+- **[OpenAI](https://platform.openai.com)** - Direct access to GPT models
+- **[Google AI Studio](https://aistudio.google.com)** - Free Gemini API access
+
+**Model Options:**
+- **Free/Low-cost**: `deepseek/deepseek-chat`, `google/gemini-flash-1.5`, `meta-llama/llama-3.1-8b-instruct:free`
+- **Paid**: `openai/gpt-3.5-turbo`, `openai/gpt-4o-mini`, `anthropic/claude-3-haiku`
+
+**Example `.env` setup:**
+```bash
+# For OpenRouter (free tier available)
+AI_API_KEY=sk-or-v1-your-key-here
+AI_MODEL=deepseek/deepseek-chat
+
+# For OpenAI direct
+AI_API_KEY=sk-your-openai-key
+AI_MODEL=openai/gpt-3.5-turbo
+```
+
+**Note:** Without AI configuration, the app falls back to play-count based playlist generation.
 
 ### Environment Variables
 
