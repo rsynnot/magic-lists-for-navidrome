@@ -219,3 +219,9 @@ For issues and questions:
 - Check the troubleshooting section
 - Review Navidrome documentation
 - Create an issue in the repository
+
+---
+
+© 2025 Synnot Studio — Licensed under the MIT License.
+
+Made with ❤️ by [Synnot Studio](https://synnotstudio.com).
