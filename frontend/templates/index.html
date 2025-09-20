@@ -10,25 +10,39 @@
   <link rel="stylesheet" href="https://unpkg.com/tachyons/css/tachyons.min.css">
   <style>
     body {
-      background-color: #f8f8f6; /* warm light grey */
+      background-color: #f6f5f4;
       font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
     }
     .app-container {
-      max-width: 1024px;
-      min-height: 800px;
+      max-width: 992px;
+      min-height: 80vh;
       margin: 2rem auto;
       background: #fff;
       border: 1px solid #eaeaea;
       border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .app-header {
+      width: 100%;
+      padding: 1.25rem 1rem;
+      /* border-bottom: 1px solid #eaeaea; */
+    }
+    
+    .app-body {
+      display: flex;
+      flex: 1;
     }
     
     /* Desktop layout */
     .sidebar {
-      width: 30%;
-      background-color: #fafafa;
+      width: 34%;
     }
     .content {
-      width: 70%;
+      width: 66%; 
     }
     
     /* Mobile responsive - stack vertically on screens smaller than 768px */
@@ -40,12 +54,13 @@
         margin: 0;
         min-height: auto;
         border-radius: 4px;
+      }
+      .app-body {
         flex-direction: column;
       }
       .sidebar {
         width: 100%;
-        background-color: #fafafa;
-        border-bottom: 1px solid #eaeaea;
+        /* border-bottom: 1px solid #eaeaea; */
       }
       .content {
         width: 100%;
@@ -55,16 +70,9 @@
         width: 120px !important;
         height: 54px !important;
       }
-      /* Stack navigation buttons horizontally on mobile */
+      /* Keep navigation buttons stacked vertically on mobile */
       .mobile-nav {
-        flex-direction: row;
-        gap: 0.5rem;
-      }
-      .mobile-nav button {
-        flex: 1;
-        margin-bottom: 0.5rem;
-        padding: 0.75rem;
-        font-size: 0.875rem;
+        flex-direction: column;
       }
     }
     
@@ -77,28 +85,355 @@
         border-radius: 2px;
       }
     }
+    
+    /* Custom Form Styles */
+    .form-input {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #191918;
+    }
+    
+    .btn-primary {
+      background-color: #191918;
+      min-height: 2.25rem;
+      padding: .25rem .875rem;
+      border-radius: 8px;
+    }
+    
+    .btn-primary:hover {
+      background-color: #333;
+    }
+    
+    .sidebar-nav {
+      border-top: 1px solid #eaeaea;
+    }
+    
+    .sidebar-nav-btn {
+      background-color: transparent;
+      border-radius: 0;
+      min-height: 2.25rem;
+      padding: 1rem;
+      transition: background-color 0.4s ease;
+      border-bottom: 1px solid #eaeaea;
+    }
+    
+    .sidebar-nav-btn:hover {
+      background-color: #f6f5f4;
+    }
+    
+    .sidebar-nav-btn.active, .sidebar-nav-btn.selected {
+      background-color: #f6f5f4;
+    }
+    
+    /* Typography */
+    .heading-spacing {
+      letter-spacing: -0.0375rem;
+    }
+    
+    /* Medium screens and up - buttons and inputs become left-aligned with auto width */
+    @media screen and (min-width: 768px) {
+      .artist-select-input {
+        width: auto;
+        min-width: 320px;
+        max-width: 400px;
+      }
+      
+      .artist-radio-submit-btn, .rediscover-submit-btn {
+        width: auto;
+        min-width: 200px;
+      }
+    }
   </style>
 </head>
-<body class="pa3">
-  <div class="app-container flex">
-    <!-- Sidebar/Header -->
-    <div class="sidebar pa3">
-      <img src="logo.svg" alt="Magic Lists Logo" class="mb4 mobile-logo" style="width:180px;height:80px;">
-      <nav class="flex flex-column mobile-nav">
-        <button class="mb3 pa3 bg-transparent hover-bg-light-gray bn tl pointer">Artist Radio</button>
-        <button class="mb3 pa3 bg-transparent hover-bg-light-gray bn tl pointer">Re-discover Playlist</button>
-      </nav>
+<body class="pa3 f5 lh-copy near-black">
+  <div class="app-container">
+    <!-- Header -->
+    <div class="app-header">
+      <h1 class="f3 lh-title fw7 ma0 pv3 heading-spacing">
+        <a href="/" class="link near-black no-underline">Magic Lists <span class="moon-gray">for Navidrome</span></a>
+      </h1>
     </div>
 
-    <!-- Main Content -->
-    <div class="content pa4">
-      <h1 class="f3 dark-gray mb3">Welcome to Magic Lists</h1>
-      <p class="gray">Select a feature from the left to get started.</p>
+    <!-- App Body -->
+    <div class="app-body">
+      <!-- Sidebar -->
+      <div class="sidebar pa3">
+        <nav class="flex flex-column mobile-nav sidebar-nav">
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="artist-radio-nav">
+            Artist Radio
+          </button>
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="rediscover-nav">
+            Re-discover Playlist
+          </button>
+        </nav>
+      </div>
+
+      <!-- Main Content -->
+      <div class="content ph4 pt2 pb4">
+        <div id="welcome-content">
+          <h1 class="f3 lh-title fw7 near-black mb3 heading-spacing">Welcome to Magic Lists</h1>
+          <p class="f4 gray lh-copy mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists and help you rediscover forgotten gems.</p>
+          
+          <div class="mb4">
+            <h2 class="f4 fw6 near-black mb3">Features</h2>
+            <div class="mb3">
+              <h3 class="f5 fw6 near-black mb2">🎵 Artist Radio</h3>
+              <p class="gray lh-copy ma0">Browse artists from your Navidrome library and create custom playlists with AI-powered track selection for the perfect listening experience.</p>
+            </div>
+            <div class="mb3">
+              <h3 class="f5 fw6 near-black mb2">🔄 Re-Discover Weekly</h3>
+              <p class="gray lh-copy ma0">Find tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+            </div>
+          </div>
+          
+          
+        </div>
+        
+        <!-- Artist Radio Form (hidden by default) -->
+        <div id="artist-radio-content" style="display: none;">
+          <div class="mb4">
+            <h1 class="f3 lh-title fw7 near-black mb3 heading-spacing">Artist Radio</h1>
+            <p class="gray lh-copy ma0">Create AI-powered radio stations based on your favorite artists. Get a curated mix of their best tracks, intelligently selected and ordered for the perfect listening experience.</p>
+          </div>
+          
+          <form id="artist-radio-form" class="mb4">
+            <div class="mb4">
+              <label for="artist-select" class="db mb3 f5 fw6 near-black">Choose an artist from your library</label>
+              <select id="artist-select" name="artist_id" required class="form-input w-100 pa3 f5 near-black">
+                <option value="">Loading artists...</option>
+              </select>
+            </div>
+            
+            <button type="submit" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns">
+              Create Artist Radio
+            </button>
+          </form>
+          
+          <div id="loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
+            <span class="gray">Creating your personalized radio station...</span>
+          </div>
+          
+          <div id="result"></div>
+        </div>
+        
+        <!-- Re-discover Playlist Content (hidden by default) -->
+        <div id="rediscover-content" style="display: none;">
+          <div class="mb4">
+            <h1 class="f3 lh-title fw7 near-black mb3 heading-spacing">Re-discover Playlist</h1>
+            <p class="gray lh-copy ma0">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
+          </div>
+          
+          <button id="rediscover-btn" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns mb4">
+            Generate Re-Discover Weekly
+          </button>
+          
+          <div id="rediscover-loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
+            <span class="gray">Analyzing your listening history and finding forgotten favorites...</span>
+          </div>
+          
+          <div id="rediscover-result"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <footer class="tc mt3 gray f6">
     Made by <a href="https://synnotstudio.com" class="link blue">Synnot Studio</a> – Open Source (MIT)
   </footer>
+
+  <script>
+    // Navigation functionality
+    function showContent(contentId) {
+      // Hide all content sections
+      document.getElementById('welcome-content').style.display = 'none';
+      document.getElementById('artist-radio-content').style.display = 'none';
+      document.getElementById('rediscover-content').style.display = 'none';
+      
+      // Show the selected content
+      document.getElementById(contentId).style.display = 'block';
+      
+      // Update button states
+      const buttons = document.querySelectorAll('.sidebar-nav-btn');
+      buttons.forEach(btn => btn.classList.remove('selected'));
+      
+      // Add selected state to clicked button
+      if (contentId === 'artist-radio-content') {
+        document.getElementById('artist-radio-nav').classList.add('selected');
+      } else if (contentId === 'rediscover-content') {
+        document.getElementById('rediscover-nav').classList.add('selected');
+      }
+    }
+    
+    // Add click handlers to navigation buttons
+    document.addEventListener('DOMContentLoaded', function() {
+      const artistRadioBtn = document.getElementById('artist-radio-nav');
+      const rediscoverNavBtn = document.getElementById('rediscover-nav');
+      
+      artistRadioBtn.addEventListener('click', () => {
+        showContent('artist-radio-content');
+        loadArtists(); // Load artists when Artist Radio is selected
+      });
+      
+      rediscoverNavBtn.addEventListener('click', () => {
+        showContent('rediscover-content');
+      });
+      
+      // Artist Radio form submission
+      const artistForm = document.getElementById('artist-radio-form');
+      artistForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const artistSelect = document.getElementById('artist-select');
+        const loadingDiv = document.getElementById('loading');
+        const resultDiv = document.getElementById('result');
+        const submitBtn = artistForm.querySelector('button[type="submit"]');
+        
+        if (!artistSelect.value) {
+          alert('Please select an artist');
+          return;
+        }
+        
+        // Show loading state
+        loadingDiv.classList.remove('dn');
+        resultDiv.innerHTML = '';
+        submitBtn.disabled = true;
+        
+        try {
+          const response = await fetch('/api/create_playlist', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              artist_id: artistSelect.value
+            })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || 'Failed to create playlist');
+          }
+          
+          const data = await response.json();
+          const selectedArtist = artistSelect.options[artistSelect.selectedIndex].text;
+          
+          resultDiv.innerHTML = `
+            <div class="pa3 bg-light-green ba b--green br2">
+              <h3 class="f4 dark-green mt0 mb2">🎉 ${selectedArtist} Radio Created!</h3>
+              <p class="dark-green ma0 mb2">Your personalized radio station is ready with <strong>${data.songs ? data.songs.length : 0} carefully selected tracks</strong>.</p>
+              <p class="dark-green ma0 mb2"><strong>Playlist Name:</strong> ${data.playlist_name || selectedArtist + ' Radio'}</p>
+              <p class="dark-green ma0">🎵 You can now find this playlist in your Navidrome library and start listening!</p>
+              
+              <button onclick="location.reload()" class="mt3 pa2 bg-gray white bn br2 f6 pointer">
+                ✨ Create Another Playlist
+              </button>
+            </div>
+          `;
+          
+        } catch (error) {
+          console.error('Error creating playlist:', error);
+          resultDiv.innerHTML = `
+            <div class="pa3 bg-light-red ba b--red br2">
+              <h3 class="f4 dark-red mt0 mb2">❌ Error Creating Playlist</h3>
+              <p class="dark-red ma0">${error.message}</p>
+            </div>
+          `;
+        } finally {
+          loadingDiv.classList.add('dn');
+          submitBtn.disabled = false;
+        }
+      });
+      
+      // Re-discover playlist functionality
+      const rediscoverBtn = document.getElementById('rediscover-btn');
+      rediscoverBtn.addEventListener('click', generateRediscoverWeekly);
+    });
+    
+    // Load artists function
+    async function loadArtists() {
+      const select = document.getElementById('artist-select');
+      
+      try {
+        const response = await fetch('/api/artists');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to fetch artists');
+        }
+        
+        const artists = await response.json();
+        
+        // Clear loading option
+        select.innerHTML = '<option value="">-- Select an artist --</option>';
+        
+        // Populate dropdown
+        artists.forEach(artist => {
+          const option = document.createElement('option');
+          option.value = artist.id;
+          option.textContent = artist.name;
+          select.appendChild(option);
+        });
+        
+      } catch (error) {
+        console.error('Error loading artists:', error);
+        select.innerHTML = '<option value="">Error loading artists</option>';
+        
+        // Show error message
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-red ba b--red br2">
+            <h3 class="f4 dark-red mt0 mb2">❌ Connection Error</h3>
+            <p class="dark-red ma0 mb2"><strong>Error:</strong> ${error.message}</p>
+            <p class="dark-red ma0">Please check your Navidrome configuration.</p>
+          </div>
+        `;
+      }
+    }
+    
+    // Re-discover Weekly functionality (placeholder for now)
+    async function generateRediscoverWeekly() {
+      const loadingDiv = document.getElementById('rediscover-loading');
+      const resultDiv = document.getElementById('rediscover-result');
+      const button = document.getElementById('rediscover-btn');
+      
+      // Show loading state
+      loadingDiv.classList.remove('dn');
+      resultDiv.innerHTML = '';
+      button.disabled = true;
+      
+      try {
+        const response = await fetch('/api/rediscover-weekly');
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to generate Re-Discover Weekly');
+        }
+        
+        const data = await response.json();
+        
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-green ba b--green br2">
+            <h3 class="f4 dark-green mt0 mb2">🎵 Your Re-Discover Weekly is Ready!</h3>
+            <p class="dark-green ma0">Found <strong>${data.total_tracks || 0} forgotten gems</strong> from your music library.</p>
+          </div>
+        `;
+        
+      } catch (error) {
+        console.error('Error generating Re-Discover Weekly:', error);
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-red ba b--red br2">
+            <h3 class="f4 dark-red mt0 mb2">❌ Error Generating Re-Discover Weekly</h3>
+            <p class="dark-red ma0">${error.message}</p>
+          </div>
+        `;
+      } finally {
+        loadingDiv.classList.add('dn');
+        button.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>
