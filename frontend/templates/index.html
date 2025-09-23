@@ -1,613 +1,584 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MagicLists - Smart Playlists for Navidrome</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <script defer src="https://umami.itsricky.com/script.js" data-website-id="e5a08463-74dd-4b83-b7ef-da5f5e088430"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            margin: 0 0 10px 0;
-            font-weight: 300;
-        }
-        
-        .header .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            margin-bottom: 0;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .feature-card {
-            padding: 30px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .feature-card:last-child {
-            border-bottom: none;
-        }
-        
-        .feature-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .feature-icon {
-            font-size: 2rem;
-            margin-right: 15px;
-        }
-        
-        .feature-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #333;
-            margin: 0;
-        }
-        
-        .feature-description {
-            color: #666;
-            margin-bottom: 25px;
-            line-height: 1.5;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        
-        select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        
-        select:focus {
-            outline: none;
-            border-color: #007bff;
-        }
-        
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-        }
-        
-        .btn-secondary:hover {
-            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-        }
-        
-        .loading {
-            text-align: center;
-            color: #666;
-            font-style: italic;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            margin: 15px 0;
-        }
-        
-        .loading::before {
-            content: "⏳ ";
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        .success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        
-        .error {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        
-        .rediscover-section {
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 2px solid #eee;
-        }
-        
-        .rediscover-button {
-            background: #28a745;
-            margin-bottom: 20px;
-        }
-        
-        .rediscover-button:hover {
-            background: #218838;
-        }
-        
-        .track-list {
-            max-height: 500px;
-            overflow-y: auto;
-            border-radius: 12px;
-            background: #f8f9fa;
-            margin: 20px 0;
-        }
-        
-        .track-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background-color 0.2s ease;
-        }
-        
-        .track-item:hover {
-            background: #e9ecef;
-        }
-        
-        .track-item:last-child {
-            border-bottom: none;
-        }
-        
-        .track-info {
-            flex-grow: 1;
-            min-width: 0;
-        }
-        
-        .track-number {
-            display: inline-block;
-            width: 30px;
-            color: #6c757d;
-            font-weight: 600;
-        }
-        
-        .track-title {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .track-artist {
-            color: #666;
-            font-size: 0.9em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .track-stats {
-            text-align: right;
-            font-size: 0.8em;
-            color: #6c757d;
-            min-width: 120px;
-            margin-left: 15px;
-        }
-        
-        .track-score {
-            font-weight: 600;
-            color: #667eea;
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .feature-card {
-                padding: 20px;
-            }
-            
-            .feature-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .feature-icon {
-                margin-right: 0;
-                margin-bottom: 10px;
-            }
-            
-            .track-item {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 12px 15px;
-            }
-            
-            .track-stats {
-                margin-left: 0;
-                margin-top: 8px;
-                text-align: left;
-                min-width: auto;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Magic Lists</title>
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Tachyons CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/tachyons/css/tachyons.min.css">
+  <style>
+    body {
+      background-color: #f6f5f4;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app-container {
+      max-width: 992px;
+      min-height: 80vh;
+      margin: 1rem auto;
+      background: #fff;
+      border: 1px solid #eaeaea;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .app-header {
+      width: 100%;
+      padding: 1.25rem 1rem;
+      /* border-bottom: 1px solid #eaeaea; */
+    }
+    
+    .app-body {
+      display: flex;
+      flex: 1;
+    }
+    
+    /* Desktop layout */
+    .sidebar {
+      width: 34%;
+    }
+    .content {
+      width: 66%; 
+    }
+    
+    /* Mobile responsive - stack vertically on screens smaller than 768px */
+    @media screen and (max-width: 767px) {
+      body {
+        padding: 1rem;
+      }
+      .app-container {
+        margin: 0;
+        min-height: auto;
+        border-radius: 4px;
+      }
+      .app-body {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        /* border-bottom: 1px solid #eaeaea; */
+      }
+      .content {
+        width: 100%;
+      }
+      /* Adjust logo size on mobile */
+      .mobile-logo {
+        width: 120px !important;
+        height: 54px !important;
+      }
+      /* Keep navigation buttons stacked vertically on mobile */
+      .mobile-nav {
+        flex-direction: column;
+      }
+    }
+    
+    /* Extra small mobile devices */
+    @media screen and (max-width: 375px) {
+      body {
+        padding: 0.5rem;
+      }
+      .app-container {
+        border-radius: 2px;
+      }
+    }
+    
+    /* Custom Form Styles */
+    .form-input {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #191918;
+    }
+    
+    .btn-primary {
+      background-color: #191918;
+      min-height: 2.25rem;
+      padding: .25rem .875rem;
+      border-radius: 8px;
+    }
+    
+    .btn-primary:hover {
+      background-color: #333;
+    }
+    
+    .sidebar-nav {
+      border-top: 1px solid #eaeaea;
+    }
+    
+    .sidebar-nav-btn {
+      background-color: transparent;
+      border-radius: 0;
+      min-height: 2.25rem;
+      padding: 1rem;
+      transition: background-color 0.4s ease;
+      border-bottom: 1px solid #eaeaea;
+    }
+    
+    .sidebar-nav-btn:hover {
+      background-color: #f6f5f4;
+    }
+    
+    .sidebar-nav-btn.active, .sidebar-nav-btn.selected {
+      background-color: #f6f5f4;
+    }
+    
+    /* Typography */
+    .heading-spacing {
+      letter-spacing: -0.0375rem;
+    }
+    
+    /* Medium screens and up - buttons and inputs become left-aligned with auto width */
+    @media screen and (min-width: 768px) {
+      .artist-select-input {
+        width: auto;
+        min-width: 320px;
+        max-width: 400px;
+      }
+      
+      .artist-radio-submit-btn, .rediscover-submit-btn {
+        width: auto;
+        min-width: 200px;
+      }
+    }
+  </style>
 </head>
-<body>
-    <div class="header">
-        <h1>🎵 MagicLists</h1>
-        <p class="subtitle">Smart Playlists for Your Navidrome Library</p>
+<body class="pa3 f5 lh-copy near-black">
+  <div class="app-container">
+    <!-- Header -->
+    <div class="app-header">
+      <div class="ma0 pl2 pt2 pb0">
+        <a href="/" class="link" onclick="location.reload()">
+          <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" style="height: 48px; width: auto;">
+        </a>
+      </div>
     </div>
 
-    <div class="container">
-        <!-- Artist Radio Feature -->
-        <div class="feature-card">
-            <div class="feature-header">
-                <div class="feature-icon">🎸</div>
-                <h2 class="feature-title">Artist Radio</h2>
-            </div>
-            <p class="feature-description">
-                Create AI-powered radio stations based on your favorite artists. Get a curated mix of their best tracks, 
-                intelligently selected and ordered for the perfect listening experience.
-            </p>
-            
-            <form hx-post="/api/create_playlist" 
-                  hx-target="#result" 
-                  hx-indicator="#loading"
-                  hx-ext="json-enc">
-                
-                <div class="form-group">
-                    <label for="artist-select">Choose an artist from your library:</label>
-                    <select id="artist-select" name="artist_id" required>
-                        <option value="">Loading artists...</option>
-                    </select>
-                </div>
-                
-                <button type="submit">🎵 Create Artist Radio</button>
-            </form>
-            
-            <div id="loading" class="loading htmx-indicator">
-                Creating your personalized radio station...
-            </div>
-            
-            <div id="result"></div>
-        </div>
+    <!-- App Body -->
+    <div class="app-body">
+      <!-- Sidebar -->
+      <div class="sidebar ph3 pb3">
+        <nav class="flex flex-column mobile-nav sidebar-nav">
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="artist-radio-nav">
+            Artist Radio
+          </button>
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="rediscover-nav">
+            Re-discover Playlist
+          </button>
+        </nav>
+      </div>
 
-        <!-- Re-Discover Weekly Feature -->
-        <div class="feature-card">
-            <div class="feature-header">
-                <div class="feature-icon">🔄</div>
-                <h2 class="feature-title">Re-Discover Weekly</h2>
+      <!-- Main Content -->
+      <div class="content ph3 pt0 pb4">
+        <div id="welcome-content">
+          <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Welcome to Magic Lists</h1>
+          <p class="f4 gray lh-copy mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists and help you rediscover forgotten gems.</p>
+          
+          <div class="mb4">
+            <h2 class="f4 fw6 near-black mb3">Features</h2>
+            <div class="mb3">
+              <h3 class="f5 fw6 near-black mb2">🎵 Artist Radio</h3>
+              <p class="gray lh-copy ma0">Browse artists from your Navidrome library and create custom playlists with AI-powered track selection for the perfect listening experience.</p>
             </div>
-            <p class="feature-description">
-                Rediscover forgotten gems from your music library! We analyze your listening history to find tracks 
-                you loved but haven't heard recently. Perfect for breaking out of your current rotation.
-            </p>
+            <div class="mb3">
+              <h3 class="f5 fw6 near-black mb2">🔄 Re-Discover Weekly</h3>
+              <p class="gray lh-copy ma0">Find tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+            </div>
+          </div>
+          
+          
+        </div>
+        
+        <!-- Artist Radio Form (hidden by default) -->
+        <div id="artist-radio-content" style="display: none;">
+          <div class="mb4">
+            <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Artist Radio</h1>
+            <p class="gray lh-copy ma0">Create AI-powered radio stations based on your favorite artists. Get a curated mix of their best tracks, intelligently selected and ordered for the perfect listening experience.</p>
+          </div>
+          
+          <form id="artist-radio-form" class="mb4">
+            <div class="mb4">
+              <label class="db mb3 f5 fw6 near-black">Choose artists from your library</label>
+              <div class="relative">
+                <div id="chips-container" class="flex flex-wrap items-center pv2   bg-white" style="border: 0px solid #e0e0e0; border-bottom: none;">
+                  <!-- Chips will be dynamically inserted here -->
+                </div>
+                <input
+                  id="artist-search-input"
+                  type="text"
+                  placeholder="Search for an artist..."
+                  class="form-input w-100 pa3 f5 near-black br2 br--bottom"
+                  
+                />
+                <div id="artist-results-dropdown" class="absolute w-100 mt1 bg-white ba b--light-gray br2 dn overflow-auto" style="z-index: 10; max-height: 200px;">
+                  <!-- Search results will be dynamically inserted here -->
+                </div>
+              </div>
+            </div>
             
-            <button class="btn-secondary" onclick="generateRediscoverWeekly()">
-                🔍 Generate Re-Discover Weekly
+            <button type="submit" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns">
+              Create Artist Radio
             </button>
-            
-            <div id="rediscover-loading" class="loading" style="display: none;">
-                Analyzing your listening history and finding forgotten favorites...
-            </div>
-            
-            <div id="rediscover-result"></div>
+          </form>
+          
+          <div id="loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
+            <span class="gray">Creating your personalized radio station...</span>
+          </div>
+          
+          <div id="result"></div>
         </div>
+        
+        <!-- Re-discover Playlist Content (hidden by default) -->
+        <div id="rediscover-content" style="display: none;">
+          <div class="mb4">
+            <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Re-discover Playlist</h1>
+            <p class="gray lh-copy ma0">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
+          </div>
+          
+          <button id="rediscover-btn" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns mb4">
+            Generate Re-Discover Weekly
+          </button>
+          
+          <div id="rediscover-loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
+            <span class="gray">Analyzing your listening history and finding forgotten favorites...</span>
+          </div>
+          
+          <div id="rediscover-result"></div>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <footer style="text-align:center; font-size:0.8rem; margin-top:2rem; color: rgba(255,255,255,0.8);">
-        Made with ❤️ by <a href="https://synnotstudio.com" target="_blank" style="color: rgba(255,255,255,0.9); text-decoration: none;">Synnot Studio</a> — Open source under <a href="https://opensource.org/licenses/MIT" target="_blank" style="color: rgba(255,255,255,0.9); text-decoration: none;">MIT</a>.
-    </footer>
+  <footer class="tc mt3 gray f6">
+    Made by <a href="https://synnotstudio.com" class="link blue">Synnot Studio</a> – Open Source (MIT)
+  </footer>
 
-    <script>
-        // Load artists on page load
-        document.addEventListener('DOMContentLoaded', async function() {
-            const select = document.getElementById('artist-select');
-            
-            try {
-                const response = await fetch('/api/artists');
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                    throw new Error(errorData.detail || 'Failed to fetch artists');
-                }
-                
-                const artists = await response.json();
-                
-                // Clear loading option
-                select.innerHTML = '<option value="">-- Select an artist --</option>';
-                
-                // Populate dropdown
-                artists.forEach(artist => {
-                    const option = document.createElement('option');
-                    option.value = artist.id;
-                    option.textContent = artist.name;
-                    select.appendChild(option);
-                });
-                
-            } catch (error) {
-                console.error('Error loading artists:', error);
-                select.innerHTML = '<option value="">Error loading artists</option>';
-                
-                // Show detailed error message to user
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error';
-                errorDiv.innerHTML = `
-                    <h3>❌ Connection Error</h3>
-                    <p><strong>Error:</strong> ${error.message}</p>
-                    <p>Please check your Navidrome configuration in the .env file:</p>
-                    <ul>
-                        <li>Verify NAVIDROME_URL is correct</li>
-                        <li>Check NAVIDROME_USERNAME and NAVIDROME_PASSWORD</li>
-                        <li>Ensure Navidrome server is running</li>
-                    </ul>
-                `;
-                document.querySelector('.container').appendChild(errorDiv);
-            }
+  <script>
+    // Navigation functionality
+    function showContent(contentId) {
+      // Hide all content sections
+      document.getElementById('welcome-content').style.display = 'none';
+      document.getElementById('artist-radio-content').style.display = 'none';
+      document.getElementById('rediscover-content').style.display = 'none';
+      
+      // Show the selected content
+      document.getElementById(contentId).style.display = 'block';
+      
+      // Update button states
+      const buttons = document.querySelectorAll('.sidebar-nav-btn');
+      buttons.forEach(btn => btn.classList.remove('selected'));
+      
+      // Add selected state to clicked button
+      if (contentId === 'artist-radio-content') {
+        document.getElementById('artist-radio-nav').classList.add('selected');
+      } else if (contentId === 'rediscover-content') {
+        document.getElementById('rediscover-nav').classList.add('selected');
+      }
+    }
+    
+    // Add click handlers to navigation buttons
+    document.addEventListener('DOMContentLoaded', function() {
+      const artistRadioBtn = document.getElementById('artist-radio-nav');
+      const rediscoverNavBtn = document.getElementById('rediscover-nav');
+      
+      artistRadioBtn.addEventListener('click', () => {
+        showContent('artist-radio-content');
+        loadArtists(); // Load artists when Artist Radio is selected
+      });
+      
+      rediscoverNavBtn.addEventListener('click', () => {
+        showContent('rediscover-content');
+      });
+      
+      // Re-discover playlist functionality
+      const rediscoverBtn = document.getElementById('rediscover-btn');
+      rediscoverBtn.addEventListener('click', generateRediscoverWeekly);
+    });
+    
+    // Multi-select component logic
+    const artistSearchInput = document.getElementById('artist-search-input');
+    const artistResultsDropdown = document.getElementById('artist-results-dropdown');
+    const chipsContainer = document.getElementById('chips-container');
+
+    let allArtists = [];
+    let availableArtists = [];
+    let selectedArtists = [];
+
+    // 1. Show/hide dropdown on focus/blur
+    artistSearchInput.addEventListener('focus', () => {
+      renderDropdown(availableArtists);
+      artistResultsDropdown.classList.remove('dn');
+    });
+
+    // Handle clicks outside to close dropdown
+    document.addEventListener('click', (e) => {
+      const searchContainer = artistSearchInput.closest('.relative');
+      if (!searchContainer.contains(e.target)) {
+        artistResultsDropdown.classList.add('dn');
+      }
+    });
+
+    // 2. Filter dropdown list as user types
+    artistSearchInput.addEventListener('input', () => {
+      const searchTerm = artistSearchInput.value.toLowerCase();
+      const filteredArtists = availableArtists.filter(artist =>
+        artist.name.toLowerCase().includes(searchTerm)
+      );
+      renderDropdown(filteredArtists);
+      // Ensure dropdown is visible when typing
+      artistResultsDropdown.classList.remove('dn');
+    });
+    
+    // 3. Select item with Enter key
+    artistSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstResult = artistResultsDropdown.querySelector('.pointer');
+        if (firstResult) {
+          const artistId = firstResult.dataset.id;
+          const artistName = firstResult.textContent;
+          selectArtist({ id: artistId, name: artistName });
+        }
+      }
+    });
+
+    // 4. Select item with click (only if not already selected)
+    artistResultsDropdown.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.target.classList.contains('pointer')) {
+        const artistId = e.target.dataset.id;
+        const artistName = e.target.textContent;
+        selectArtist({ id: artistId, name: artistName });
+      }
+    });
+    
+    // 5. Remove chip on "x" click
+    chipsContainer.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-chip')) {
+        const chip = e.target.closest('.chip');
+        const artistId = chip.dataset.id;
+        const artistName = chip.dataset.name;
+        
+        // Remove from selected artists
+        selectedArtists = selectedArtists.filter(artist => artist.id !== artistId);
+        
+        // Mark artist as unselected in available artists
+        const artistInList = availableArtists.find(a => a.id === artistId);
+        if (artistInList) {
+          artistInList.selected = false;
+        } else {
+          availableArtists.push({ id: artistId, name: artistName, selected: false });
+          availableArtists.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        
+        // Remove chip from DOM
+        chip.remove();
+        
+        // Re-render dropdown
+        renderDropdown(availableArtists);
+      }
+    });
+
+    function selectArtist(artist) {
+      // Add to selected artists
+      if (!selectedArtists.some(a => a.id === artist.id)) {
+        selectedArtists.push(artist);
+
+        // Mark artist as selected but keep in available artists
+        const artistInList = availableArtists.find(a => a.id === artist.id);
+        if (artistInList) {
+          artistInList.selected = true;
+        }
+
+        // Add chip
+        addChip(artist);
+      }
+
+      // Clear input but keep dropdown open and focused
+      artistSearchInput.value = '';
+      artistSearchInput.focus();
+      renderDropdown(availableArtists);
+      // Ensure dropdown stays open after selection
+      artistResultsDropdown.classList.remove('dn');
+    }
+
+    function addChip(artist) {
+      const chip = document.createElement('div');
+      chip.classList.add('chip', 'flex', 'items-center', 'bg-light-gray', 'br-pill', 'pa2', 'mr2', 'mb2');
+      chip.dataset.id = artist.id;
+      chip.dataset.name = artist.name;
+      
+      chip.innerHTML = `
+        <span class="f6 fw5 pr2">${artist.name}</span>
+        <button type="button" class="remove-chip bn bg-transparent pointer f5" style="line-height: 1;">&times;</button>
+      `;
+      
+      chipsContainer.appendChild(chip);
+    }
+
+    function renderDropdown(artists) {
+      artistResultsDropdown.innerHTML = '';
+      if (artists.length === 0) {
+        artistResultsDropdown.innerHTML = '<div class="pa2 gray f6">No results found</div>';
+        return;
+      }
+
+      artists.forEach(artist => {
+        const item = document.createElement('div');
+        if (artist.selected) {
+          item.classList.add('pa2', 'f6', 'gray', 'bg-light-gray');
+          item.style.cursor = 'default';
+          item.style.opacity = '0.6';
+        } else {
+          item.classList.add('pa2', 'f6', 'pointer', 'hover-bg-light-gray');
+        }
+        item.dataset.id = artist.id;
+        item.textContent = artist.name;
+        artistResultsDropdown.appendChild(item);
+      });
+    }
+
+    async function loadArtists() {
+      try {
+        const response = await fetch('/api/artists');
+        if (!response.ok) {
+          throw new Error('Failed to fetch artists');
+        }
+        allArtists = await response.json();
+        availableArtists = allArtists.map(artist => ({ ...artist, selected: false }));
+        renderDropdown(availableArtists);
+      } catch (error) {
+        console.error('Error loading artists:', error);
+        artistResultsDropdown.innerHTML = '<div class="pa3 red">Error loading artists</div>';
+      }
+    }
+    
+    // Artist Radio form submission
+    const artistForm = document.getElementById('artist-radio-form');
+    artistForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      if (selectedArtists.length === 0) {
+        alert('Please select at least one artist');
+        return;
+      }
+      
+      const artistIds = selectedArtists.map(artist => artist.id);
+      
+      const loadingDiv = document.getElementById('loading');
+      const resultDiv = document.getElementById('result');
+      const submitBtn = artistForm.querySelector('button[type="submit"]');
+      
+      // Show loading state
+      loadingDiv.classList.remove('dn');
+      resultDiv.innerHTML = '';
+      submitBtn.disabled = true;
+      
+      try {
+        const response = await fetch('/api/create_playlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            artist_ids: artistIds // Sending an array of IDs
+          })
         });
         
-        // Handle playlist creation response
-        document.body.addEventListener('htmx:afterRequest', function(event) {
-            if (event.detail.xhr.status === 200) {
-                const response = JSON.parse(event.detail.xhr.responseText);
-                const artistSelect = document.getElementById('artist-select');
-                const selectedArtist = artistSelect.options[artistSelect.selectedIndex].text;
-                
-                // Track successful artist playlist creation
-                if (typeof umami !== 'undefined') {
-                    umami.track('artist_playlist_created');
-                }
-                
-                document.getElementById('result').innerHTML = `
-                    <div class="success">
-                        <h3>🎉 ${selectedArtist} Radio Created!</h3>
-                        <p>Your personalized radio station is ready with <strong>${response.songs ? response.songs.length : 0} carefully selected tracks</strong>.</p>
-                        <p><strong>Playlist Name:</strong> ${response.playlist_name || selectedArtist + ' Radio'}</p>
-                        <p>🎵 You can now find this playlist in your Navidrome library and start listening!</p>
-                        
-                        <button onclick="location.reload()" style="margin-top: 15px; background: #6c757d;">
-                            ✨ Create Another Playlist
-                        </button>
-                    </div>
-                `;
-            } else {
-                let errorMessage = 'Failed to create artist radio. Please try again.';
-                try {
-                    const errorResponse = JSON.parse(event.detail.xhr.responseText);
-                    if (typeof errorResponse === 'object' && errorResponse.detail) {
-                        errorMessage = errorResponse.detail;
-                    } else if (Array.isArray(errorResponse.detail)) {
-                        // Handle validation errors
-                        errorMessage = errorResponse.detail.map(err => err.msg || err).join(', ');
-                    } else if (typeof errorResponse.detail === 'object') {
-                        errorMessage = JSON.stringify(errorResponse.detail);
-                    }
-                } catch (e) {
-                    console.error('Error parsing response:', e);
-                    errorMessage = `HTTP ${event.detail.xhr.status}: ${event.detail.xhr.statusText}`;
-                }
-                
-                document.getElementById('result').innerHTML = `
-                    <div class="error">
-                        <h3>❌ Error Creating Playlist</h3>
-                        <p>${errorMessage}</p>
-                        ${event.detail.xhr.status === 401 ? '<p>Please check your Navidrome login credentials.</p>' : ''}
-                    </div>
-                `;
-            }
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to create playlist');
+        }
+        
+        const data = await response.json();
+        const selectedArtistNames = selectedArtists.map(a => a.name).join(', ');
+        
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-green ba b--green br2">
+            <h3 class="f4 dark-green mt0 mb2">🎉 ${selectedArtistNames} Radio Created!</h3>
+            <p class="dark-green ma0 mb2">Your personalized radio station is ready with <strong>${data.songs ? data.songs.length : 0} carefully selected tracks</strong>.</p>
+            <p class="dark-green ma0 mb2"><strong>Playlist Name:</strong> ${data.playlist_name || selectedArtistNames + ' Radio'}</p>
+            <p class="dark-green ma0">🎵 You can now find this playlist in your Navidrome library and start listening!</p>
+            
+            <button onclick="location.reload()" class="mt3 pa2 bg-gray white bn br2 f6 pointer">
+              ✨ Create Another Playlist
+            </button>
+          </div>
+        `;
+        
+      } catch (error) {
+        console.error('Error creating playlist:', error);
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-red ba b--red br2">
+            <h3 class="f4 dark-red mt0 mb2">❌ Error Creating Playlist</h3>
+            <p class="dark-red ma0">${error.message}</p>
+          </div>
+        `;
+      } finally {
+        loadingDiv.classList.add('dn');
+        submitBtn.disabled = false;
+      }
+    });
+    
+    // Re-discover Weekly functionality (placeholder for now)
+    async function generateRediscoverWeekly() {
+      const loadingDiv = document.getElementById('rediscover-loading');
+      const resultDiv = document.getElementById('rediscover-result');
+      const button = document.getElementById('rediscover-btn');
+      
+      // Show loading state
+      loadingDiv.classList.remove('dn');
+      resultDiv.innerHTML = '';
+      button.disabled = true;
+      
+      try {
+        const response = await fetch('/api/create-rediscover-playlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
-        
-        // Re-Discover Weekly functions
-        async function generateRediscoverWeekly() {
-            const loadingDiv = document.getElementById('rediscover-loading');
-            const resultDiv = document.getElementById('rediscover-result');
-            const button = document.querySelector('.rediscover-button');
-            
-            // Show loading state
-            loadingDiv.style.display = 'block';
-            resultDiv.innerHTML = '';
-            button.disabled = true;
-            
-            try {
-                const response = await fetch('/api/rediscover-weekly');
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                    throw new Error(errorData.detail || 'Failed to generate Re-Discover Weekly');
-                }
-                
-                const data = await response.json();
-                
-                // Track successful Re-Discover Weekly generation
-                if (typeof umami !== 'undefined') {
-                    umami.track('rediscover_weekly_generated');
-                }
-                
-                // Display the generated playlist
-                displayRediscoverWeekly(data);
-                
-            } catch (error) {
-                console.error('Error generating Re-Discover Weekly:', error);
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <h3>❌ Error Generating Re-Discover Weekly</h3>
-                        <p>${error.message}</p>
-                        ${error.message.includes('No listening history') ? 
-                            '<p>Make sure you have played some music in Navidrome recently.</p>' : ''}
-                    </div>
-                `;
-            } finally {
-                loadingDiv.style.display = 'none';
-                button.disabled = false;
-            }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to create Re-Discover Weekly');
         }
+
+        const data = await response.json();
+
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-green ba b--green br2">
+            <h3 class="f4 dark-green mt0 mb2">🎉 Re-Discover Weekly Created!</h3>
+            <p class="dark-green ma0 mb2">Your playlist is ready with <strong>${data.tracks ? data.tracks.length : 0} forgotten gems</strong>.</p>
+            <p class="dark-green ma0 mb2"><strong>Playlist Name:</strong> ${data.playlist_name || 'Re-Discover Weekly'}</p>
+            <p class="dark-green ma0">🎵 You can now find this playlist in your Navidrome library and start rediscovering!</p>
+
+            <button onclick="location.reload()" class="mt3 pa2 bg-gray white bn br2 f6 pointer">
+              ✨ Generate Another Playlist
+            </button>
+          </div>
+        `;
         
-        function displayRediscoverWeekly(data) {
-            const resultDiv = document.getElementById('rediscover-result');
-            
-            if (!data.tracks || data.tracks.length === 0) {
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <h3>🎵 No Tracks Found</h3>
-                        <p>No tracks found for re-discovery. Try listening to more music first!</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            let tracksHtml = '';
-            data.tracks.forEach((track, index) => {
-                tracksHtml += `
-                    <div class="track-item">
-                        <div class="track-info">
-                            <div class="track-title">
-                                <span class="track-number">${index + 1}.</span>
-                                ${track.title}
-                            </div>
-                            <div class="track-artist">${track.artist} • ${track.album}</div>
-                        </div>
-                        <div class="track-stats">
-                            <div class="track-score">Score: ${track.score}</div>
-                            <div>${track.historical_plays} plays</div>
-                            <div>${track.days_since_last_play} days ago</div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            resultDiv.innerHTML = `
-                <div class="success">
-                    <h3>🎵 Your Re-Discover Weekly is Ready!</h3>
-                    <p>Found <strong>${data.total_tracks} forgotten gems</strong> from your music library. These are tracks you've loved before but haven't heard recently.</p>
-                    
-                    <div class="track-list">
-                        ${tracksHtml}
-                    </div>
-                    
-                    <button class="btn-secondary" onclick="createRediscoverPlaylist()" style="margin-top: 15px;">
-                        🎶 Save as Playlist in Navidrome
-                    </button>
-                </div>
-            `;
-        }
-        
-        async function createRediscoverPlaylist() {
-            const loadingDiv = document.getElementById('rediscover-loading');
-            const resultDiv = document.getElementById('rediscover-result');
-            
-            // Show loading state
-            loadingDiv.style.display = 'block';
-            
-            try {
-                const response = await fetch('/api/create-rediscover-playlist', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                    throw new Error(errorData.detail || 'Failed to create playlist');
-                }
-                
-                const data = await response.json();
-                
-                // Update the result to show success
-                resultDiv.innerHTML = `
-                    <div class="success">
-                        <h3>🎉 Re-Discover Weekly Saved!</h3>
-                        <p><strong>${data.playlist_name}</strong> has been created in your Navidrome library.</p>
-                        <p>🎵 <strong>${data.songs ? data.songs.length : 0} forgotten favorites</strong> are ready to be rediscovered!</p>
-                        <p>Head over to Navidrome to start listening to these gems from your past.</p>
-                        
-                        <button class="btn-secondary" onclick="generateRediscoverWeekly()" style="margin-top: 15px;">
-                            🔄 Generate New Re-Discover Weekly
-                        </button>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error creating playlist:', error);
-                
-                // Show error but keep the track list
-                const existingContent = resultDiv.innerHTML;
-                resultDiv.innerHTML = existingContent + `
-                    <div class="error" style="margin-top: 15px;">
-                        <h3>❌ Error Creating Playlist</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            } finally {
-                loadingDiv.style.display = 'none';
-            }
-        }
-    </script>
+      } catch (error) {
+        console.error('Error generating Re-Discover Weekly:', error);
+        resultDiv.innerHTML = `
+          <div class="pa3 bg-light-red ba b--red br2">
+            <h3 class="f4 dark-red mt0 mb2">❌ Error Generating Re-Discover Weekly</h3>
+            <p class="dark-red ma0">${error.message}</p>
+          </div>
+        `;
+      } finally {
+        loadingDiv.classList.add('dn');
+        button.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>

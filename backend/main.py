@@ -68,34 +68,39 @@ async def create_playlist(
     request: CreatePlaylistRequest,
     db: DatabaseManager = Depends(get_db)
 ):
-    """Create an AI-curated artist radio playlist"""
+    """Create an AI-curated artist radio playlist from multiple artists"""
     try:
         # Get clients
         nav_client = get_navidrome_client()
         ai_client_instance = get_ai_client()
         
         # Get artist info
-        artists = await nav_client.get_artists()
-        artist = next((a for a in artists if a["id"] == request.artist_id), None)
+        all_artists = await nav_client.get_artists()
+        selected_artists = [a for a in all_artists if a["id"] in request.artist_ids]
         
-        if not artist:
-            raise HTTPException(status_code=404, detail="Artist not found")
+        if not selected_artists:
+            raise HTTPException(status_code=404, detail="Artists not found")
         
-        artist_name = artist["name"]
+        artist_names = [a["name"] for a in selected_artists]
+
+        # Generate playlist name if not provided - sort artist names alphabetically
+        sorted_artist_names = sorted(artist_names)
+        playlist_name = request.playlist_name or f"Song radio: {', '.join(sorted_artist_names)}"
         
-        # Generate playlist name if not provided
-        playlist_name = getattr(request, 'playlist_name', None) or f"{artist_name} Radio"
+        # Get tracks for all selected artists
+        all_tracks = []
+        for artist_id in request.artist_ids:
+            tracks = await nav_client.get_tracks_by_artist(artist_id)
+            if tracks:
+                all_tracks.extend(tracks)
         
-        # Get tracks for the artist
-        tracks = await nav_client.get_tracks_by_artist(request.artist_id)
-        
-        if not tracks:
-            raise HTTPException(status_code=404, detail="No tracks found for this artist")
+        if not all_tracks:
+            raise HTTPException(status_code=404, detail="No tracks found for the selected artists")
         
         # Use AI to curate the playlist
         curated_track_ids = await ai_client_instance.curate_artist_radio(
-            artist_name=artist_name,
-            tracks_json=tracks,
+            artist_name=', '.join(artist_names),
+            tracks_json=all_tracks,
             num_tracks=20
         )
         
@@ -107,14 +112,14 @@ async def create_playlist(
         
         # Get track titles for database storage
         track_titles = []
-        track_id_to_title = {track["id"]: track["title"] for track in tracks}
+        track_id_to_title = {track["id"]: track["title"] for track in all_tracks}
         for track_id in curated_track_ids:
             if track_id in track_id_to_title:
                 track_titles.append(track_id_to_title[track_id])
         
-        # Store playlist in local database
+        # Store playlist in local database (using the first artist_id for now)
         playlist = await db.create_playlist(
-            artist_id=request.artist_id,
+            artist_id=request.artist_ids[0],
             playlist_name=playlist_name,
             songs=track_titles
         )
@@ -151,7 +156,7 @@ async def create_playlist_with_reasoning(
         artist_name = artist["name"]
         
         # Generate playlist name if not provided
-        playlist_name = getattr(request, 'playlist_name', None) or f"{artist_name} Radio"
+        playlist_name = getattr(request, 'playlist_name', None) or f"Song radio: {artist_name}"
         
         # Get tracks for the artist
         tracks = await nav_client.get_tracks_by_artist(request.artist_id)

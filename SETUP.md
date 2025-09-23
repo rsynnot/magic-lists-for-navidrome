@@ -3,24 +3,8 @@
 ## Prerequisites
 
 1. **Navidrome Server**: Running instance with music library scanned
-2. **Navidrome API Token**: Required for API access
-3. **OpenAI API Key**: Optional, for AI-powered curation
-
-## Getting Your Navidrome API Token
-
-### Method 1: Web Interface (Recommended)
-1. Log into your Navidrome web interface
-2. Go to **Settings** → **API Keys**
-3. Click **"Generate New Token"**
-4. Copy the generated token
-5. Use this as your `NAVIDROME_TOKEN`
-
-### Method 2: Direct API Call
-```bash
-curl -X POST "http://your-navidrome-url:4533/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username": "your_username", "password": "your_password"}'
-```
+2. **Navidrome Account**: Username and password for your Navidrome server
+3. **AI API Key**: Optional, for AI-powered curation
 
 ## Environment Setup
 
@@ -33,13 +17,14 @@ cp .env.example .env
 ```bash
 # Required - Navidrome connection
 NAVIDROME_URL=http://localhost:4533
-NAVIDROME_TOKEN=your_api_token_from_navidrome
+NAVIDROME_USERNAME=your_navidrome_username
+NAVIDROME_PASSWORD=your_navidrome_password
 
 # Optional - AI curation (without this, uses fallback algorithm)
-AI_API_KEY=sk-your_openai_api_key
-AI_MODEL=gpt-3.5-turbo
+AI_API_KEY=your_api_key_here
+AI_MODEL=openai/gpt-3.5-turbo
 
-# Optional - Custom database path
+# Optional - Custom database path (will be auto-created)
 DATABASE_PATH=./magiclists.db
 ```
 
@@ -48,6 +33,8 @@ DATABASE_PATH=./magiclists.db
 # Additional for Docker
 MUSIC_PATH=/path/to/your/music/library
 ```
+
+> **Note**: MagicLists automatically handles authentication with Navidrome using your username/password. No manual API token setup required!
 
 ## Quick Start Options
 
@@ -58,7 +45,8 @@ pip install -r requirements.txt
 
 # Set environment variables
 export NAVIDROME_URL=http://localhost:4533
-export NAVIDROME_TOKEN=your_token_here
+export NAVIDROME_USERNAME=your_username
+export NAVIDROME_PASSWORD=your_password
 
 # Run the application
 python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
@@ -74,8 +62,8 @@ docker-compose -f docker/docker-compose.yml up -d
 
 ### 1. Check Navidrome Connection
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:4533/api/artist"
+# MagicLists will automatically authenticate - just test the app endpoint
+curl "http://localhost:8000/api/artists"
 ```
 
 ### 2. Test MagicLists API
@@ -96,13 +84,13 @@ Open http://localhost:8000 in your browser
 
 ### "No artists found"
 - Ensure Navidrome has scanned your music library
-- Check that `NAVIDROME_TOKEN` is valid
-- Verify `NAVIDROME_URL` is correct
+- Check that `NAVIDROME_USERNAME` and `NAVIDROME_PASSWORD` are correct
+- Verify `NAVIDROME_URL` is correct and accessible
 
 ### "Failed to create playlist"
-- Check Navidrome API permissions
-- Ensure artist has tracks available
-- Verify token has playlist creation permissions
+- Ensure artist has tracks available in your library
+- Check that your Navidrome user account has playlist creation permissions
+- Verify network connectivity between MagicLists and Navidrome
 
 ### AI Curation Not Working
 - Ensure `AI_API_KEY` is set correctly
