@@ -133,8 +133,6 @@ The AI features enhance playlist curation with intelligent track selection. You 
 
 **Getting an API Key:**
 - **[OpenRouter](https://openrouter.ai)** - Provides access to many models with free tiers
-- **[OpenAI](https://platform.openai.com)** - Direct access to GPT models
-- **[Google AI Studio](https://aistudio.google.com)** - Free Gemini API access
 
 **Model Options:**
 - **Free/Low-cost**: `deepseek/deepseek-chat`, `google/gemini-flash-1.5`, `meta-llama/llama-3.1-8b-instruct:free`

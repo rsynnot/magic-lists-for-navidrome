@@ -170,27 +170,27 @@ class RediscoverWeekly:
         now = datetime.now()
         
         for song_id, stats in track_stats.items():
-            # Only consider tracks with some historical plays
-            if stats["total_plays"] < 2:
+            # Only consider tracks with some historical plays (reduced threshold)
+            if stats["total_plays"] < 1:
                 continue
-            
+
             # Skip tracks played recently (last 7 days)
             if stats["recent_plays"] > 0:
                 continue
-            
+
             # Calculate days since last play
             days_since_last_play = 7  # Minimum for synthetic data
             if stats["last_play"]:
                 days_since_last_play = (now - stats["last_play"]).days
-            
+
             # Only consider tracks not played in last 7 days
             if days_since_last_play < 7:
                 continue
-            
+
             # Score: (historical play count) × (days since last play)
             # This favors both popular tracks and tracks that haven't been heard recently
             score = stats["total_plays"] * min(days_since_last_play, 90)  # Cap at 90 days
-            
+
             candidates.append((song_id, score, stats))
         
         # Sort by score (highest first)
@@ -239,8 +239,44 @@ class RediscoverWeekly:
             # Step 4: Filter for artist diversity
             diverse_tracks = self.filter_artist_diversity(scored_tracks, max_per_artist=3)
             
-            # Step 5: Select top 20 tracks
-            top_tracks = diverse_tracks[:20]
+            # Step 5: Select top 20 tracks (or all available if fewer than 20)
+            target_tracks = 20
+            top_tracks = diverse_tracks[:target_tracks]
+
+            # If we have fewer than 20 tracks, try to get more by relaxing filters
+            if len(top_tracks) < target_tracks:
+                # Try again with more lenient filters
+                lenient_candidates = []
+                for song_id, stats in track_stats.items():
+                    # More lenient: include any track with play count > 0
+                    if stats["total_plays"] < 1:
+                        continue
+
+                    # Allow tracks played up to 3 days ago instead of 7
+                    if stats["recent_plays"] > 0:
+                        continue
+
+                    days_since_last_play = 3  # Reduced from 7 days
+                    if stats["last_play"]:
+                        days_since_last_play = (datetime.now() - stats["last_play"]).days
+
+                    if days_since_last_play < 3:  # Reduced threshold
+                        continue
+
+                    score = stats["total_plays"] * min(days_since_last_play, 90)
+                    lenient_candidates.append((song_id, score, stats))
+
+                # Sort and apply diversity filter
+                lenient_candidates.sort(key=lambda x: x[1], reverse=True)
+                lenient_diverse = self.filter_artist_diversity(lenient_candidates, max_per_artist=4)  # Allow more per artist
+
+                # Combine with existing tracks (avoid duplicates)
+                existing_ids = {track[0] for track in top_tracks}
+                additional_tracks = [track for track in lenient_diverse if track[0] not in existing_ids]
+
+                # Add additional tracks to reach target
+                needed = target_tracks - len(top_tracks)
+                top_tracks.extend(additional_tracks[:needed])
             
             # Step 6: Format response
             playlist_tracks = []

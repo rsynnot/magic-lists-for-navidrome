@@ -539,19 +539,30 @@
       button.disabled = true;
       
       try {
-        const response = await fetch('/api/rediscover-weekly');
-        
+        const response = await fetch('/api/create-rediscover-playlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-          throw new Error(errorData.detail || 'Failed to generate Re-Discover Weekly');
+          throw new Error(errorData.detail || 'Failed to create Re-Discover Weekly');
         }
-        
+
         const data = await response.json();
-        
+
         resultDiv.innerHTML = `
           <div class="pa3 bg-light-green ba b--green br2">
-            <h3 class="f4 dark-green mt0 mb2">🎵 Your Re-Discover Weekly is Ready!</h3>
-            <p class="dark-green ma0">Found <strong>${data.total_tracks || 0} forgotten gems</strong> from your music library.</p>
+            <h3 class="f4 dark-green mt0 mb2">🎉 Re-Discover Weekly Created!</h3>
+            <p class="dark-green ma0 mb2">Your playlist is ready with <strong>${data.tracks ? data.tracks.length : 0} forgotten gems</strong>.</p>
+            <p class="dark-green ma0 mb2"><strong>Playlist Name:</strong> ${data.playlist_name || 'Re-Discover Weekly'}</p>
+            <p class="dark-green ma0">🎵 You can now find this playlist in your Navidrome library and start rediscovering!</p>
+
+            <button onclick="location.reload()" class="mt3 pa2 bg-gray white bn br2 f6 pointer">
+              ✨ Generate Another Playlist
+            </button>
           </div>
         `;
         
