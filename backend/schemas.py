@@ -11,7 +11,7 @@ class Artist(BaseModel):
 
 class CreatePlaylistRequest(BaseModel):
     """Request schema for creating a playlist"""
-    artist_id: str
+    artist_ids: List[str]
     playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
 
 class Playlist(BaseModel):
