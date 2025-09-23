@@ -11,6 +11,12 @@ A FastAPI web application that integrates with Navidrome to create AI-powered pl
 - 💾 SQLite database for playlist storage
 - 🐳 Docker support for easy deployment
 
+## Screenshots
+
+![Artist Radio UI](assets/images/artist-radio.png)
+
+_Caption: Creating an Artist Radio playlist _ 
+
 ## Project Structure
 
 ```
