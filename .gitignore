@@ -163,3 +163,5 @@ cython_debug/
 tmp_*venv/
 test_env/
 tmp_rovodev_validate_docker.py
+.claude
+.claude/
