@@ -6,6 +6,8 @@
   <title>Magic Lists</title>
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Umami Analytics -->
+  <script defer src="https://umami.itsricky.com/script.js" data-website-id="e5a08463-74dd-4b83-b7ef-da5f5e088430"></script>
   <!-- Tachyons CSS -->
   <link rel="stylesheet" href="https://unpkg.com/tachyons/css/tachyons.min.css">
   <style>
@@ -500,6 +502,12 @@
         const data = await response.json();
         const selectedArtistNames = selectedArtists.map(a => a.name).join(', ');
         
+        // Track successful artist playlist creation
+        if (typeof umami !== 'undefined') {
+          const eventName = selectedArtists.length > 1 ? 'artists_playlist_created' : 'artist_playlist_created';
+          umami.track(eventName);
+        }
+        
         resultDiv.innerHTML = `
           <div class="pa3 bg-light-green ba b--green br2">
             <h3 class="f4 dark-green mt0 mb2">🎉 ${selectedArtistNames} Radio Created!</h3>
@@ -552,6 +560,11 @@
         }
 
         const data = await response.json();
+
+        // Track successful Re-Discover Weekly generation
+        if (typeof umami !== 'undefined') {
+          umami.track('rediscover_weekly_generated');
+        }
 
         resultDiv.innerHTML = `
           <div class="pa3 bg-light-green ba b--green br2">

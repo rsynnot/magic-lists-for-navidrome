@@ -4,12 +4,10 @@ A FastAPI web application that integrates with Navidrome to create AI-powered pl
 
 ## Features
 
-- 🎵 Browse artists from your Navidrome library
-- 📝 Create custom playlists for any artist
-- 🤖 AI-powered playlist generation (optional)
-- 🔄 **Re-Discover Weekly** - Find tracks you loved but haven't heard recently
-- 💾 SQLite database for playlist storage
-- 🐳 Docker support for easy deployment
+- 🎵 **Artist Radio** - Create expertly curated playlists from your favorite artists with AI-powered track selection and flow
+- 🎯 **Multi-Artist Playlists** - Blend multiple artists into cohesive playlists for deeper music discovery
+- 🔄 **Re-Discover Weekly** - Automatically surface forgotten gems from your library that you haven't heard in a while
+- 🐳 **Easy Deployment** - Get running in minutes with Docker - no complex setup required
 
 ## Screenshots
 
@@ -45,7 +43,7 @@ magiclists-navidrome-mvp/
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/rsynnot/magic-lists-for-navidrome.git
    cd magiclists-navidrome-mvp
    ```
 
