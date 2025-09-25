@@ -47,7 +47,7 @@
       width: 66%; 
     }
     
-    /* Mobile responsive - stack vertically on screens smaller than 768px */
+    /* Mobile responsive - overlay menu on screens smaller than 768px */
     @media screen and (max-width: 767px) {
       body {
         padding: 1rem;
@@ -60,21 +60,101 @@
       .app-body {
         flex-direction: column;
       }
-      .sidebar {
-        width: 100%;
-        /* border-bottom: 1px solid #eaeaea; */
+      
+      /* Hide sidebar on mobile */
+      .sidebarX {
+        display: none;
       }
+      
       .content {
         width: 100%;
       }
-      /* Adjust logo size on mobile */
+      
+      /* Mobile logo - 20% smaller */
       .mobile-logo {
-        width: 120px !important;
-        height: 54px !important;
+        width: 140px !important;
+      
       }
-      /* Keep navigation buttons stacked vertically on mobile */
-      .mobile-nav {
-        flex-direction: column;
+      
+      /* Mobile menu overlay */
+      .mobile-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1000;
+        display: none;
+      }
+      
+      .mobile-menu {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      .mobile-menu-item {
+        display: block;
+        width: 100%;
+        padding: 1rem 0;
+        border: none;
+        background: none;
+        text-align: left;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #191918;
+        border-bottom: 1px solid #eaeaea;
+        cursor: pointer;
+      }
+      
+      .mobile-menu-item:last-child {
+        border-bottom: none;
+      }
+      
+      .mobile-menu-item:hover {
+        background-color: #f6f5f4;
+      }
+      
+      .mobile-menu-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 2rem;
+        height: 2rem;
+        border: none;
+        background: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .mobile-menu-btn {
+        display: block !important;
+        border: none;
+        background: none;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #191918;
+        cursor: pointer;
+        padding: .5rem;
+
+      }
+      .mobile-menu-btn span {
+         border-bottom: 1px solid #ddd;
+      }
+    }
+    
+    /* Hide mobile menu button on desktop */
+    @media screen and (min-width: 768px) {
+      .mobile-menu-btn, .mobile-menu-overlay {
+        display: none !important;
       }
     }
     
@@ -155,17 +235,18 @@
   <div class="app-container">
     <!-- Header -->
     <div class="app-header">
-      <div class="ma0 pl2 pt2 pb0">
+      <div class="ma0 pl2 pt2 pb0 flex items-center justify-between">
         <a href="/" class="link" onclick="location.reload()">
-          <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" style="height: 48px; width: auto;">
+          <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" class="mobile-logo" style="height: 48px; width: auto;">
         </a>
+        <button class="mobile-menu-btn" id="mobile-menu-btn" style="display: none;"><span>Menu</span></button>
       </div>
     </div>
 
     <!-- App Body -->
     <div class="app-body">
       <!-- Sidebar -->
-      <div class="sidebar ph3 pb3" style="display: flex; flex-direction: column;">
+      <div class="sidebar ph3 pb3 dn dib-ns flex-ns " style="display: flexX; flex-direction: column;">
         <nav class="flex flex-column mobile-nav sidebar-nav">
           <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="artist-radio-nav">
             Artist Radio
@@ -186,7 +267,7 @@
       <!-- Main Content -->
       <div class="content pl3 pr4 pr5-ns pt0 pb4">
         <div id="welcome-content">
-          <h1 class="f4 mt0 lh-title fw7 near-black heading-spacing">Magic Lists</h1>
+          <h1 class="f3 mt0 lh-title fw7 near-black heading-spacing">Create Magic Playlists</h1>
           <p class="f4 gray lh-copy mt0 mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
           
           <div class="mb4">
@@ -301,6 +382,17 @@
     </div>
   </div>
 
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobile-menu-overlay">
+    <div class="mobile-menu">
+      <button class="mobile-menu-close" id="mobile-menu-close">&times;</button>
+      <button class="mobile-menu-item" data-target="welcome-content">Home</button>
+      <button class="mobile-menu-item" data-target="artist-radio-content">Artist Radio</button>
+      <button class="mobile-menu-item" data-target="rediscover-content">Re-Discover Playlist</button>
+      <button class="mobile-menu-item" data-target="manage-playlists-content">Manage Playlists</button>
+    </div>
+  </div>
+
   <footer class="tc mt3 gray f6">
     Made by <a href="https://synnotstudio.com" class="link blue">Synnot Studio</a> – Open Source (MIT)
   </footer>
@@ -337,18 +429,73 @@
       const rediscoverNavBtn = document.getElementById('rediscover-nav');
       const managePlaylistsBtn = document.getElementById('manage-playlists-nav');
       
-      artistRadioBtn.addEventListener('click', () => {
-        showContent('artist-radio-content');
-        loadArtists(); // Load artists when Artist Radio is selected
+      // Desktop sidebar navigation
+      if (artistRadioBtn) {
+        artistRadioBtn.addEventListener('click', () => {
+          showContent('artist-radio-content');
+          loadArtists(); // Load artists when Artist Radio is selected
+        });
+      }
+      
+      if (rediscoverNavBtn) {
+        rediscoverNavBtn.addEventListener('click', () => {
+          showContent('rediscover-content');
+        });
+      }
+      
+      if (managePlaylistsBtn) {
+        managePlaylistsBtn.addEventListener('click', () => {
+          showContent('manage-playlists-content');
+          loadPlaylists(); // Load playlists when Manage Playlists is selected
+        });
+      }
+      
+      // Mobile menu functionality
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+      const mobileMenuClose = document.getElementById('mobile-menu-close');
+      const mobileMenuItems = document.querySelectorAll('.mobile-menu-item');
+      
+      // Show mobile menu
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenuOverlay.style.display = 'block';
       });
       
-      rediscoverNavBtn.addEventListener('click', () => {
-        showContent('rediscover-content');
+      // Hide mobile menu
+      function hideMobileMenu() {
+        mobileMenuOverlay.style.display = 'none';
+      }
+      
+      mobileMenuClose.addEventListener('click', hideMobileMenu);
+      
+      // Hide menu when clicking overlay
+      mobileMenuOverlay.addEventListener('click', (e) => {
+        if (e.target === mobileMenuOverlay) {
+          hideMobileMenu();
+        }
       });
       
-      managePlaylistsBtn.addEventListener('click', () => {
-        showContent('manage-playlists-content');
-        loadPlaylists(); // Load playlists when Manage Playlists is selected
+      // Handle mobile menu item clicks
+      mobileMenuItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const target = item.getAttribute('data-target');
+          
+          // Navigate to the appropriate content
+          if (target === 'artist-radio-content') {
+            showContent('artist-radio-content');
+            loadArtists();
+          } else if (target === 'rediscover-content') {
+            showContent('rediscover-content');
+          } else if (target === 'manage-playlists-content') {
+            showContent('manage-playlists-content');
+            loadPlaylists();
+          } else {
+            showContent(target);
+          }
+          
+          // Hide the mobile menu
+          hideMobileMenu();
+        });
       });
       
       // Re-discover playlist functionality
@@ -714,7 +861,7 @@
         return `
           <div class="playlist-card bg-white ba b--light-gray br2 pa3 mb3 flex items-center">
             <div class="flex-auto">
-              <h3 class="f4 fw7 near-black ma0 mb2">${playlist.playlist_name}</h3>
+              <h3 class="f5 fw7 near-black ma0 mb2">${playlist.playlist_name}</h3>
               <p class="f6 gray ma0">${metadataText}</p>
             </div>
             <div class="flex-none">
