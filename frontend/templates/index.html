@@ -165,7 +165,7 @@
     <!-- App Body -->
     <div class="app-body">
       <!-- Sidebar -->
-      <div class="sidebar ph3 pb3">
+      <div class="sidebar ph3 pb3" style="display: flex; flex-direction: column;">
         <nav class="flex flex-column mobile-nav sidebar-nav">
           <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="artist-radio-nav">
             Artist Radio
@@ -174,23 +174,34 @@
             Re-discover Playlist
           </button>
         </nav>
+        
+        <!-- Bottom navigation item -->
+        <div style="margin-top: auto;">
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-blackX gray f5 b" id="manage-playlists-nav" style="border-top: none; border-bottom: none;">
+            Manage Playlists
+          </button>
+        </div>
       </div>
 
       <!-- Main Content -->
-      <div class="content ph3 pt0 pb4">
+      <div class="content pl3 pr4 pr5-ns pt0 pb4">
         <div id="welcome-content">
-          <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Welcome to Magic Lists</h1>
-          <p class="f4 gray lh-copy mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists and help you rediscover forgotten gems.</p>
+          <h1 class="f4 mt0 lh-title fw7 near-black heading-spacing">Magic Lists</h1>
+          <p class="f4 gray lh-copy mt0 mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
           
           <div class="mb4">
             <h2 class="f4 fw6 near-black mb3">Features</h2>
             <div class="mb3">
-              <h3 class="f5 fw6 near-black mb2">🎵 Artist Radio</h3>
-              <p class="gray lh-copy ma0">Browse artists from your Navidrome library and create custom playlists with AI-powered track selection for the perfect listening experience.</p>
+              <h3 class="f5 fw6 near-black mb2">Artist Radio</h3>
+              <p class="gray lh-copy ma0">Create AI-powered radio playlists based on your favorite artists. Get a curated mix of their best tracks, intelligently selected and ordered for the perfect listening experience. </p>
             </div>
             <div class="mb3">
-              <h3 class="f5 fw6 near-black mb2">🔄 Re-Discover Weekly</h3>
-              <p class="gray lh-copy ma0">Find tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+              <h3 class="f5 fw6 near-black mb2">Re-Discover Playlists✨</h3>
+              <p class="gray lh-copy ma0">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+            </div>
+            <div class="mb3">
+              <h3 class="f5 fw6 near-black mb2">Auto-Refresh</h3>
+              <p class="gray lh-copy ma0">Any playlist can be set to refresh each day, week or month.</p>
             </div>
           </div>
           
@@ -224,6 +235,16 @@
               </div>
             </div>
             
+            <div class="mb4">
+              <label class="db mb2 f5 fw6 near-black">Choose refresh frequency</label>
+              <select id="artist-refresh-frequency" class="form-input w-100 w5-ns pa3 f5 near-black" style="max-width: 200px;">
+                <option value="none">Do not refresh</option>
+                <option value="daily" selected>Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            
             <button type="submit" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns">
               Create Artist Radio
             </button>
@@ -243,8 +264,17 @@
             <p class="gray lh-copy ma0">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
           </div>
           
+          <div class="mb4">
+            <label class="db mb2 f5 fw6 near-black">Choose refresh frequency</label>
+            <select id="refresh-frequency" class="form-input w-100 w6-ns pa3 f5 near-black" style="max-width: 220px;">
+              <option value="daily">Daily</option>
+              <option value="weekly" selected>Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          
           <button id="rediscover-btn" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns mb4">
-            Generate Re-Discover Weekly
+            Generate Re-Discover Playlist
           </button>
           
           <div id="rediscover-loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
@@ -252,6 +282,20 @@
           </div>
           
           <div id="rediscover-result"></div>
+        </div>
+        
+        <!-- Manage Playlists Content (hidden by default) -->
+        <div id="manage-playlists-content" style="display: none;">
+          <div class="mb4">
+            <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Manage Playlists</h1>
+            <p class="gray lh-copy ma0">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
+          </div>
+          
+          <div id="playlists-loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
+            <span class="gray">Loading your playlists...</span>
+          </div>
+          
+          <div id="playlists-container"></div>
         </div>
       </div>
     </div>
@@ -268,6 +312,7 @@
       document.getElementById('welcome-content').style.display = 'none';
       document.getElementById('artist-radio-content').style.display = 'none';
       document.getElementById('rediscover-content').style.display = 'none';
+      document.getElementById('manage-playlists-content').style.display = 'none';
       
       // Show the selected content
       document.getElementById(contentId).style.display = 'block';
@@ -281,6 +326,8 @@
         document.getElementById('artist-radio-nav').classList.add('selected');
       } else if (contentId === 'rediscover-content') {
         document.getElementById('rediscover-nav').classList.add('selected');
+      } else if (contentId === 'manage-playlists-content') {
+        document.getElementById('manage-playlists-nav').classList.add('selected');
       }
     }
     
@@ -288,6 +335,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       const artistRadioBtn = document.getElementById('artist-radio-nav');
       const rediscoverNavBtn = document.getElementById('rediscover-nav');
+      const managePlaylistsBtn = document.getElementById('manage-playlists-nav');
       
       artistRadioBtn.addEventListener('click', () => {
         showContent('artist-radio-content');
@@ -296,6 +344,11 @@
       
       rediscoverNavBtn.addEventListener('click', () => {
         showContent('rediscover-content');
+      });
+      
+      managePlaylistsBtn.addEventListener('click', () => {
+        showContent('manage-playlists-content');
+        loadPlaylists(); // Load playlists when Manage Playlists is selected
       });
       
       // Re-discover playlist functionality
@@ -484,13 +537,16 @@
       submitBtn.disabled = true;
       
       try {
+        const refreshFrequency = document.getElementById('artist-refresh-frequency').value;
+        
         const response = await fetch('/api/create_playlist', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            artist_ids: artistIds // Sending an array of IDs
+            artist_ids: artistIds, // Sending an array of IDs
+            refresh_frequency: refreshFrequency
           })
         });
         
@@ -547,11 +603,16 @@
       button.disabled = true;
       
       try {
+        const refreshFrequency = document.getElementById('refresh-frequency').value;
+        
         const response = await fetch('/api/create-rediscover-playlist', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          body: JSON.stringify({
+            refresh_frequency: refreshFrequency
+          })
         });
 
         if (!response.ok) {
@@ -590,6 +651,120 @@
       } finally {
         loadingDiv.classList.add('dn');
         button.disabled = false;
+      }
+    }
+    
+    // Manage Playlists functionality
+    async function loadPlaylists() {
+      const loadingDiv = document.getElementById('playlists-loading');
+      const containerDiv = document.getElementById('playlists-container');
+      
+      loadingDiv.classList.remove('dn');
+      containerDiv.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/playlists');
+        if (!response.ok) {
+          throw new Error('Failed to load playlists');
+        }
+        
+        const playlists = await response.json();
+        
+        if (playlists.length === 0) {
+          containerDiv.innerHTML = `
+            <div class="tc pa4 gray">
+              <p class="f4 mb2">No playlists found</p>
+              <p class="f6 ma0">Create your first playlist using Artist Radio or Re-Discover Weekly!</p>
+            </div>
+          `;
+        } else {
+          renderPlaylists(playlists);
+        }
+        
+      } catch (error) {
+        console.error('Error loading playlists:', error);
+        containerDiv.innerHTML = `
+          <div class="pa3 bg-light-red ba b--red br2">
+            <p class="dark-red ma0">Error loading playlists: ${error.message}</p>
+          </div>
+        `;
+      } finally {
+        loadingDiv.classList.add('dn');
+      }
+    }
+    
+    function renderPlaylists(playlists) {
+      const container = document.getElementById('playlists-container');
+      
+      container.innerHTML = playlists.map(playlist => {
+        const createdDate = new Date(playlist.created_at).toLocaleDateString();
+        const songCount = playlist.songs.length;
+        
+        let metadataText = `Created ${createdDate} • ${songCount} tracks`;
+        
+        if (playlist.refresh_frequency && playlist.refresh_frequency !== 'once') {
+          metadataText += ` • Refreshes ${playlist.refresh_frequency}`;
+          
+          if (playlist.next_refresh) {
+            const nextRefreshDate = new Date(playlist.next_refresh).toLocaleDateString();
+            metadataText += ` • Next: ${nextRefreshDate}`;
+          }
+        }
+        
+        return `
+          <div class="playlist-card bg-white ba b--light-gray br2 pa3 mb3 flex items-center">
+            <div class="flex-auto">
+              <h3 class="f4 fw7 near-black ma0 mb2">${playlist.playlist_name}</h3>
+              <p class="f6 gray ma0">${metadataText}</p>
+            </div>
+            <div class="flex-none">
+              <button 
+                onclick="deletePlaylist(${playlist.id}, '${playlist.playlist_name}')" 
+                class="f6 fw7 underline pointer bn bg-transparent dark-red"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    async function deletePlaylist(playlistId, playlistName) {
+      if (!confirm(`Are you sure you want to delete "${playlistName}"? This will remove it from both Magic Lists and Navidrome.`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/playlists/${playlistId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to delete playlist');
+        }
+        
+        // Reload the playlists list
+        loadPlaylists();
+        
+        // Show success message
+        const container = document.getElementById('playlists-container');
+        const successMessage = document.createElement('div');
+        successMessage.className = 'pa3 bg-light-green ba b--green br2 mb3';
+        successMessage.innerHTML = `<p class="dark-green ma0">✓ "${playlistName}" deleted successfully</p>`;
+        container.insertBefore(successMessage, container.firstChild);
+        
+        // Remove success message after 3 seconds
+        setTimeout(() => {
+          if (successMessage.parentNode) {
+            successMessage.parentNode.removeChild(successMessage);
+          }
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Error deleting playlist:', error);
+        alert(`Error deleting playlist: ${error.message}`);
       }
     }
   </script>
