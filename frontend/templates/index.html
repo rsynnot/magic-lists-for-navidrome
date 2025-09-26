@@ -6,6 +6,8 @@
   <title>Magic Lists</title>
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Umami Analytics -->
+  <script defer src="https://umami.itsricky.com/script.js" data-website-id="e5a08463-74dd-4b83-b7ef-da5f5e088430"></script>
   <!-- Tachyons CSS -->
   <link rel="stylesheet" href="https://unpkg.com/tachyons/css/tachyons.min.css">
   <style>
@@ -45,7 +47,7 @@
       width: 66%; 
     }
     
-    /* Mobile responsive - stack vertically on screens smaller than 768px */
+    /* Mobile responsive - overlay menu on screens smaller than 768px */
     @media screen and (max-width: 767px) {
       body {
         padding: 1rem;
@@ -58,21 +60,101 @@
       .app-body {
         flex-direction: column;
       }
-      .sidebar {
-        width: 100%;
-        /* border-bottom: 1px solid #eaeaea; */
+      
+      /* Hide sidebar on mobile */
+      .sidebarX {
+        display: none;
       }
+      
       .content {
         width: 100%;
       }
-      /* Adjust logo size on mobile */
+      
+      /* Mobile logo - 20% smaller */
       .mobile-logo {
-        width: 120px !important;
-        height: 54px !important;
+        width: 140px !important;
+      
       }
-      /* Keep navigation buttons stacked vertically on mobile */
-      .mobile-nav {
-        flex-direction: column;
+      
+      /* Mobile menu overlay */
+      .mobile-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1000;
+        display: none;
+      }
+      
+      .mobile-menu {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      .mobile-menu-item {
+        display: block;
+        width: 100%;
+        padding: 1rem 0;
+        border: none;
+        background: none;
+        text-align: left;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #191918;
+        border-bottom: 1px solid #eaeaea;
+        cursor: pointer;
+      }
+      
+      .mobile-menu-item:last-child {
+        border-bottom: none;
+      }
+      
+      .mobile-menu-item:hover {
+        background-color: #f6f5f4;
+      }
+      
+      .mobile-menu-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 2rem;
+        height: 2rem;
+        border: none;
+        background: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .mobile-menu-btn {
+        display: block !important;
+        border: none;
+        background: none;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #191918;
+        cursor: pointer;
+        padding: .5rem;
+
+      }
+      .mobile-menu-btn span {
+         border-bottom: 1px solid #ddd;
+      }
+    }
+    
+    /* Hide mobile menu button on desktop */
+    @media screen and (min-width: 768px) {
+      .mobile-menu-btn, .mobile-menu-overlay {
+        display: none !important;
       }
     }
     
@@ -153,17 +235,18 @@
   <div class="app-container">
     <!-- Header -->
     <div class="app-header">
-      <div class="ma0 pl2 pt2 pb0">
+      <div class="ma0 pl2 pt2 pb0 flex items-center justify-between">
         <a href="/" class="link" onclick="location.reload()">
-          <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" style="height: 48px; width: auto;">
+          <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" class="mobile-logo" style="height: 48px; width: auto;">
         </a>
+        <button class="mobile-menu-btn" id="mobile-menu-btn" style="display: none;"><span>Menu</span></button>
       </div>
     </div>
 
     <!-- App Body -->
     <div class="app-body">
       <!-- Sidebar -->
-      <div class="sidebar ph3 pb3">
+      <div class="sidebar ph3 pb3 dn dib-ns flex-ns " style="display: flexX; flex-direction: column;">
         <nav class="flex flex-column mobile-nav sidebar-nav">
           <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="artist-radio-nav">
             Artist Radio
@@ -172,23 +255,34 @@
             Re-discover Playlist
           </button>
         </nav>
+        
+        <!-- Bottom navigation item -->
+        <div style="margin-top: auto;">
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-blackX gray f5 b" id="manage-playlists-nav" style="border-top: none; border-bottom: none;">
+            Manage Playlists
+          </button>
+        </div>
       </div>
 
       <!-- Main Content -->
-      <div class="content ph3 pt0 pb4">
+      <div class="content pl3 pr4 pr5-ns pt0 pb4">
         <div id="welcome-content">
-          <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Welcome to Magic Lists</h1>
-          <p class="f4 gray lh-copy mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists and help you rediscover forgotten gems.</p>
+          <h1 class="f3 mt0 lh-title fw7 near-black heading-spacing">Create Magic Playlists</h1>
+          <p class="f4 gray lh-copy mt0 mb4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
           
           <div class="mb4">
             <h2 class="f4 fw6 near-black mb3">Features</h2>
             <div class="mb3">
-              <h3 class="f5 fw6 near-black mb2">🎵 Artist Radio</h3>
-              <p class="gray lh-copy ma0">Browse artists from your Navidrome library and create custom playlists with AI-powered track selection for the perfect listening experience.</p>
+              <h3 class="f5 fw6 near-black mb2">Artist Radio</h3>
+              <p class="gray lh-copy ma0">Create AI-powered radio playlists based on your favorite artists. Get a curated mix of their best tracks, intelligently selected and ordered for the perfect listening experience. </p>
             </div>
             <div class="mb3">
-              <h3 class="f5 fw6 near-black mb2">🔄 Re-Discover Weekly</h3>
-              <p class="gray lh-copy ma0">Find tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+              <h3 class="f5 fw6 near-black mb2">Re-Discover Playlists✨</h3>
+              <p class="gray lh-copy ma0">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+            </div>
+            <div class="mb3">
+              <h3 class="f5 fw6 near-black mb2">Auto-Refresh</h3>
+              <p class="gray lh-copy ma0">Any playlist can be set to refresh each day, week or month.</p>
             </div>
           </div>
           
@@ -222,6 +316,16 @@
               </div>
             </div>
             
+            <div class="mb4">
+              <label class="db mb2 f5 fw6 near-black">Choose refresh frequency</label>
+              <select id="artist-refresh-frequency" class="form-input w-100 w5-ns pa3 f5 near-black" style="max-width: 200px;">
+                <option value="none">Do not refresh</option>
+                <option value="daily" selected>Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            
             <button type="submit" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns">
               Create Artist Radio
             </button>
@@ -241,8 +345,17 @@
             <p class="gray lh-copy ma0">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
           </div>
           
+          <div class="mb4">
+            <label class="db mb2 f5 fw6 near-black">Choose refresh frequency</label>
+            <select id="refresh-frequency" class="form-input w-100 w6-ns pa3 f5 near-black" style="max-width: 220px;">
+              <option value="daily">Daily</option>
+              <option value="weekly" selected>Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          
           <button id="rediscover-btn" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns mb4">
-            Generate Re-Discover Weekly
+            Generate Re-Discover Playlist
           </button>
           
           <div id="rediscover-loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
@@ -251,7 +364,32 @@
           
           <div id="rediscover-result"></div>
         </div>
+        
+        <!-- Manage Playlists Content (hidden by default) -->
+        <div id="manage-playlists-content" style="display: none;">
+          <div class="mb4">
+            <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Manage Playlists</h1>
+            <p class="gray lh-copy ma0">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
+          </div>
+          
+          <div id="playlists-loading" class="loading dn tc pa3 br2 mb3 bg-light-gray">
+            <span class="gray">Loading your playlists...</span>
+          </div>
+          
+          <div id="playlists-container"></div>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-menu-overlay" id="mobile-menu-overlay">
+    <div class="mobile-menu">
+      <button class="mobile-menu-close" id="mobile-menu-close">&times;</button>
+      <button class="mobile-menu-item" data-target="welcome-content">Home</button>
+      <button class="mobile-menu-item" data-target="artist-radio-content">Artist Radio</button>
+      <button class="mobile-menu-item" data-target="rediscover-content">Re-Discover Playlist</button>
+      <button class="mobile-menu-item" data-target="manage-playlists-content">Manage Playlists</button>
     </div>
   </div>
 
@@ -266,6 +404,7 @@
       document.getElementById('welcome-content').style.display = 'none';
       document.getElementById('artist-radio-content').style.display = 'none';
       document.getElementById('rediscover-content').style.display = 'none';
+      document.getElementById('manage-playlists-content').style.display = 'none';
       
       // Show the selected content
       document.getElementById(contentId).style.display = 'block';
@@ -279,6 +418,8 @@
         document.getElementById('artist-radio-nav').classList.add('selected');
       } else if (contentId === 'rediscover-content') {
         document.getElementById('rediscover-nav').classList.add('selected');
+      } else if (contentId === 'manage-playlists-content') {
+        document.getElementById('manage-playlists-nav').classList.add('selected');
       }
     }
     
@@ -286,14 +427,75 @@
     document.addEventListener('DOMContentLoaded', function() {
       const artistRadioBtn = document.getElementById('artist-radio-nav');
       const rediscoverNavBtn = document.getElementById('rediscover-nav');
+      const managePlaylistsBtn = document.getElementById('manage-playlists-nav');
       
-      artistRadioBtn.addEventListener('click', () => {
-        showContent('artist-radio-content');
-        loadArtists(); // Load artists when Artist Radio is selected
+      // Desktop sidebar navigation
+      if (artistRadioBtn) {
+        artistRadioBtn.addEventListener('click', () => {
+          showContent('artist-radio-content');
+          loadArtists(); // Load artists when Artist Radio is selected
+        });
+      }
+      
+      if (rediscoverNavBtn) {
+        rediscoverNavBtn.addEventListener('click', () => {
+          showContent('rediscover-content');
+        });
+      }
+      
+      if (managePlaylistsBtn) {
+        managePlaylistsBtn.addEventListener('click', () => {
+          showContent('manage-playlists-content');
+          loadPlaylists(); // Load playlists when Manage Playlists is selected
+        });
+      }
+      
+      // Mobile menu functionality
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+      const mobileMenuClose = document.getElementById('mobile-menu-close');
+      const mobileMenuItems = document.querySelectorAll('.mobile-menu-item');
+      
+      // Show mobile menu
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenuOverlay.style.display = 'block';
       });
       
-      rediscoverNavBtn.addEventListener('click', () => {
-        showContent('rediscover-content');
+      // Hide mobile menu
+      function hideMobileMenu() {
+        mobileMenuOverlay.style.display = 'none';
+      }
+      
+      mobileMenuClose.addEventListener('click', hideMobileMenu);
+      
+      // Hide menu when clicking overlay
+      mobileMenuOverlay.addEventListener('click', (e) => {
+        if (e.target === mobileMenuOverlay) {
+          hideMobileMenu();
+        }
+      });
+      
+      // Handle mobile menu item clicks
+      mobileMenuItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const target = item.getAttribute('data-target');
+          
+          // Navigate to the appropriate content
+          if (target === 'artist-radio-content') {
+            showContent('artist-radio-content');
+            loadArtists();
+          } else if (target === 'rediscover-content') {
+            showContent('rediscover-content');
+          } else if (target === 'manage-playlists-content') {
+            showContent('manage-playlists-content');
+            loadPlaylists();
+          } else {
+            showContent(target);
+          }
+          
+          // Hide the mobile menu
+          hideMobileMenu();
+        });
       });
       
       // Re-discover playlist functionality
@@ -482,13 +684,16 @@
       submitBtn.disabled = true;
       
       try {
+        const refreshFrequency = document.getElementById('artist-refresh-frequency').value;
+        
         const response = await fetch('/api/create_playlist', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            artist_ids: artistIds // Sending an array of IDs
+            artist_ids: artistIds, // Sending an array of IDs
+            refresh_frequency: refreshFrequency
           })
         });
         
@@ -499,6 +704,12 @@
         
         const data = await response.json();
         const selectedArtistNames = selectedArtists.map(a => a.name).join(', ');
+        
+        // Track successful artist playlist creation
+        if (typeof umami !== 'undefined') {
+          const eventName = selectedArtists.length > 1 ? 'artists_playlist_created' : 'artist_playlist_created';
+          umami.track(eventName);
+        }
         
         resultDiv.innerHTML = `
           <div class="pa3 bg-light-green ba b--green br2">
@@ -539,11 +750,16 @@
       button.disabled = true;
       
       try {
+        const refreshFrequency = document.getElementById('refresh-frequency').value;
+        
         const response = await fetch('/api/create-rediscover-playlist', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          body: JSON.stringify({
+            refresh_frequency: refreshFrequency
+          })
         });
 
         if (!response.ok) {
@@ -552,6 +768,11 @@
         }
 
         const data = await response.json();
+
+        // Track successful Re-Discover Weekly generation
+        if (typeof umami !== 'undefined') {
+          umami.track('rediscover_weekly_generated');
+        }
 
         resultDiv.innerHTML = `
           <div class="pa3 bg-light-green ba b--green br2">
@@ -577,6 +798,120 @@
       } finally {
         loadingDiv.classList.add('dn');
         button.disabled = false;
+      }
+    }
+    
+    // Manage Playlists functionality
+    async function loadPlaylists() {
+      const loadingDiv = document.getElementById('playlists-loading');
+      const containerDiv = document.getElementById('playlists-container');
+      
+      loadingDiv.classList.remove('dn');
+      containerDiv.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/playlists');
+        if (!response.ok) {
+          throw new Error('Failed to load playlists');
+        }
+        
+        const playlists = await response.json();
+        
+        if (playlists.length === 0) {
+          containerDiv.innerHTML = `
+            <div class="tc pa4 gray">
+              <p class="f4 mb2">No playlists found</p>
+              <p class="f6 ma0">Create your first playlist using Artist Radio or Re-Discover Weekly!</p>
+            </div>
+          `;
+        } else {
+          renderPlaylists(playlists);
+        }
+        
+      } catch (error) {
+        console.error('Error loading playlists:', error);
+        containerDiv.innerHTML = `
+          <div class="pa3 bg-light-red ba b--red br2">
+            <p class="dark-red ma0">Error loading playlists: ${error.message}</p>
+          </div>
+        `;
+      } finally {
+        loadingDiv.classList.add('dn');
+      }
+    }
+    
+    function renderPlaylists(playlists) {
+      const container = document.getElementById('playlists-container');
+      
+      container.innerHTML = playlists.map(playlist => {
+        const createdDate = new Date(playlist.created_at).toLocaleDateString();
+        const songCount = playlist.songs.length;
+        
+        let metadataText = `Created ${createdDate} • ${songCount} tracks`;
+        
+        if (playlist.refresh_frequency && playlist.refresh_frequency !== 'once') {
+          metadataText += ` • Refreshes ${playlist.refresh_frequency}`;
+          
+          if (playlist.next_refresh) {
+            const nextRefreshDate = new Date(playlist.next_refresh).toLocaleDateString();
+            metadataText += ` • Next: ${nextRefreshDate}`;
+          }
+        }
+        
+        return `
+          <div class="playlist-card bg-white ba b--light-gray br2 pa3 mb3 flex items-center">
+            <div class="flex-auto">
+              <h3 class="f5 fw7 near-black ma0 mb2">${playlist.playlist_name}</h3>
+              <p class="f6 gray ma0">${metadataText}</p>
+            </div>
+            <div class="flex-none">
+              <button 
+                onclick="deletePlaylist(${playlist.id}, '${playlist.playlist_name}')" 
+                class="f6 fw7 underline pointer bn bg-transparent dark-red"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    async function deletePlaylist(playlistId, playlistName) {
+      if (!confirm(`Are you sure you want to delete "${playlistName}"? This will remove it from both Magic Lists and Navidrome.`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/playlists/${playlistId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to delete playlist');
+        }
+        
+        // Reload the playlists list
+        loadPlaylists();
+        
+        // Show success message
+        const container = document.getElementById('playlists-container');
+        const successMessage = document.createElement('div');
+        successMessage.className = 'pa3 bg-light-green ba b--green br2 mb3';
+        successMessage.innerHTML = `<p class="dark-green ma0">✓ "${playlistName}" deleted successfully</p>`;
+        container.insertBefore(successMessage, container.firstChild);
+        
+        // Remove success message after 3 seconds
+        setTimeout(() => {
+          if (successMessage.parentNode) {
+            successMessage.parentNode.removeChild(successMessage);
+          }
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Error deleting playlist:', error);
+        alert(`Error deleting playlist: ${error.message}`);
       }
     }
   </script>

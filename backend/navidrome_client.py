@@ -253,6 +253,98 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error creating playlist: {e}")
     
+    async def update_playlist(self, playlist_id: str, track_ids: List[str]) -> bool:
+        """Update an existing playlist by replacing all tracks
+        
+        Args:
+            playlist_id: ID of the playlist to update
+            track_ids: List of track IDs to replace current tracks with
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            await self._ensure_authenticated()
+            
+            # First, clear the existing playlist by updating it with no songs
+            clear_params = self._get_subsonic_params()
+            clear_params["playlistId"] = playlist_id
+            
+            response = await self.client.get(
+                f"{self.base_url}/rest/updatePlaylist.view",
+                params=clear_params
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Failed to clear playlist: {error.get('message', 'Unknown error')}")
+            
+            # Then add the new tracks
+            if track_ids:
+                update_params = self._get_subsonic_params()
+                update_params["playlistId"] = playlist_id
+                update_params["songIdToAdd"] = track_ids
+                
+                response = await self.client.get(
+                    f"{self.base_url}/rest/updatePlaylist.view",
+                    params=update_params
+                )
+                response.raise_for_status()
+                
+                update_data = response.json()
+                update_subsonic = update_data.get("subsonic-response", {})
+                if update_subsonic.get("status") != "ok":
+                    error = update_subsonic.get("error", {})
+                    raise Exception(f"Failed to add songs to playlist: {error.get('message', 'Unknown error')}")
+            
+            return True
+                
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to Navidrome: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+        except Exception as e:
+            raise Exception(f"Unexpected error updating playlist: {e}")
+    
+    async def delete_playlist(self, playlist_id: str) -> bool:
+        """Delete a playlist from Navidrome
+        
+        Args:
+            playlist_id: ID of the playlist to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            await self._ensure_authenticated()
+            
+            params = self._get_subsonic_params()
+            params["playlistId"] = playlist_id
+            
+            response = await self.client.get(
+                f"{self.base_url}/rest/deletePlaylist.view",
+                params=params
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Failed to delete playlist: {error.get('message', 'Unknown error')}")
+            
+            return True
+                
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to Navidrome: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+        except Exception as e:
+            raise Exception(f"Unexpected error deleting playlist: {e}")
+    
     async def close(self):
         """Close the HTTP client"""
         await self.client.aclose()
