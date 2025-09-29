@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import json
+from .recipe_manager import recipe_manager
 
 
 class RediscoverWeekly:
@@ -215,23 +216,48 @@ class RediscoverWeekly:
         
         return filtered_tracks
     
-    async def generate_rediscover_weekly(self) -> List[Dict[str, Any]]:
+    async def generate_rediscover_weekly(self, max_tracks: int = 20) -> List[Dict[str, Any]]:
         """
         Main method to generate the Re-Discover Weekly playlist.
         Returns a list of track metadata for the top 20 tracks.
         """
         try:
-            # Step 1: Get listening history (last 30 days)
-            history = await self.get_listening_history(days_back=30)
+            # Use recipe system to get strategy parameters
+            recipe_inputs = {
+                "listening_history": "placeholder",
+                "max_tracks": max_tracks,
+                "analysis_window_days": 30,
+                "minimum_gap_days": 7
+            }
+            
+            recipe_result = recipe_manager.apply_recipe("re_discover", recipe_inputs)
+            recipe = recipe_result["recipe"]
+            strategy = recipe["strategy_notes"]
+            
+            # Extract strategy parameters from recipe
+            analysis_days = strategy["time_windows"]["analysis_period"].split()[0]
+            analysis_days = int(analysis_days) if analysis_days.isdigit() else 30
+            
+            min_gap_text = strategy["time_windows"]["minimum_gap"]
+            min_gap_days = int(min_gap_text.split("+")[0]) if "+" in min_gap_text else 7
+            
+            max_per_artist = strategy["diversity_controls"]["max_per_artist"]
+            
+            # Step 1: Get listening history using recipe parameters
+            history = await self.get_listening_history(days_back=analysis_days)
             
             if not history:
-                raise Exception("No listening history found")
+                raise Exception(f"No listening history found in the last {analysis_days} days")
             
             # Step 2: Analyze patterns
             track_stats = await self.analyze_listening_patterns(history)
             
-            # Step 3: Score tracks for re-discovery
-            scored_tracks = self.score_tracks_for_rediscovery(track_stats)
+            # Step 3: Score tracks for re-discovery using recipe strategy
+            scored_tracks = self.score_tracks_for_rediscovery(
+                track_stats, 
+                min_gap_days=min_gap_days,
+                max_per_artist=max_per_artist
+            )
             
             if not scored_tracks:
                 raise Exception("No tracks found for re-discovery")
@@ -239,11 +265,11 @@ class RediscoverWeekly:
             # Step 4: Filter for artist diversity
             diverse_tracks = self.filter_artist_diversity(scored_tracks, max_per_artist=3)
             
-            # Step 5: Select top 20 tracks (or all available if fewer than 20)
-            target_tracks = 20
+            # Step 5: Select top tracks based on recipe max_tracks
+            target_tracks = max_tracks
             top_tracks = diverse_tracks[:target_tracks]
 
-            # If we have fewer than 20 tracks, try to get more by relaxing filters
+            # If we have fewer than target tracks, try to get more by relaxing filters
             if len(top_tracks) < target_tracks:
                 # Try again with more lenient filters
                 lenient_candidates = []

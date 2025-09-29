@@ -188,12 +188,13 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
     
-    async def create_playlist(self, name: str, track_ids: List[str]) -> str:
+    async def create_playlist(self, name: str, track_ids: List[str], comment: str = None) -> str:
         """Create a new playlist in Navidrome using Subsonic API
         
         Args:
             name: Name of the playlist
             track_ids: List of track IDs to add to playlist
+            comment: Optional comment/description for the playlist
             
         Returns:
             playlist_id: The ID of the created playlist
@@ -204,6 +205,11 @@ class NavidromeClient:
             # Create the playlist using Subsonic API
             params = self._get_subsonic_params()
             params["name"] = name
+            if comment:
+                params["comment"] = comment
+                print(f"🔧 NavidromeClient: Adding comment to playlist '{name}': {comment[:100]}...")
+            else:
+                print(f"🔧 NavidromeClient: No comment provided for playlist '{name}'")
             
             response = await self.client.get(
                 f"{self.base_url}/rest/createPlaylist.view",
@@ -253,12 +259,13 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error creating playlist: {e}")
     
-    async def update_playlist(self, playlist_id: str, track_ids: List[str]) -> bool:
+    async def update_playlist(self, playlist_id: str, track_ids: List[str], comment: str = None) -> bool:
         """Update an existing playlist by replacing all tracks
         
         Args:
             playlist_id: ID of the playlist to update
             track_ids: List of track IDs to replace current tracks with
+            comment: Optional comment/description to update
             
         Returns:
             bool: True if successful, False otherwise
@@ -269,6 +276,8 @@ class NavidromeClient:
             # First, clear the existing playlist by updating it with no songs
             clear_params = self._get_subsonic_params()
             clear_params["playlistId"] = playlist_id
+            if comment:
+                clear_params["comment"] = comment
             
             response = await self.client.get(
                 f"{self.base_url}/rest/updatePlaylist.view",

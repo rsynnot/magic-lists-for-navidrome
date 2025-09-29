@@ -21,11 +21,19 @@ class DatabaseManager:
                     artist_id TEXT NOT NULL,
                     playlist_name TEXT NOT NULL,
                     songs TEXT, -- JSON array of song titles
+                    reasoning TEXT, -- AI reasoning/description
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
+            # Add reasoning column if it doesn't exist (for existing databases)
+            try:
+                await db.execute("ALTER TABLE playlists ADD COLUMN reasoning TEXT")
+            except:
+                # Column already exists or other error - ignore
+                pass
+
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS scheduled_playlists (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +47,7 @@ class DatabaseManager:
             """)
             await db.commit()
     
-    async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None) -> Playlist:
+    async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None) -> Playlist:
         """Create a new playlist in the database"""
         await self.init_db()
         
@@ -47,16 +55,16 @@ class DatabaseManager:
         
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("""
-                INSERT INTO playlists (artist_id, playlist_name, songs)
-                VALUES (?, ?, ?)
-            """, (artist_id, playlist_name, songs_json))
+                INSERT INTO playlists (artist_id, playlist_name, songs, reasoning)
+                VALUES (?, ?, ?, ?)
+            """, (artist_id, playlist_name, songs_json, reasoning))
             
             playlist_id = cursor.lastrowid
             await db.commit()
             
             # Fetch the created playlist
             async with db.execute("""
-                SELECT id, artist_id, playlist_name, songs, created_at, updated_at
+                SELECT id, artist_id, playlist_name, songs, reasoning, created_at, updated_at
                 FROM playlists WHERE id = ?
             """, (playlist_id,)) as cursor:
                 row = await cursor.fetchone()
@@ -67,8 +75,9 @@ class DatabaseManager:
                         artist_id=row[1],
                         playlist_name=row[2],
                         songs=json.loads(row[3]),
-                        created_at=row[4],
-                        updated_at=row[5]
+                        reasoning=row[4],
+                        created_at=row[5],
+                        updated_at=row[6]
                     )
     
     async def get_playlist(self, playlist_id: int) -> Optional[Playlist]:
@@ -77,7 +86,7 @@ class DatabaseManager:
         
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute("""
-                SELECT id, artist_id, playlist_name, songs, created_at, updated_at
+                SELECT id, artist_id, playlist_name, songs, reasoning, created_at, updated_at
                 FROM playlists WHERE id = ?
             """, (playlist_id,)) as cursor:
                 row = await cursor.fetchone()
@@ -88,8 +97,9 @@ class DatabaseManager:
                         artist_id=row[1],
                         playlist_name=row[2],
                         songs=json.loads(row[3]),
-                        created_at=row[4],
-                        updated_at=row[5]
+                        reasoning=row[4],
+                        created_at=row[5],
+                        updated_at=row[6]
                     )
         return None
     
@@ -131,6 +141,7 @@ class DatabaseManager:
                     p.artist_id, 
                     p.playlist_name, 
                     p.songs, 
+                    p.reasoning,
                     p.created_at, 
                     p.updated_at,
                     sp.navidrome_playlist_id,
@@ -152,12 +163,13 @@ class DatabaseManager:
                         "artist_id": row[1],
                         "playlist_name": row[2],
                         "songs": json.loads(row[3]),
-                        "created_at": row[4],
-                        "updated_at": row[5],
-                        "navidrome_playlist_id": row[6],
-                        "refresh_frequency": row[7],
-                        "next_refresh": row[8],
-                        "playlist_type": row[9]
+                        "reasoning": row[4],
+                        "created_at": row[5],
+                        "updated_at": row[6],
+                        "navidrome_playlist_id": row[7],
+                        "refresh_frequency": row[8],
+                        "next_refresh": row[9],
+                        "playlist_type": row[10]
                     }
                     playlists.append(playlist_data)
         

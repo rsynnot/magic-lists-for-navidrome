@@ -32,6 +32,7 @@ from .navidrome_client import NavidromeClient
 from .ai_client import AIClient
 from .database import DatabaseManager, get_db
 from .schemas import CreatePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
+from .recipe_manager import recipe_manager
 from .rediscover import RediscoverWeekly
 
 app = FastAPI(title="MagicLists Navidrome MVP")
@@ -133,17 +134,35 @@ async def create_playlist(
         if not all_tracks:
             raise HTTPException(status_code=404, detail="No tracks found for the selected artists")
         
-        # Use AI to curate the playlist
-        curated_track_ids = await ai_client_instance.curate_artist_radio(
+        # Use AI to curate the playlist (always include reasoning for new recipe format)
+        curation_result = await ai_client_instance.curate_artist_radio(
             artist_name=', '.join(artist_names),
             tracks_json=all_tracks,
-            num_tracks=20
+            num_tracks=request.playlist_length,
+            include_reasoning=True
         )
         
-        # Create playlist in Navidrome
+        # Handle both old and new return formats
+        if isinstance(curation_result, tuple):
+            curated_track_ids, reasoning = curation_result
+        else:
+            curated_track_ids = curation_result
+            reasoning = ""
+
+        # Log the AI reasoning for debugging
+        if reasoning:
+            scheduler_logger.info(f"🎵 AI REASONING for {', '.join(artist_names)}: {reasoning}")
+        else:
+            scheduler_logger.info(f"⚠️ No AI reasoning provided for {', '.join(artist_names)}")
+
+        # Create playlist in Navidrome with AI reasoning as comment
+        comment_to_use = reasoning if reasoning else None
+        scheduler_logger.info(f"💬 Creating playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_to_use}")
+
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
-            track_ids=curated_track_ids
+            track_ids=curated_track_ids,
+            comment=comment_to_use
         )
         
         # Get track titles for database storage
@@ -157,7 +176,8 @@ async def create_playlist(
         playlist = await db.create_playlist(
             artist_id=request.artist_ids[0],
             playlist_name=playlist_name,
-            songs=track_titles
+            songs=track_titles,
+            reasoning=reasoning
         )
         
         # Handle scheduling if not "none"
@@ -227,11 +247,12 @@ async def create_playlist_with_reasoning(
             num_tracks=20,
             include_reasoning=True
         )
-        
-        # Create playlist in Navidrome
+
+        # Create playlist in Navidrome with AI reasoning as comment
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
-            track_ids=curated_track_ids
+            track_ids=curated_track_ids,
+            comment=reasoning if reasoning else None
         )
         
         # Get track titles for database storage
@@ -322,7 +343,7 @@ async def create_rediscover_playlist(
         # Extract track IDs
         track_ids = [track["id"] for track in tracks]
         
-        # Create playlist in Navidrome
+        # Create playlist in Navidrome (Re-Discover doesn't have reasoning)
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
             track_ids=track_ids
@@ -428,8 +449,8 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
         
-        # Generate new tracks
-        tracks = await rediscover.generate_rediscover_weekly()
+        # Generate new tracks with requested length
+        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length)
         
         if tracks:
             scheduler_logger.info(f"🎵 Generated {len(tracks)} new tracks for refresh")
@@ -494,18 +515,27 @@ async def refresh_artist_radio_playlist(scheduled_playlist, db: DatabaseManager)
         if tracks:
             scheduler_logger.info(f"🎵 Found {len(tracks)} tracks for artist: {artist_name}")
             
-            # Use AI to curate a new playlist
-            curated_track_ids = await ai_client_instance.curate_artist_radio(
+            # Use AI to curate a new playlist with reasoning (use default 25 for refreshes)
+            curation_result = await ai_client_instance.curate_artist_radio(
                 artist_name=artist_name,
                 tracks_json=tracks,
-                num_tracks=20
+                num_tracks=25,  # Default for refreshes, could be enhanced to store original length
+                include_reasoning=True
             )
             
+            # Handle both old and new return formats
+            if isinstance(curation_result, tuple):
+                curated_track_ids, reasoning = curation_result
+            else:
+                curated_track_ids = curation_result
+                reasoning = ""
+            
             if curated_track_ids:
-                # Update the existing playlist in Navidrome
+                # Update the existing playlist in Navidrome with new reasoning
                 await nav_client.update_playlist(
                     playlist_id=scheduled_playlist.navidrome_playlist_id,
-                    track_ids=curated_track_ids
+                    track_ids=curated_track_ids,
+                    comment=reasoning if reasoning else None
                 )
                 
                 # Calculate next refresh time
@@ -572,6 +602,34 @@ async def delete_playlist(playlist_id: int, db: DatabaseManager = Depends(get_db
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete playlist: {str(e)}")
+
+@app.get("/api/recipes")
+async def get_available_recipes():
+    """Get information about available playlist generation recipes"""
+    try:
+        recipes_info = recipe_manager.list_available_recipes()
+        return recipes_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load recipes: {str(e)}")
+
+@app.get("/api/recipes/validate")
+async def validate_recipes():
+    """Validate all recipe files and return any errors"""
+    try:
+        registry = recipe_manager._load_registry()
+        validation_results = {}
+        
+        for playlist_type, recipe_filename in registry.items():
+            errors = recipe_manager.validate_recipe(recipe_filename)
+            validation_results[playlist_type] = {
+                "recipe_file": recipe_filename,
+                "valid": len(errors) == 0,
+                "errors": errors
+            }
+        
+        return validation_results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to validate recipes: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

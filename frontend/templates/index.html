@@ -228,6 +228,31 @@
         width: auto;
         min-width: 200px;
       }
+      
+      .radio-groups-container {
+        display: flex;
+        gap: 2rem;
+      }
+      
+      .radio-group {
+        flex: 1;
+      }
+    }
+    
+    /* Radio button styling */
+    .radio-option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .radio-option input[type="radio"] {
+      margin-right: 0.5rem;
+    }
+    
+    .radio-option label {
+      margin: 0;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -316,14 +341,50 @@
               </div>
             </div>
             
+            <div class="radio-groups-container mb4">
+              <div class="radio-group">
+                <label class="db mb3 f5 fw6 near-black">Playlist Length</label>
+                <div class="radio-option">
+                  <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked>
+                  <label for="artist-length-25" class="f5 near-black">25 tracks</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50">
+                  <label for="artist-length-50" class="f5 near-black">50 tracks</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100">
+                  <label for="artist-length-100" class="f5 near-black">100 tracks</label>
+                </div>
+              </div>
+              
+              <div class="radio-group">
+                <label class="db mb3 f5 fw6 near-black">Refresh Frequency</label>
+                <div class="radio-option">
+                  <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none">
+                  <label for="artist-freq-none" class="f5 near-black">Do not refresh</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" checked>
+                  <label for="artist-freq-daily" class="f5 near-black">Daily</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly">
+                  <label for="artist-freq-weekly" class="f5 near-black">Weekly</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly">
+                  <label for="artist-freq-monthly" class="f5 near-black">Monthly</label>
+                </div>
+              </div>
+            </div>
+            
             <div class="mb4">
-              <label class="db mb2 f5 fw6 near-black">Choose refresh frequency</label>
-              <select id="artist-refresh-frequency" class="form-input w-100 w5-ns pa3 f5 near-black" style="max-width: 200px;">
-                <option value="none">Do not refresh</option>
-                <option value="daily" selected>Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
+              <label class="db mb3 f5 fw6 gray">AI Behavior Preference</label>
+              <div class="radio-option">
+                <input type="radio" id="artist-steer-balanced" name="artist-steer" value="balanced" checked disabled>
+                <label for="artist-steer-balanced" class="f5 gray">AI behavior preference set to 'Balanced'</label>
+              </div>
             </div>
             
             <button type="submit" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns">
@@ -345,13 +406,46 @@
             <p class="gray lh-copy ma0">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
           </div>
           
+          <div class="radio-groups-container mb4">
+            <div class="radio-group">
+              <label class="db mb3 f5 fw6 near-black">Playlist Length</label>
+              <div class="radio-option">
+                <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked>
+                <label for="rediscover-length-25" class="f5 near-black">25 tracks</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50">
+                <label for="rediscover-length-50" class="f5 near-black">50 tracks</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="rediscover-length-100" name="rediscover-playlist-length" value="100">
+                <label for="rediscover-length-100" class="f5 near-black">100 tracks</label>
+              </div>
+            </div>
+            
+            <div class="radio-group">
+              <label class="db mb3 f5 fw6 near-black">Refresh Frequency</label>
+              <div class="radio-option">
+                <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily">
+                <label for="rediscover-freq-daily" class="f5 near-black">Daily</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked>
+                <label for="rediscover-freq-weekly" class="f5 near-black">Weekly</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly">
+                <label for="rediscover-freq-monthly" class="f5 near-black">Monthly</label>
+              </div>
+            </div>
+          </div>
+          
           <div class="mb4">
-            <label class="db mb2 f5 fw6 near-black">Choose refresh frequency</label>
-            <select id="refresh-frequency" class="form-input w-100 w6-ns pa3 f5 near-black" style="max-width: 220px;">
-              <option value="daily">Daily</option>
-              <option value="weekly" selected>Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <label class="db mb3 f5 fw6 gray">AI Behavior Preference</label>
+            <div class="radio-option">
+              <input type="radio" id="rediscover-steer-balanced" name="rediscover-steer" value="balanced" checked disabled>
+              <label for="rediscover-steer-balanced" class="f5 gray">AI behavior preference set to 'Balanced'</label>
+            </div>
           </div>
           
           <button id="rediscover-btn" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns mb4">
@@ -684,7 +778,8 @@
       submitBtn.disabled = true;
       
       try {
-        const refreshFrequency = document.getElementById('artist-refresh-frequency').value;
+        const refreshFrequency = document.querySelector('input[name="artist-refresh-frequency"]:checked').value;
+        const playlistLength = document.querySelector('input[name="artist-playlist-length"]:checked').value;
         
         const response = await fetch('/api/create_playlist', {
           method: 'POST',
@@ -693,7 +788,8 @@
           },
           body: JSON.stringify({
             artist_ids: artistIds, // Sending an array of IDs
-            refresh_frequency: refreshFrequency
+            refresh_frequency: refreshFrequency,
+            playlist_length: parseInt(playlistLength)
           })
         });
         
@@ -750,7 +846,8 @@
       button.disabled = true;
       
       try {
-        const refreshFrequency = document.getElementById('refresh-frequency').value;
+        const refreshFrequency = document.querySelector('input[name="rediscover-refresh-frequency"]:checked').value;
+        const playlistLength = document.querySelector('input[name="rediscover-playlist-length"]:checked').value;
         
         const response = await fetch('/api/create-rediscover-playlist', {
           method: 'POST',
@@ -758,7 +855,8 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            refresh_frequency: refreshFrequency
+            refresh_frequency: refreshFrequency,
+            playlist_length: parseInt(playlistLength)
           })
         });
 
@@ -863,6 +961,7 @@
             <div class="flex-auto">
               <h3 class="f5 fw7 near-black ma0 mb2">${playlist.playlist_name}</h3>
               <p class="f6 gray ma0">${metadataText}</p>
+              ${playlist.reasoning ? `<p class="f6 gray ma0 mt2 i">${playlist.reasoning}</p>` : ''}
             </div>
             <div class="flex-none">
               <button 
