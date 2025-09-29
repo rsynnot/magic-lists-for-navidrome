@@ -151,7 +151,7 @@ class DatabaseManager:
                 FROM playlists p
                 LEFT JOIN scheduled_playlists sp ON (
                     (sp.playlist_type = 'rediscover_weekly' AND p.artist_id = 'rediscover_weekly') OR
-                    (sp.playlist_type = 'artist_radio' AND p.artist_id != 'rediscover_weekly')
+                    (sp.playlist_type = 'this_is' AND p.artist_id != 'rediscover_weekly')
                 )
                 ORDER BY p.created_at DESC
             """) as cursor:

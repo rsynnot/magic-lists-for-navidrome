@@ -224,7 +224,7 @@
         max-width: 400px;
       }
       
-      .artist-radio-submit-btn, .rediscover-submit-btn {
+      .this-is-submit-btn, .rediscover-submit-btn {
         width: auto;
         min-width: 200px;
       }
@@ -273,8 +273,8 @@
       <!-- Sidebar -->
       <div class="sidebar ph3 pb3 dn dib-ns flex-ns " style="display: flexX; flex-direction: column;">
         <nav class="flex flex-column mobile-nav sidebar-nav">
-          <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="artist-radio-nav">
-            Artist Radio
+          <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="this-is-nav">
+            This is
           </button>
           <button class="sidebar-nav-btn w-100 bn tl pointer near-black f5 b" id="rediscover-nav">
             Re-discover Playlist
@@ -298,8 +298,8 @@
           <div class="mb4">
             <h2 class="f4 fw6 near-black mb3">Features</h2>
             <div class="mb3">
-              <h3 class="f5 fw6 near-black mb2">Artist Radio</h3>
-              <p class="gray lh-copy ma0">Create AI-powered radio playlists based on your favorite artists. Get a curated mix of their best tracks, intelligently selected and ordered for the perfect listening experience. </p>
+              <h3 class="f5 fw6 near-black mb2">This is</h3>
+              <p class="gray lh-copy ma0">Create a 'This Is' playlist for a single artist from your music library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience. </p>
             </div>
             <div class="mb3">
               <h3 class="f5 fw6 near-black mb2">Re-Discover Playlists✨</h3>
@@ -314,25 +314,22 @@
           
         </div>
         
-        <!-- Artist Radio Form (hidden by default) -->
-        <div id="artist-radio-content" style="display: none;">
+        <!-- This Is Form (hidden by default) -->
+        <div id="this-is-content" style="display: none;">
           <div class="mb4">
-            <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">Artist Radio</h1>
-            <p class="gray lh-copy ma0">Create AI-powered radio stations based on your favorite artists. Get a curated mix of their best tracks, intelligently selected and ordered for the perfect listening experience.</p>
+            <h1 class="f3 mt0 lh-title fw7 near-black mb3 heading-spacing">This is</h1>
+            <p class="gray lh-copy ma0">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
           </div>
           
-          <form id="artist-radio-form" class="mb4">
+          <form id="this-is-form" class="mb4">
             <div class="mb4">
-              <label class="db mb3 f5 fw6 near-black">Choose artists from your library</label>
+              <label class="db mb3 f5 fw6 near-black">Choose an artist from your library</label>
               <div class="relative">
-                <div id="chips-container" class="flex flex-wrap items-center pv2   bg-white" style="border: 0px solid #e0e0e0; border-bottom: none;">
-                  <!-- Chips will be dynamically inserted here -->
-                </div>
                 <input
                   id="artist-search-input"
                   type="text"
                   placeholder="Search for an artist..."
-                  class="form-input w-100 pa3 f5 near-black br2 br--bottom"
+                  class="form-input w-100 pa3 f5 near-black br2"
                   
                 />
                 <div id="artist-results-dropdown" class="absolute w-100 mt1 bg-white ba b--light-gray br2 dn overflow-auto" style="z-index: 10; max-height: 200px;">
@@ -388,7 +385,7 @@
             </div>
             
             <button type="submit" class="btn-primary bn white fw6 pointer f5 w-100 w-auto-ns">
-              Create Artist Radio
+              Create This Is Playlist
             </button>
           </form>
           
@@ -481,7 +478,7 @@
     <div class="mobile-menu">
       <button class="mobile-menu-close" id="mobile-menu-close">&times;</button>
       <button class="mobile-menu-item" data-target="welcome-content">Home</button>
-      <button class="mobile-menu-item" data-target="artist-radio-content">Artist Radio</button>
+      <button class="mobile-menu-item" data-target="this-is-content">This is</button>
       <button class="mobile-menu-item" data-target="rediscover-content">Re-Discover Playlist</button>
       <button class="mobile-menu-item" data-target="manage-playlists-content">Manage Playlists</button>
     </div>
@@ -496,7 +493,7 @@
     function showContent(contentId) {
       // Hide all content sections
       document.getElementById('welcome-content').style.display = 'none';
-      document.getElementById('artist-radio-content').style.display = 'none';
+      document.getElementById('this-is-content').style.display = 'none';
       document.getElementById('rediscover-content').style.display = 'none';
       document.getElementById('manage-playlists-content').style.display = 'none';
       
@@ -508,8 +505,8 @@
       buttons.forEach(btn => btn.classList.remove('selected'));
       
       // Add selected state to clicked button
-      if (contentId === 'artist-radio-content') {
-        document.getElementById('artist-radio-nav').classList.add('selected');
+      if (contentId === 'this-is-content') {
+        document.getElementById('this-is-nav').classList.add('selected');
       } else if (contentId === 'rediscover-content') {
         document.getElementById('rediscover-nav').classList.add('selected');
       } else if (contentId === 'manage-playlists-content') {
@@ -519,15 +516,15 @@
     
     // Add click handlers to navigation buttons
     document.addEventListener('DOMContentLoaded', function() {
-      const artistRadioBtn = document.getElementById('artist-radio-nav');
+      const thisIsBtn = document.getElementById('this-is-nav');
       const rediscoverNavBtn = document.getElementById('rediscover-nav');
       const managePlaylistsBtn = document.getElementById('manage-playlists-nav');
       
       // Desktop sidebar navigation
-      if (artistRadioBtn) {
-        artistRadioBtn.addEventListener('click', () => {
-          showContent('artist-radio-content');
-          loadArtists(); // Load artists when Artist Radio is selected
+      if (thisIsBtn) {
+        thisIsBtn.addEventListener('click', () => {
+          showContent('this-is-content');
+          loadArtists(); // Load artists when This Is is selected
         });
       }
       
@@ -575,8 +572,8 @@
           const target = item.getAttribute('data-target');
           
           // Navigate to the appropriate content
-          if (target === 'artist-radio-content') {
-            showContent('artist-radio-content');
+          if (target === 'this-is-content') {
+            showContent('this-is-content');
             loadArtists();
           } else if (target === 'rediscover-content') {
             showContent('rediscover-content');
@@ -600,7 +597,6 @@
     // Multi-select component logic
     const artistSearchInput = document.getElementById('artist-search-input');
     const artistResultsDropdown = document.getElementById('artist-results-dropdown');
-    const chipsContainer = document.getElementById('chips-container');
 
     let allArtists = [];
     let availableArtists = [];
@@ -616,7 +612,13 @@
     document.addEventListener('click', (e) => {
       const searchContainer = artistSearchInput.closest('.relative');
       if (!searchContainer.contains(e.target)) {
-        artistResultsDropdown.classList.add('dn');
+        // Keep dropdown open if we have a single artist selected (in single selection mode)
+        if (selectedArtists.length === 0) {
+          artistResultsDropdown.classList.add('dn');
+        } else {
+          // Only hide if clicking outside the dropdown area specifically
+          artistResultsDropdown.classList.add('dn');
+        }
       }
     });
 
@@ -655,68 +657,64 @@
       }
     });
     
-    // 5. Remove chip on "x" click
-    chipsContainer.addEventListener('click', (e) => {
-      if (e.target.classList.contains('remove-chip')) {
-        const chip = e.target.closest('.chip');
-        const artistId = chip.dataset.id;
-        const artistName = chip.dataset.name;
+    // 5. Clear the input field when clicked (since there are no chips now)
+    // We'll add a click handler to clear the input when clicked again
+    artistSearchInput.addEventListener('click', (e) => {
+      if (artistSearchInput.value !== '' && selectedArtists.length > 0) {
+        // Clear the selected artist
+        const artistId = selectedArtists[0].id;
+        const artistName = selectedArtists[0].name;
         
         // Remove from selected artists
-        selectedArtists = selectedArtists.filter(artist => artist.id !== artistId);
+        selectedArtists = [];
         
         // Mark artist as unselected in available artists
         const artistInList = availableArtists.find(a => a.id === artistId);
         if (artistInList) {
           artistInList.selected = false;
-        } else {
-          availableArtists.push({ id: artistId, name: artistName, selected: false });
-          availableArtists.sort((a, b) => a.name.localeCompare(b.name));
         }
         
-        // Remove chip from DOM
-        chip.remove();
+        // Clear the input field
+        artistSearchInput.value = '';
         
-        // Re-render dropdown
+        // Re-render dropdown to show the artist again as available
         renderDropdown(availableArtists);
+        
+        // Show the dropdown since we cleared the field
+        artistResultsDropdown.classList.remove('dn');
+        artistSearchInput.focus();
       }
     });
 
     function selectArtist(artist) {
-      // Add to selected artists
-      if (!selectedArtists.some(a => a.id === artist.id)) {
-        selectedArtists.push(artist);
+      // Clear previous selection for single artist mode
+      if (selectedArtists.length > 0) {
+        // Mark previous artist as unselected
+        selectedArtists.forEach(prevArtist => {
+          const artistInList = availableArtists.find(a => a.id === prevArtist.id);
+          if (artistInList) {
+            artistInList.selected = false;
+          }
+        });
+        
+        selectedArtists = [];
+      }
+      
+      // Add the new artist
+      selectedArtists.push(artist);
 
-        // Mark artist as selected but keep in available artists
-        const artistInList = availableArtists.find(a => a.id === artist.id);
-        if (artistInList) {
-          artistInList.selected = true;
-        }
-
-        // Add chip
-        addChip(artist);
+      // Mark artist as selected but keep in available artists
+      const artistInList = availableArtists.find(a => a.id === artist.id);
+      if (artistInList) {
+        artistInList.selected = true;
       }
 
-      // Clear input but keep dropdown open and focused
-      artistSearchInput.value = '';
-      artistSearchInput.focus();
+      // Display artist name directly in the input field instead of creating a chip
+      artistSearchInput.value = artist.name;
+      artistSearchInput.blur(); // This will hide the dropdown
       renderDropdown(availableArtists);
-      // Ensure dropdown stays open after selection
-      artistResultsDropdown.classList.remove('dn');
-    }
-
-    function addChip(artist) {
-      const chip = document.createElement('div');
-      chip.classList.add('chip', 'flex', 'items-center', 'bg-light-gray', 'br-pill', 'pa2', 'mr2', 'mb2');
-      chip.dataset.id = artist.id;
-      chip.dataset.name = artist.name;
-      
-      chip.innerHTML = `
-        <span class="f6 fw5 pr2">${artist.name}</span>
-        <button type="button" class="remove-chip bn bg-transparent pointer f5" style="line-height: 1;">&times;</button>
-      `;
-      
-      chipsContainer.appendChild(chip);
+      // Hide dropdown after single selection
+      artistResultsDropdown.classList.add('dn');
     }
 
     function renderDropdown(artists) {
@@ -749,6 +747,11 @@
         }
         allArtists = await response.json();
         availableArtists = allArtists.map(artist => ({ ...artist, selected: false }));
+        
+        // Clear any previous selection
+        selectedArtists = [];
+        artistSearchInput.value = '';
+        
         renderDropdown(availableArtists);
       } catch (error) {
         console.error('Error loading artists:', error);
@@ -756,13 +759,19 @@
       }
     }
     
-    // Artist Radio form submission
-    const artistForm = document.getElementById('artist-radio-form');
-    artistForm.addEventListener('submit', async function(e) {
+    // This Is form submission
+    const thisIsForm = document.getElementById('this-is-form');
+    thisIsForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       
       if (selectedArtists.length === 0) {
-        alert('Please select at least one artist');
+        alert('Please select an artist');
+        return;
+      }
+      
+      // Limit to single artist only
+      if (selectedArtists.length > 1) {
+        alert('Please select only one artist for This Is playlists');
         return;
       }
       
@@ -770,7 +779,7 @@
       
       const loadingDiv = document.getElementById('loading');
       const resultDiv = document.getElementById('result');
-      const submitBtn = artistForm.querySelector('button[type="submit"]');
+      const submitBtn = thisIsForm.querySelector('button[type="submit"]');
       
       // Show loading state
       loadingDiv.classList.remove('dn');
@@ -799,19 +808,18 @@
         }
         
         const data = await response.json();
-        const selectedArtistNames = selectedArtists.map(a => a.name).join(', ');
+        const selectedArtistName = selectedArtists[0].name; // Use single artist name
         
         // Track successful artist playlist creation
         if (typeof umami !== 'undefined') {
-          const eventName = selectedArtists.length > 1 ? 'artists_playlist_created' : 'artist_playlist_created';
-          umami.track(eventName);
+          umami.track('artist_playlist_created');
         }
         
         resultDiv.innerHTML = `
           <div class="pa3 bg-light-green ba b--green br2">
-            <h3 class="f4 dark-green mt0 mb2">🎉 ${selectedArtistNames} Radio Created!</h3>
-            <p class="dark-green ma0 mb2">Your personalized radio station is ready with <strong>${data.songs ? data.songs.length : 0} carefully selected tracks</strong>.</p>
-            <p class="dark-green ma0 mb2"><strong>Playlist Name:</strong> ${data.playlist_name || selectedArtistNames + ' Radio'}</p>
+            <h3 class="f4 dark-green mt0 mb2">🎉 This Is ${selectedArtistName} Created!</h3>
+            <p class="dark-green ma0 mb2">Your 'This Is' playlist is ready with <strong>${data.songs ? data.songs.length : 0} carefully selected tracks</strong>.</p>
+            <p class="dark-green ma0 mb2"><strong>Playlist Name:</strong> ${data.playlist_name || 'This Is: ' + selectedArtistName}</p>
             <p class="dark-green ma0">🎵 You can now find this playlist in your Navidrome library and start listening!</p>
             
             <button onclick="location.reload()" class="mt3 pa2 bg-gray white bn br2 f6 pointer">
@@ -919,7 +927,7 @@
           containerDiv.innerHTML = `
             <div class="tc pa4 gray">
               <p class="f4 mb2">No playlists found</p>
-              <p class="f6 ma0">Create your first playlist using Artist Radio or Re-Discover Weekly!</p>
+              <p class="f6 ma0">Create your first playlist using This is or Re-Discover Weekly!</p>
             </div>
           `;
         } else {

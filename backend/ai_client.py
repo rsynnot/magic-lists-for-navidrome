@@ -20,14 +20,14 @@ class AIClient:
         print(f"   🤖 Model: {self.model}")
         print(f"   🌐 Base URL: {self.base_url}")
         
-    async def curate_artist_radio(
+    async def curate_this_is(
         self, 
         artist_name: str, 
         tracks_json: List[Dict[str, Any]], 
         num_tracks: int = 20,
         include_reasoning: bool = False
     ) -> Union[List[str], Tuple[List[str], str]]:
-        """Curate a radio-style playlist for an artist using AI
+        """Curate a 'This Is' playlist for a single artist using AI
         
         Args:
             artist_name: Name of the artist
@@ -72,7 +72,7 @@ class AIClient:
                 "steer": "balanced"  # Default steer value for now
             }
             
-            recipe_result = recipe_manager.apply_recipe("artist_radio", recipe_inputs, include_reasoning)
+            recipe_result = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
             prompt = recipe_result["prompt"]
             llm_params = recipe_result["llm_params"]
             

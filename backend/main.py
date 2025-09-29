@@ -105,7 +105,7 @@ async def create_playlist(
     request: CreatePlaylistRequest,
     db: DatabaseManager = Depends(get_db)
 ):
-    """Create an AI-curated artist radio playlist from multiple artists"""
+    """Create an AI-curated 'This Is' playlist for a single artist"""
     try:
         # Get clients
         nav_client = get_navidrome_client()
@@ -118,24 +118,28 @@ async def create_playlist(
         if not selected_artists:
             raise HTTPException(status_code=404, detail="Artists not found")
         
-        artist_names = [a["name"] for a in selected_artists]
+        # Limit to single artist only - use first artist from the request
+        if request.artist_ids:
+            first_artist_id = request.artist_ids[0]
+            selected_artists = [a for a in all_artists if a["id"] == first_artist_id]
+            artist_names = [a["name"] for a in selected_artists]
+        else:
+            raise HTTPException(status_code=400, detail="At least one artist must be selected")
 
-        # Generate playlist name if not provided - sort artist names alphabetically
-        sorted_artist_names = sorted(artist_names)
-        playlist_name = request.playlist_name or f"Artist radio: {', '.join(sorted_artist_names)}"
+        # Generate playlist name if not provided - for single artist
+        playlist_name = request.playlist_name or f"This Is: {artist_names[0]}"
         
-        # Get tracks for all selected artists
+        # Get tracks for only the first artist
         all_tracks = []
-        for artist_id in request.artist_ids:
-            tracks = await nav_client.get_tracks_by_artist(artist_id)
-            if tracks:
-                all_tracks.extend(tracks)
+        tracks = await nav_client.get_tracks_by_artist(first_artist_id)
+        if tracks:
+            all_tracks.extend(tracks)
         
         if not all_tracks:
             raise HTTPException(status_code=404, detail="No tracks found for the selected artists")
         
         # Use AI to curate the playlist (always include reasoning for new recipe format)
-        curation_result = await ai_client_instance.curate_artist_radio(
+        curation_result = await ai_client_instance.curate_this_is(
             artist_name=', '.join(artist_names),
             tracks_json=all_tracks,
             num_tracks=request.playlist_length,
@@ -186,7 +190,7 @@ async def create_playlist(
             
             # Store the scheduled playlist
             await db.create_scheduled_playlist(
-                playlist_type="artist_radio",
+                playlist_type="this_is",
                 navidrome_playlist_id=navidrome_playlist_id,
                 refresh_frequency=request.refresh_frequency,
                 next_refresh=next_refresh
@@ -194,7 +198,7 @@ async def create_playlist(
             
             # Schedule the refresh job
             schedule_playlist_refresh()
-            scheduler_logger.info(f"📅 Scheduled {request.refresh_frequency} refresh for Artist Radio playlist: {playlist_name}")
+            scheduler_logger.info(f"📅 Scheduled {request.refresh_frequency} refresh for This Is playlist: {playlist_name}")
         
         # Add Navidrome playlist ID to response
         playlist_dict = playlist.dict() if hasattr(playlist, 'dict') else playlist.__dict__
@@ -216,15 +220,18 @@ async def create_playlist_with_reasoning(
     request: CreatePlaylistRequest,
     db: DatabaseManager = Depends(get_db)
 ):
-    """Create an AI-curated artist radio playlist with AI reasoning explanation"""
+    """Create an AI-curated 'This Is' playlist with AI reasoning explanation"""
     try:
         # Get clients
         nav_client = get_navidrome_client()
         ai_client_instance = get_ai_client()
         
-        # Get artist info
+        # Get artist info - use first artist from the array
         artists = await nav_client.get_artists()
-        artist = next((a for a in artists if a["id"] == request.artist_id), None)
+        if not request.artist_ids or len(request.artist_ids) == 0:
+            raise HTTPException(status_code=400, detail="At least one artist must be selected")
+        first_artist_id = request.artist_ids[0]
+        artist = next((a for a in artists if a["id"] == first_artist_id), None)
         
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
@@ -232,16 +239,16 @@ async def create_playlist_with_reasoning(
         artist_name = artist["name"]
         
         # Generate playlist name if not provided
-        playlist_name = getattr(request, 'playlist_name', None) or f"Song radio: {artist_name}"
+        playlist_name = getattr(request, 'playlist_name', None) or f"This Is: {artist_name}"
         
         # Get tracks for the artist
-        tracks = await nav_client.get_tracks_by_artist(request.artist_id)
+        tracks = await nav_client.get_tracks_by_artist(first_artist_id)
         
         if not tracks:
             raise HTTPException(status_code=404, detail="No tracks found for this artist")
         
         # Use AI to curate the playlist WITH reasoning
-        curated_track_ids, reasoning = await ai_client_instance.curate_artist_radio(
+        curated_track_ids, reasoning = await ai_client_instance.curate_this_is(
             artist_name=artist_name,
             tracks_json=tracks,
             num_tracks=20,
@@ -264,7 +271,7 @@ async def create_playlist_with_reasoning(
         
         # Store playlist in local database
         playlist = await db.create_playlist(
-            artist_id=request.artist_id,
+            artist_id=first_artist_id,
             playlist_name=playlist_name,
             songs=track_titles
         )
@@ -432,8 +439,8 @@ async def refresh_scheduled_playlists():
         for scheduled_playlist in scheduled_playlists:
             if scheduled_playlist.playlist_type == "rediscover_weekly":
                 await refresh_rediscover_playlist(scheduled_playlist, db)
-            elif scheduled_playlist.playlist_type == "artist_radio":
-                await refresh_artist_radio_playlist(scheduled_playlist, db)
+            elif scheduled_playlist.playlist_type == "this_is" or scheduled_playlist.playlist_type == "artist_radio":
+                await refresh_this_is_playlist(scheduled_playlist, db)
                 
     except Exception as e:
         scheduler_logger.error(f"❌ Error checking scheduled playlists: {e}")
@@ -478,10 +485,10 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
     except Exception as e:
         scheduler_logger.error(f"❌ Error refreshing playlist {scheduled_playlist.navidrome_playlist_id}: {e}")
 
-async def refresh_artist_radio_playlist(scheduled_playlist, db: DatabaseManager):
-    """Refresh a specific Artist Radio playlist"""
+async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
+    """Refresh a specific This Is playlist"""
     try:
-        scheduler_logger.info(f"🔄 Starting refresh for Artist Radio playlist ID: {scheduled_playlist.navidrome_playlist_id} (frequency: {scheduled_playlist.refresh_frequency})")
+        scheduler_logger.info(f"🔄 Starting refresh for This Is playlist ID: {scheduled_playlist.navidrome_playlist_id} (frequency: {scheduled_playlist.refresh_frequency})")
         
         # Get clients
         nav_client = get_navidrome_client()
@@ -516,7 +523,7 @@ async def refresh_artist_radio_playlist(scheduled_playlist, db: DatabaseManager)
             scheduler_logger.info(f"🎵 Found {len(tracks)} tracks for artist: {artist_name}")
             
             # Use AI to curate a new playlist with reasoning (use default 25 for refreshes)
-            curation_result = await ai_client_instance.curate_artist_radio(
+            curation_result = await ai_client_instance.curate_this_is(
                 artist_name=artist_name,
                 tracks_json=tracks,
                 num_tracks=25,  # Default for refreshes, could be enhanced to store original length
@@ -547,14 +554,14 @@ async def refresh_artist_radio_playlist(scheduled_playlist, db: DatabaseManager)
                     next_refresh
                 )
                 
-                scheduler_logger.info(f"✅ Successfully refreshed Artist Radio playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
+                scheduler_logger.info(f"✅ Successfully refreshed This Is playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
-                scheduler_logger.warning(f"⚠️ No curated tracks generated for Artist Radio playlist {scheduled_playlist.navidrome_playlist_id}")
+                scheduler_logger.warning(f"⚠️ No curated tracks generated for This Is playlist {scheduled_playlist.navidrome_playlist_id}")
         else:
             scheduler_logger.warning(f"⚠️ No tracks found for artist {artist_name} in playlist {scheduled_playlist.navidrome_playlist_id}")
         
     except Exception as e:
-        scheduler_logger.error(f"❌ Error refreshing Artist Radio playlist {scheduled_playlist.navidrome_playlist_id}: {e}")
+        scheduler_logger.error(f"❌ Error refreshing This Is playlist {scheduled_playlist.navidrome_playlist_id}: {e}")
 
 @app.get("/api/playlists")
 async def get_all_playlists(db: DatabaseManager = Depends(get_db)):

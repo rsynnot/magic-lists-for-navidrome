@@ -1,0 +1,16 @@
+{
+  "version": "this-is-v1.001",
+  "description": "Curate a 'This Is' playlist for a single artist using only the user's library metadata (no embeddings). Include primary artist tracks and featured appearances.",
+  "inputs": ["artists", "track_count", "refresh_frequency", "steer", "playlist_length"],
+  "prompt_template": "You are an expert music curator creating a compelling 'This Is: {artists}' playlist. Your goal is to showcase the artist's range and appeal across their catalog.\\n\\nAvailable tracks with metadata:\\n{tracks_data}\\n\\nCURATION RULES:\\n1. Include tracks where {artists} is the PRIMARY artist OR a featured/guest artist\\n2. DEDUPLICATE tracks: if same song appears on multiple albums, choose the best version (highest play count or most complete)\\n3. Select EXACTLY {track_count} track IDs from available tracks\\n4. Balance popularity with variety - represent different eras, styles, and albums\\n5. Create smooth transitions between songs for optimal listening flow\\n6. Include both well-known hits and lesser-known gems for discovery\\n\\nARTIST FOCUS GUIDANCE:\\n- Primary artist tracks: {artists} is main credited artist\\n- Featured tracks: {artists} appears as featured, guest, or collaboration\\n- Ensure comprehensive representation across the artist's career/albums\\n\\nSTEER \\\"{steer}\\\" GUIDANCE:\\n- \\\"balanced\\\": 60% hits/40% deep cuts, good career representation\\n- \\\"adventurous\\\": Include rare, B-sides, early work, experimental tracks\\n- \\\"safe\\\": Focus on hits and well-known tracks that represent the artist well\\n\\nDEDUPLICATION RULES:\\n- If same song title appears multiple times (remastered, live, acoustic versions), select the version with highest play count or best quality\\n- Avoid obvious duplicates of the same underlying song in different forms\\n\\nRespond with a JSON object containing track_ids array and reasoning string. Example format: track_ids should be an array of exactly {track_count} track IDs, reasoning should explain your artist representation strategy and album diversity approach.",
+  "strategy_notes": {
+    "duplicates": "Identify and deduplicate the same song across different albums/versions - select the best version based on play count and quality.",
+    "featured_artists": "Include tracks where the specified artist appears as either primary artist or featured/guest artist.",
+    "artist_representation": "Ensure comprehensive representation of the artist's catalog across different albums and time periods.",
+    "flow": "Create a smooth, engaging flow that showcases the artist's range while maintaining listening pleasure."
+  },
+  "llm_params": {
+    "temperature": 0.7,
+    "max_tokens": 2000
+  }
+}
