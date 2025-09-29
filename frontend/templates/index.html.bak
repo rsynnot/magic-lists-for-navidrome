@@ -606,210 +606,243 @@
       rediscoverBtn.addEventListener('click', generateRediscoverWeekly);
     });
     
-    // ARIA Combobox component logic
+    // Multi-select component logic
     const artistSearchInput = document.getElementById('artist-search-input');
     const artistResultsDropdown = document.getElementById('artist-results-dropdown');
-    const artistResultsList = document.getElementById('artist-results-list');
+
+    // Track if Enter was just used for selection to prevent unwanted form submission
+    let enterSelectionJustMade = false;
+    let enterSelectionTimeout;
+    
+    // Track the currently highlighted item for Enter key selection
+    let currentHighlightedItem = null;
 
     let allArtists = [];
     let availableArtists = [];
-    let selectedArtist = null;  // For single selection
-    let currentFocusedIndex = -1; // Track the currently focused item index
+    let selectedArtists = [];
 
-    // Show dropdown on focus
+    // 1. Show/hide dropdown on focus/blur
     artistSearchInput.addEventListener('focus', () => {
-        if (availableArtists.length > 0 && artistSearchInput.value === '') {
-            renderDropdown(availableArtists);
-            artistResultsDropdown.classList.remove('dn');
-            artistSearchInput.setAttribute('aria-expanded', 'true');
+      renderDropdown(availableArtists);
+      artistResultsDropdown.classList.remove('dn');
+    });
+
+    // Handle keyboard navigation in the dropdown
+    artistSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const visibleItems = Array.from(artistResultsDropdown.querySelectorAll('.pointer:not(.gray)'));
+        if (visibleItems.length > 0) {
+          // Find currently selected item
+          const currentItem = artistResultsDropdown.querySelector('.bg-near-white');
+          if (currentItem) {
+            // Move to next item
+            const currentIndex = visibleItems.indexOf(currentItem);
+            if (currentIndex < visibleItems.length - 1) {
+              currentItem.classList.remove('bg-near-white');
+              currentHighlightedItem = visibleItems[currentIndex + 1];
+              currentHighlightedItem.classList.add('bg-near-white');
+              currentHighlightedItem.scrollIntoView({ block: 'nearest' });
+            }
+          } else {
+            // Select first item if none selected
+            currentHighlightedItem = visibleItems[0];
+            currentHighlightedItem.classList.add('bg-near-white');
+            currentHighlightedItem.scrollIntoView({ block: 'nearest' });
+          }
         }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const visibleItems = Array.from(artistResultsDropdown.querySelectorAll('.pointer:not(.gray)'));
+        if (visibleItems.length > 0) {
+          const currentItem = artistResultsDropdown.querySelector('.bg-near-white');
+          if (currentItem) {
+            const currentIndex = visibleItems.indexOf(currentItem);
+            if (currentIndex > 0) {
+              currentItem.classList.remove('bg-near-white');
+              currentHighlightedItem = visibleItems[currentIndex - 1];
+              currentHighlightedItem.classList.add('bg-near-white');
+              currentHighlightedItem.scrollIntoView({ block: 'nearest' });
+            }
+          }
+        }
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation(); // Stop the event from bubbling up and triggering form submission
+        // Use the stored highlighted item for selection
+        const selectedItem = currentHighlightedItem;
+        if (selectedItem) {
+          const artistId = selectedItem.dataset.id;
+          const artistName = selectedItem.textContent;
+          selectArtist({ id: artistId, name: artistName });
+          
+          // Set flag to prevent form submission for a short time after Enter selection
+          enterSelectionJustMade = true;
+          clearTimeout(enterSelectionTimeout);
+          enterSelectionTimeout = setTimeout(() => {
+            enterSelectionJustMade = false;
+          }, 100); // Reset flag after 100ms
+        }
+      } else if (e.key === 'Escape') {
+        // Clear the highlighted item when escape is pressed
+        if (currentHighlightedItem) {
+          currentHighlightedItem.classList.remove('bg-near-white');
+          currentHighlightedItem = null;
+        }
+        artistResultsDropdown.classList.add('dn');
+      }
     });
 
     // Handle clicks outside to close dropdown
     document.addEventListener('click', (e) => {
       const searchContainer = artistSearchInput.closest('.relative');
       if (!searchContainer.contains(e.target)) {
-        artistResultsDropdown.classList.add('dn');
-        artistSearchInput.setAttribute('aria-expanded', 'false');
-        currentFocusedIndex = -1;
-      }
-    });
-    
-    // Handle clearing the input field when clicked with content
-    artistSearchInput.addEventListener('click', (e) => {
-      if (artistSearchInput.value !== '' && selectedArtist) {
-        // Clear the selected artist
-        selectedArtist = null;
-        
-        // Clear the input field
-        artistSearchInput.value = '';
-        
-        // Re-render dropdown to refresh the artist list
-        renderDropdown(availableArtists);
-        
-        // Show the dropdown since we cleared the field
-        artistResultsDropdown.classList.remove('dn');
-        artistSearchInput.setAttribute('aria-expanded', 'true');
-        artistSearchInput.focus();
+        // Keep dropdown open if we have a single artist selected (in single selection mode)
+        if (selectedArtists.length === 0) {
+          artistResultsDropdown.classList.add('dn');
+        } else {
+          // Only hide if clicking outside the dropdown area specifically
+          artistResultsDropdown.classList.add('dn');
+        }
       }
     });
 
-    // Filter dropdown list as user types
+    // 2. Filter dropdown list as user types
     artistSearchInput.addEventListener('input', () => {
       const searchTerm = artistSearchInput.value.toLowerCase();
       const filteredArtists = availableArtists.filter(artist =>
         artist.name.toLowerCase().includes(searchTerm)
       );
       renderDropdown(filteredArtists);
-      
-      // Show dropdown if we have results
-      if (filteredArtists.length > 0 && artistSearchInput.value !== '') {
-          artistResultsDropdown.classList.remove('dn');
-          artistSearchInput.setAttribute('aria-expanded', 'true');
-          currentFocusedIndex = -1; // Reset focus index when filtering
-      } else {
-          artistResultsDropdown.classList.add('dn');
-          artistSearchInput.setAttribute('aria-expanded', 'false');
+      // Ensure dropdown is visible when typing
+      artistResultsDropdown.classList.remove('dn');
+    });
+    
+    // 3. Select item with Enter key
+    artistSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstResult = artistResultsDropdown.querySelector('.pointer');
+        if (firstResult) {
+          const artistId = firstResult.dataset.id;
+          const artistName = firstResult.textContent;
+          selectArtist({ id: artistId, name: artistName });
+        }
+      }
+    });
+
+    // 4. Select item with click (only if not already selected)
+    artistResultsDropdown.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.target.classList.contains('pointer')) {
+        const artistId = e.target.dataset.id;
+        const artistName = e.target.textContent;
+        selectArtist({ id: artistId, name: artistName });
       }
     });
     
-    // Keyboard navigation for the combobox
-    artistSearchInput.addEventListener('keydown', (e) => {
-        const items = Array.from(artistResultsList.querySelectorAll('[role="option"]'));
-        const isVisible = !artistResultsDropdown.classList.contains('dn');
+    // 5. Clear the input field when clicked (since there are no chips now)
+    // We'll add a click handler to clear the input when clicked again
+    artistSearchInput.addEventListener('click', (e) => {
+      if (artistSearchInput.value !== '' && selectedArtists.length > 0) {
+        // Clear the selected artist
+        const artistId = selectedArtists[0].id;
+        const artistName = selectedArtists[0].name;
         
-        switch(e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                if (!isVisible && availableArtists.length > 0) {
-                    // Show dropdown if not visible
-                    const filteredArtists = availableArtists.filter(artist => 
-                        artist.name.toLowerCase().includes(artistSearchInput.value.toLowerCase())
-                    );
-                    renderDropdown(filteredArtists);
-                    artistResultsDropdown.classList.remove('dn');
-                    artistSearchInput.setAttribute('aria-expanded', 'true');
-                }
-                
-                if (items.length > 0) {
-                    currentFocusedIndex = (currentFocusedIndex + 1) % items.length;
-                    updateAriaActivedescendant(items[currentFocusedIndex]);
-                }
-                break;
-                
-            case 'ArrowUp':
-                e.preventDefault();
-                if (isVisible && items.length > 0) {
-                    currentFocusedIndex = currentFocusedIndex <= 0 ? items.length - 1 : currentFocusedIndex - 1;
-                    updateAriaActivedescendant(items[currentFocusedIndex]);
-                }
-                break;
-                
-            case 'Enter':
-            case ' ':
-                e.preventDefault(); // Prevent form submission
-                if (isVisible && items.length > 0 && currentFocusedIndex >= 0) {
-                    const selectedElement = items[currentFocusedIndex];
-                    const artistId = selectedElement.dataset.id;
-                    const artistName = selectedElement.textContent;
-                    selectArtist({ id: artistId, name: artistName });
-                }
-                break;
-                
-            case 'Escape':
-                e.preventDefault();
-                artistResultsDropdown.classList.add('dn');
-                artistSearchInput.setAttribute('aria-expanded', 'false');
-                currentFocusedIndex = -1;
-                break;
-                
-            case 'Tab':
-                // Allow tab to move to next element, just hide the dropdown
-                artistResultsDropdown.classList.add('dn');
-                artistSearchInput.setAttribute('aria-expanded', 'false');
-                currentFocusedIndex = -1;
-                break;
+        // Remove from selected artists
+        selectedArtists = [];
+        
+        // Mark artist as unselected in available artists
+        const artistInList = availableArtists.find(a => a.id === artistId);
+        if (artistInList) {
+          artistInList.selected = false;
         }
+        
+        // Clear the input field
+        artistSearchInput.value = '';
+        
+        // Re-render dropdown to show the artist again as available
+        renderDropdown(availableArtists);
+        
+        // Show the dropdown since we cleared the field
+        artistResultsDropdown.classList.remove('dn');
+        artistSearchInput.focus();
+      }
     });
 
-    // Handle selection via mouse click
-    artistResultsList.addEventListener('click', (e) => {
-        if (e.target.getAttribute('role') === 'option') {
-            const artistId = e.target.dataset.id;
-            const artistName = e.target.textContent;
-            selectArtist({ id: artistId, name: artistName });
-        }
-    });
-    
     function selectArtist(artist) {
-        selectedArtist = artist;
+      // Clear previous selection for single artist mode
+      if (selectedArtists.length > 0) {
+        // Mark previous artist as unselected
+        selectedArtists.forEach(prevArtist => {
+          const artistInList = availableArtists.find(a => a.id === prevArtist.id);
+          if (artistInList) {
+            artistInList.selected = false;
+          }
+        });
         
-        // Set the input value to the selected artist name
-        artistSearchInput.value = artist.name;
-        
-        // Close the dropdown
-        artistResultsDropdown.classList.add('dn');
-        artistSearchInput.setAttribute('aria-expanded', 'false');
-        currentFocusedIndex = -1;
-        
-        // Remove focus from the input so user can tab to the submit button
-        artistSearchInput.blur();
+        selectedArtists = [];
+      }
+      
+      // Add the new artist
+      selectedArtists.push(artist);
+
+      // Mark artist as selected but keep in available artists
+      const artistInList = availableArtists.find(a => a.id === artist.id);
+      if (artistInList) {
+        artistInList.selected = true;
+      }
+
+      // Display artist name directly in the input field instead of creating a chip
+      artistSearchInput.value = artist.name;
+      artistSearchInput.blur(); // This will hide the dropdown
+      renderDropdown(availableArtists);
+      // Hide dropdown after single selection
+      artistResultsDropdown.classList.add('dn');
     }
 
     function renderDropdown(artists) {
-        artistResultsList.innerHTML = '';
-        
-        if (artists.length === 0) {
-            const noResults = document.createElement('div');
-            noResults.className = 'pa2 gray f6';
-            noResults.textContent = 'No results found';
-            artistResultsList.appendChild(noResults);
-            return;
-        }
+      // Clear any previous keyboard selection when re-rendering
+      const previousSelection = artistResultsDropdown.querySelector('.bg-near-white');
+      if (previousSelection) {
+        previousSelection.classList.remove('bg-near-white');
+      }
+      // Clear the stored reference to the highlighted item since DOM elements are recreated
+      currentHighlightedItem = null;
 
-        artists.forEach((artist, index) => {
-            const item = document.createElement('div');
-            item.className = 'pa2 f6 pointer hover-bg-light-gray';
-            item.setAttribute('role', 'option');
-            item.setAttribute('aria-selected', 'false');
-            // Do not mark as selected based on the artist.selected property
-            item.dataset.id = artist.id;
-            item.textContent = artist.name;
-            artistResultsList.appendChild(item);
-        });
-    }
-    
-    function updateAriaActivedescendant(element) {
-        if (element) {
-            // Generate a temporary ID if needed
-            if (!element.id) {
-                element.id = 'option-' + element.dataset.id;
-            }
-            artistSearchInput.setAttribute('aria-activedescendant', element.id);
-            
-            // Remove previous highlighting
-            const items = Array.from(artistResultsList.querySelectorAll('[role="option"]'));
-            items.forEach(item => {
-                item.classList.remove('bg-near-white');
-            });
-            
-            // Highlight the current item
-            element.classList.add('bg-near-white');
-            
-            // Scroll the focused item into view
-            element.scrollIntoView({ block: 'nearest' });
+      artistResultsDropdown.innerHTML = '';
+      if (artists.length === 0) {
+        artistResultsDropdown.innerHTML = '<div class="pa2 gray f6">No results found</div>';
+        return;
+      }
+
+      artists.forEach(artist => {
+        const item = document.createElement('div');
+        if (artist.selected) {
+          item.classList.add('pa2', 'f6', 'gray', 'bg-light-gray');
+          item.style.cursor = 'default';
+          item.style.opacity = '0.6';
+        } else {
+          item.classList.add('pa2', 'f6', 'pointer', 'hover-bg-light-gray');
         }
-    }    async function loadArtists() {
+        item.dataset.id = artist.id;
+        item.textContent = artist.name;
+        artistResultsDropdown.appendChild(item);
+      });
+    }
+
+    async function loadArtists() {
       try {
         const response = await fetch('/api/artists');
         if (!response.ok) {
           throw new Error('Failed to fetch artists');
         }
         allArtists = await response.json();
-        availableArtists = allArtists.map(artist => ({ ...artist }));
+        availableArtists = allArtists.map(artist => ({ ...artist, selected: false }));
         
         // Clear any previous selection
-        selectedArtist = null;
+        selectedArtists = [];
         artistSearchInput.value = '';
         
         renderDropdown(availableArtists);
@@ -824,12 +857,21 @@
     thisIsForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      if (!selectedArtist) {
+      // Small delay to ensure any Enter key selection is complete 
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      if (selectedArtists.length === 0) {
         alert('Please select an artist');
         return;
       }
       
-      const artistIds = [selectedArtist.id];
+      // Limit to single artist only
+      if (selectedArtists.length > 1) {
+        alert('Please select only one artist for This Is playlists');
+        return;
+      }
+      
+      const artistIds = selectedArtists.map(artist => artist.id);
       
       const loadingDiv = document.getElementById('loading');
       const resultDiv = document.getElementById('result');
@@ -862,7 +904,7 @@
         }
         
         const data = await response.json();
-        const selectedArtistName = selectedArtist.name; // Use single artist name
+        const selectedArtistName = selectedArtists[0].name; // Use single artist name
         
         // Track successful artist playlist creation
         if (typeof umami !== 'undefined') {
