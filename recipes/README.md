@@ -31,7 +31,7 @@ Each recipe file must include:
 
 ## Recipe Types
 
-### Artist Radio (`artist_radio`)
+### This Is (`this_is`)
 - Uses LLM for intelligent track curation
 - Balances popular hits with deep cuts
 - Considers flow and album diversity

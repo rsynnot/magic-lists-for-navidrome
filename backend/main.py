@@ -439,7 +439,7 @@ async def refresh_scheduled_playlists():
         for scheduled_playlist in scheduled_playlists:
             if scheduled_playlist.playlist_type == "rediscover_weekly":
                 await refresh_rediscover_playlist(scheduled_playlist, db)
-            elif scheduled_playlist.playlist_type == "this_is" or scheduled_playlist.playlist_type == "artist_radio":
+            elif scheduled_playlist.playlist_type == "this_is":
                 await refresh_this_is_playlist(scheduled_playlist, db)
                 
     except Exception as e:
@@ -455,9 +455,9 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
-        
-        # Generate new tracks with requested length
-        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length)
+
+        # Generate new tracks (use default length for scheduled refreshes)
+        tracks = await rediscover.generate_rediscover_weekly()
         
         if tracks:
             scheduler_logger.info(f"🎵 Generated {len(tracks)} new tracks for refresh")

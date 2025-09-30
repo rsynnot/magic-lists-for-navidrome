@@ -20,6 +20,12 @@ class AIClient:
         print(f"   🤖 Model: {self.model}")
         print(f"   🌐 Base URL: {self.base_url}")
         
+    async def _get_client(self):
+        """Get or recreate the HTTP client if needed"""
+        if not hasattr(self, 'client') or not self.client or (hasattr(self.client, 'is_closed') and self.client.is_closed):
+            self.client = httpx.AsyncClient()
+        return self.client
+        
     async def curate_this_is(
         self, 
         artist_name: str, 
@@ -64,12 +70,9 @@ class AIClient:
             
             # Use recipe system to generate prompt and get LLM parameters
             recipe_inputs = {
-                "artists": artist_name,  # Match recipe expectation: "artists"
+                "artists": artist_name,
                 "tracks_data": tracks_data,
-                "track_count": num_tracks,  # Match recipe expectation: "track_count"
-                "playlist_length": num_tracks,  # Match recipe expectation: "playlist_length"
-                "refresh_frequency": "daily",  # Default value for recipe
-                "steer": "balanced"  # Default steer value for now
+                "num_tracks": num_tracks
             }
             
             recipe_result = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
@@ -102,73 +105,67 @@ class AIClient:
                 "temperature": temperature
             }
             
-            async with self.client as client:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    json=payload,
-                    headers=headers
-                )
-                response.raise_for_status()
-                
-                result = response.json()
-                content = result["choices"][0]["message"]["content"].strip()
+            client = await self._get_client()
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                json=payload,
+                headers=headers
+            )
+            response.raise_for_status()
+            
+            result = response.json()
+            content = result["choices"][0]["message"]["content"].strip()
 
-                # Log the raw AI response for debugging
-                print(f"🤖 RAW AI RESPONSE for {artist_name}: {content}")
+            # Log the raw AI response for debugging
+            print(f"🤖 RAW AI RESPONSE for {artist_name}: {content}")
 
-                # Parse the JSON response
-                try:
-                    # Try to parse as JSON object first (new recipe format)
-                    try:
-                        response_data = json.loads(content)
-                        if isinstance(response_data, dict) and "track_ids" in response_data:
-                            # New format with reasoning
-                            track_ids = response_data.get("track_ids", [])
-                            reasoning = response_data.get("reasoning", "")
-                            
-                            # Validate track IDs
-                            if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
-                                valid_ids = {track["id"] for track in tracks_json}
-                                filtered_ids = [tid for tid in track_ids if tid in valid_ids]
-                                final_selection = filtered_ids[:num_tracks]
-                                
-                                print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
-                                if reasoning:
-                                    print(f"AI reasoning: {reasoning[:200]}...")
-                                
-                                if include_reasoning or reasoning:
-                                    return final_selection, reasoning
-                                else:
-                                    return final_selection
-                            else:
-                                raise ValueError("Invalid track_ids format in response")
-                        else:
-                            # Fall back to treating as simple array
-                            track_ids = response_data if isinstance(response_data, list) else json.loads(content)
-                    except (json.JSONDecodeError, TypeError):
-                        # Parse as simple track list (legacy format)
-                        track_ids = json.loads(content)
-                    
-                    # Handle simple array format
+            # Parse the JSON response
+            try:
+                # Try to parse as JSON object first (new recipe format)
+                response_data = json.loads(content)
+
+                if isinstance(response_data, dict) and "track_ids" in response_data:
+                    # New format with reasoning
+                    track_ids = response_data.get("track_ids", [])
+                    reasoning = response_data.get("reasoning", "")
+
+                    # Validate track IDs
                     if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
                         valid_ids = {track["id"] for track in tracks_json}
                         filtered_ids = [tid for tid in track_ids if tid in valid_ids]
                         final_selection = filtered_ids[:num_tracks]
-                        
+
                         print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
-                        
-                        if include_reasoning:
-                            return final_selection, ""  # No reasoning available
+                        if reasoning:
+                            print(f"AI reasoning: {reasoning[:200]}...")
+
+                        if include_reasoning or reasoning:
+                            return final_selection, reasoning
                         else:
                             return final_selection
                     else:
-                        raise ValueError("Invalid response format")
-                        
-                except (json.JSONDecodeError, ValueError) as e:
-                    print(f"Failed to parse AI response: {e}")
-                    print(f"Response content: {content}")
-                    # Fall back to simple selection
-                    return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
+                        raise ValueError("Invalid track_ids format in response")
+
+                # Handle simple array format (legacy)
+                elif isinstance(response_data, list) and all(isinstance(tid, str) for tid in response_data):
+                    valid_ids = {track["id"] for track in tracks_json}
+                    filtered_ids = [tid for tid in response_data if tid in valid_ids]
+                    final_selection = filtered_ids[:num_tracks]
+
+                    print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
+
+                    if include_reasoning:
+                        return final_selection, ""  # No reasoning available
+                    else:
+                        return final_selection
+                else:
+                    raise ValueError("Invalid response format: expected dict with track_ids or array of track IDs")
+
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Failed to parse AI response: {e}")
+                print(f"Response content: {content}")
+                # Fall back to simple selection
+                return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
                 
         except httpx.RequestError as e:
             print(f"🌐 Network error calling AI API: {e}")
@@ -205,4 +202,9 @@ class AIClient:
     
     async def close(self):
         """Close the HTTP client"""
-        await self.client.aclose()
+        try:
+            if hasattr(self, 'client') and self.client:
+                if hasattr(self.client, 'is_closed') and not self.client.is_closed:
+                    await self.client.aclose()
+        except Exception as e:
+            print(f"Warning: Error closing HTTP client: {e}")
