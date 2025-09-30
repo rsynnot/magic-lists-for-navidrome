@@ -165,4 +165,4 @@ test_env/
 tmp_rovodev_validate_docker.py
 .claude
 .claude/
-.wipe_playlists.py
+wipe_playlists.py
