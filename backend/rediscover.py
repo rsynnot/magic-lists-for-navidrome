@@ -160,32 +160,37 @@ class RediscoverWeekly:
         
         return dict(track_stats)
     
-    def score_tracks_for_rediscovery(self, track_stats: Dict[str, Any]) -> List[Tuple[str, float, Dict[str, Any]]]:
+    def score_tracks_for_rediscovery(self, track_stats: Dict[str, Any], min_gap_days: int = 7, max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
         """
         Score tracks for re-discovery based on:
         - Historical play count (higher = better)
         - Time since last play (longer = better)
-        - No recent plays (last 7 days)
+        - No recent plays (configurable via min_gap_days)
+
+        Args:
+            track_stats: Dictionary of track statistics
+            min_gap_days: Minimum days since last play to consider (default: 7)
+            max_per_artist: Maximum tracks per artist (not used in scoring, but kept for API compatibility)
         """
         candidates = []
         now = datetime.now()
-        
+
         for song_id, stats in track_stats.items():
             # Only consider tracks with some historical plays (reduced threshold)
             if stats["total_plays"] < 1:
                 continue
 
-            # Skip tracks played recently (last 7 days)
+            # Skip tracks played recently (based on min_gap_days)
             if stats["recent_plays"] > 0:
                 continue
 
             # Calculate days since last play
-            days_since_last_play = 7  # Minimum for synthetic data
+            days_since_last_play = min_gap_days  # Minimum for synthetic data
             if stats["last_play"]:
                 days_since_last_play = (now - stats["last_play"]).days
 
-            # Only consider tracks not played in last 7 days
-            if days_since_last_play < 7:
+            # Only consider tracks not played in the minimum gap period
+            if days_since_last_play < min_gap_days:
                 continue
 
             # Score: (historical play count) × (days since last play)
@@ -193,10 +198,10 @@ class RediscoverWeekly:
             score = stats["total_plays"] * min(days_since_last_play, 90)  # Cap at 90 days
 
             candidates.append((song_id, score, stats))
-        
+
         # Sort by score (highest first)
         candidates.sort(key=lambda x: x[1], reverse=True)
-        
+
         return candidates
     
     def filter_artist_diversity(self, scored_tracks: List[Tuple[str, float, Dict[str, Any]]], max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:

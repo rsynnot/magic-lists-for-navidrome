@@ -332,9 +332,9 @@ async def create_rediscover_playlist(
         
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
-        
-        # Generate the playlist tracks
-        tracks = await rediscover.generate_rediscover_weekly()
+
+        # Generate the playlist tracks with user-specified length
+        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length)
         
         if not tracks:
             raise HTTPException(status_code=404, detail="No tracks found for Re-Discover Weekly")
