@@ -218,7 +218,12 @@
   </style>
 </head>
 <body class="p-3 text-base leading-relaxed text-gray-900">
-  <div class="app-container">
+  <div class="app-container" style="position: relative;">
+    <!-- Toast Container -->
+    <div id="toast-container" class="absolute top-4 right-4 w-full max-w-sm z-50 space-y-3 pointer-events-none">
+      <!-- Toasts will be dynamically inserted here -->
+    </div>
+    
     <!-- Header -->
     <div class="app-header">
       <div class="flex items-center justify-between pl-2 pt-2 pb-0">
@@ -463,10 +468,6 @@
     </div>
   </div>
 
-  <!-- Toast Container -->
-  <div id="toast-container" class="fixed top-16 right-0 w-full md:w-96 md:right-4 z-50 space-y-3 pointer-events-none">
-    <!-- Toasts will be dynamically inserted here -->
-  </div>
 
   <!-- Footer -->
   <footer class="text-center mt-3 text-gray-600 text-sm">
@@ -520,7 +521,7 @@
 
       const toast = document.createElement('div');
       toast.id = toastId;
-      toast.className = `${bgClass} ${borderClass} ${textClass} rounded-lg shadow-lg p-4 mx-3 md:mx-0 pointer-events-auto transition-all duration-300 transform translate-x-0 opacity-100`;
+      toast.className = `${bgClass} ${borderClass} ${textClass} rounded-lg shadow-lg p-4 pointer-events-auto transition-all duration-300 transform translate-x-0 opacity-100`;
       toast.innerHTML = `
         <div class="flex items-center gap-3">
           <div class="flex-shrink-0">

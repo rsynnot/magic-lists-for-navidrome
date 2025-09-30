@@ -28,6 +28,10 @@ logging.basicConfig(
 # Create a specific logger for scheduler activities
 scheduler_logger = logging.getLogger('scheduler')
 
+# Reduce httpx logging verbosity to avoid cluttering scheduler.log
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('httpcore').setLevel(logging.WARNING)
+
 from .navidrome_client import NavidromeClient
 from .ai_client import AIClient
 from .database import DatabaseManager, get_db
@@ -298,13 +302,21 @@ async def get_rediscover_weekly():
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
         
-        # Generate the playlist
-        tracks = await rediscover.generate_rediscover_weekly()
+        # Generate the playlist with AI curation
+        tracks = await rediscover.generate_rediscover_weekly(use_ai=True)
+        
+        # Extract AI curation info for response
+        ai_curated = tracks[0].get("ai_curated", False) if tracks else False
+        message = f"Generated Re-Discover Weekly with {len(tracks)} tracks"
+        if ai_curated:
+            message += " (AI curated)"
+        else:
+            message += " (algorithmic selection)"
         
         return RediscoverWeeklyResponse(
             tracks=tracks,
             total_tracks=len(tracks),
-            message=f"Generated Re-Discover Weekly with {len(tracks)} tracks"
+            message=message
         )
         
     except Exception as e:
@@ -333,11 +345,25 @@ async def create_rediscover_playlist(
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
 
-        # Generate the playlist tracks with user-specified length
-        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length)
+        # Generate the playlist tracks with user-specified length and AI curation
+        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True)
         
         if not tracks:
             raise HTTPException(status_code=404, detail="No tracks found for Re-Discover Weekly")
+        
+        # Extract AI reasoning if available
+        ai_reasoning = ""
+        ai_curated = False
+        if tracks:
+            first_track = tracks[0]
+            ai_reasoning = first_track.get("ai_reasoning", "")
+            ai_curated = first_track.get("ai_curated", False)
+        
+        # Log the AI reasoning for debugging
+        if ai_reasoning and ai_curated:
+            scheduler_logger.info(f"🎵 AI REASONING for Re-Discover Weekly: {ai_reasoning}")
+        else:
+            scheduler_logger.info(f"⚠️ Re-Discover Weekly used algorithmic selection (no AI reasoning)")
         
         # Create playlist name based on frequency
         frequency_names = {
@@ -350,10 +376,14 @@ async def create_rediscover_playlist(
         # Extract track IDs
         track_ids = [track["id"] for track in tracks]
         
-        # Create playlist in Navidrome (Re-Discover doesn't have reasoning)
+        # Create playlist in Navidrome with AI reasoning as comment if available
+        comment_to_use = ai_reasoning if (ai_reasoning and ai_curated) else None
+        scheduler_logger.info(f"💬 Creating Re-Discover playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_to_use}")
+
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
-            track_ids=track_ids
+            track_ids=track_ids,
+            comment=comment_to_use
         )
         
         # Get track titles for database storage
@@ -363,7 +393,8 @@ async def create_rediscover_playlist(
         playlist = await db.create_playlist(
             artist_id="rediscover_weekly",
             playlist_name=playlist_name,
-            songs=track_titles
+            songs=track_titles,
+            reasoning=ai_reasoning if ai_curated else "Algorithmic selection"
         )
         
         # Handle scheduling (always schedule since we removed "once" option)
@@ -456,17 +487,33 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
 
-        # Generate new tracks (use default length for scheduled refreshes)
-        tracks = await rediscover.generate_rediscover_weekly()
+        # Generate new tracks with AI curation (use default length for scheduled refreshes)
+        tracks = await rediscover.generate_rediscover_weekly(use_ai=True)
         
         if tracks:
             scheduler_logger.info(f"🎵 Generated {len(tracks)} new tracks for refresh")
             
-            # Update the existing playlist in Navidrome
+            # Extract AI reasoning if available
+            ai_reasoning = ""
+            ai_curated = False
+            if tracks:
+                first_track = tracks[0]
+                ai_reasoning = first_track.get("ai_reasoning", "")
+                ai_curated = first_track.get("ai_curated", False)
+            
+            # Log the AI reasoning for scheduled refresh
+            if ai_reasoning and ai_curated:
+                scheduler_logger.info(f"🎵 AI REASONING for scheduled Re-Discover refresh: {ai_reasoning}")
+            else:
+                scheduler_logger.info(f"⚠️ Scheduled Re-Discover refresh used algorithmic selection")
+            
+            # Update the existing playlist in Navidrome with reasoning
             track_ids = [track["id"] for track in tracks]
+            comment_to_use = ai_reasoning if (ai_reasoning and ai_curated) else None
             await nav_client.update_playlist(
                 playlist_id=scheduled_playlist.navidrome_playlist_id,
-                track_ids=track_ids
+                track_ids=track_ids,
+                comment=comment_to_use
             )
             
             # Calculate next refresh time
