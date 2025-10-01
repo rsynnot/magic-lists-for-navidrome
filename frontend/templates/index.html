@@ -26,12 +26,15 @@
 
     /* Custom app container */
     .app-container {
+      margin: 0;
+      /* min-height: auto; */
+      border-radius: 0px;
+      width:100%;
       max-width: 992px;
       min-height: 80vh;
-      margin: 1rem auto;
+      margin:0;
       background: #fff;
-      border: 1px solid #eaeaea;
-      border-radius: 8px;
+      border:none;
       display: flex;
       flex-direction: column;
     }
@@ -57,15 +60,8 @@
 
     /* Mobile responsive */
     @media screen and (max-width: 767px) {
-      body {
-        padding: 1rem;
-      }
+     
 
-      .app-container {
-        margin: 0;
-        min-height: auto;
-        border-radius: 4px;
-      }
 
       .app-body {
         flex-direction: column;
@@ -80,7 +76,7 @@
       }
 
       .mobile-logo {
-        width: 140px !important;
+        width: 160px !important;
       }
 
       .mobile-menu-overlay {
@@ -159,6 +155,12 @@
 
     /* Hide mobile menu button on desktop */
     @media screen and (min-width: 768px) {
+      .app-container {
+        margin:1rem 0;
+        border: 1px solid #eaeaea;
+        border-radius: 8px;
+      }
+
       .mobile-menu-btn, .mobile-menu-overlay {
         display: none !important;
       }
@@ -167,11 +169,9 @@
     /* Extra small mobile devices */
     @media screen and (max-width: 375px) {
       body {
-        padding: 0.5rem;
+        /* padding: 0.5rem; */
       }
-      .app-container {
-        border-radius: 2px;
-      }
+      
     }
 
     /* Sidebar navigation */
@@ -217,7 +217,7 @@
     }
   </style>
 </head>
-<body class="p-3 text-base leading-relaxed text-gray-900">
+<body class="text-base leading-relaxed text-gray-900">
   <div class="app-container" style="position: relative;">
     <!-- Toast Container -->
     <div id="toast-container" class="absolute top-4 right-4 w-full max-w-sm z-50 space-y-3 pointer-events-none">
@@ -226,7 +226,7 @@
     
     <!-- Header -->
     <div class="app-header">
-      <div class="flex items-center justify-between pl-2 pt-2 pb-0">
+      <div class="flex items-center justify-between  pt-2 pb-0">
         <a href="/" class="no-underline" onclick="location.reload()">
           <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" class="mobile-logo h-12 w-auto">
         </a>
@@ -239,7 +239,7 @@
     <!-- App Body -->
     <div class="app-body">
       <!-- Sidebar -->
-      <div class="sidebar px-3 pb-3 hidden md:flex flex-col">
+      <div class="sidebar px-4 pb-3 hidden md:flex flex-col">
         <nav class="flex flex-col sidebar-nav">
           <button class="sidebar-nav-btn" id="this-is-nav">
             This is
@@ -258,20 +258,20 @@
       </div>
 
       <!-- Main Content -->
-      <div class="content pl-3 pr-4 md:pr-5 pt-0 pb-4">
+      <div class="content px-4 md:pr-5 pt-4 pb-4">
         <!-- Welcome Content -->
         <div id="welcome-content">
-          <h1 class="text-2xl mt-0 leading-tight font-bold text-gray-900 mb-3 heading-spacing">Create Magic Playlists</h1>
-          <p class="text-xl text-gray-600 leading-relaxed mt-0 mb-4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
+          <h1 class="text-xl mt-0 leading-tight font-bold text-gray-900 mb-1 heading-spacing">Create Magic Playlists</h1>
+          <p class="text-l text-gray-600 leading-relaxed mt-0 mb-4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
 
-          <div class="mb-4">
+          <div class="mb-4 mt-8"> 
             <h2 class="text-lg font-semibold text-gray-900 mb-3">Features</h2>
             <div class="mb-3">
               <h3 class="text-base font-semibold text-gray-900 mb-2">This is</h3>
               <p class="text-gray-600 leading-relaxed m-0">Create a 'This Is' playlist for a single artist from your music library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
             </div>
             <div class="mb-3">
-              <h3 class="text-base font-semibold text-gray-900 mb-2">Re-Discover Playlists✨</h3>
+              <h3 class="text-base font-semibold text-gray-900 mb-2">Re-Discover Playlists</h3>
               <p class="text-gray-600 leading-relaxed m-0">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
             </div>
             <div class="mb-3">
