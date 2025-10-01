@@ -19,279 +19,167 @@
 
   <style>
     body {
-      background-color: #f6f5f4;
       font-family: 'Inter', sans-serif;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Custom app container */
+    /* Container styling */
     .app-container {
-      margin: 0;
-      /* min-height: auto; */
-      border-radius: 0px;
-      width:100%;
       max-width: 992px;
-      min-height: 80vh;
-      margin:0;
-      background: #fff;
-      border:none;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .app-header {
-      width: 100%;
-      padding: 1.25rem 1rem;
-    }
-
-    .app-body {
-      display: flex;
-      flex: 1;
-    }
-
-    /* Desktop layout */
-    .sidebar {
-      width: 34%;
-    }
-
-    .content {
-      width: 66%;
-    }
-
-    /* Mobile responsive */
-    @media screen and (max-width: 767px) {
-     
-
-
-      .app-body {
-        flex-direction: column;
-      }
-
-      .sidebar {
-        display: none;
-      }
-
-      .content {
-        width: 100%;
-      }
-
-      .mobile-logo {
-        width: 160px !important;
-      }
-
-      .mobile-menu-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 1000;
-        display: none;
-      }
-
-      .mobile-menu {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: white;
-        padding: 2rem 1.5rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-
-      .mobile-menu-item {
-        display: block;
-        width: 100%;
-        padding: 1rem 0;
-        border: none;
-        background: none;
-        text-align: left;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #191918;
-        border-bottom: 1px solid #eaeaea;
-        cursor: pointer;
-      }
-
-      .mobile-menu-item:last-child {
-        border-bottom: none;
-      }
-
-      .mobile-menu-item:hover {
-        background-color: #f6f5f4;
-      }
-
-      .mobile-menu-close {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        width: 2rem;
-        height: 2rem;
-        border: none;
-        background: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .mobile-menu-btn {
-        display: block !important;
-        border: none;
-        background: none;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #191918;
-        cursor: pointer;
-        padding: .5rem;
-      }
-
-      .mobile-menu-btn span {
-        border-bottom: 1px solid #ddd;
-      }
-    }
-
-    /* Hide mobile menu button on desktop */
-    @media screen and (min-width: 768px) {
-      .app-container {
-        margin:1rem 0;
-        border: 1px solid #eaeaea;
-        border-radius: 8px;
-      }
-
-      .mobile-menu-btn, .mobile-menu-overlay {
-        display: none !important;
-      }
-    }
-
-    /* Extra small mobile devices */
-    @media screen and (max-width: 375px) {
-      body {
-        /* padding: 0.5rem; */
-      }
-      
-    }
-
-    /* Sidebar navigation */
-    .sidebar-nav {
-      border-top: 1px solid #eaeaea;
-    }
-
-    .sidebar-nav-btn {
-      background-color: transparent;
-      border-radius: 0;
-      min-height: 2.25rem;
-      padding: 1rem;
-      transition: background-color 0.4s ease;
-      border-bottom: 1px solid #eaeaea;
-      width: 100%;
-      border-left: none;
-      border-right: none;
-      border-top: none;
-      text-align: left;
-      font-weight: 600;
-      font-size: 1rem;
-      color: #191918;
-      cursor: pointer;
-    }
-
-    .sidebar-nav-btn:hover {
-      background-color: #f6f5f4;
-    }
-
-    .sidebar-nav-btn.selected {
-      background-color: #f6f5f4;
-    }
-
-    /* Typography */
-    .heading-spacing {
-      letter-spacing: -0.0375rem;
-    }
-
-    /* Advanced Select dropdown custom styling */
-    .hs-select-dropdown {
-      max-height: 300px;
-      overflow-y: auto;
+      margin: 0 auto;
     }
   </style>
 </head>
-<body class="text-base leading-relaxed text-gray-900">
-  <div class="app-container" style="position: relative;">
-    <!-- Toast Container -->
-    <div id="toast-container" class="absolute top-4 right-4 w-full max-w-sm z-50 space-y-3 pointer-events-none">
-      <!-- Toasts will be dynamically inserted here -->
-    </div>
-    
-    <!-- Header -->
-    <div class="app-header">
-      <div class="flex items-center justify-between  pt-2 pb-0">
-        <a href="/" class="no-underline" onclick="location.reload()">
-          <img src="/static/assets/ml-logo.svg" alt="Magic Lists for Navidrome" class="mobile-logo h-12 w-auto">
-        </a>
-        <button class="mobile-menu-btn" id="mobile-menu-btn" style="display: none;">
-          <span>Menu</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- App Body -->
-    <div class="app-body">
-      <!-- Sidebar -->
-      <div class="sidebar px-4 pb-3 hidden md:flex flex-col">
-        <nav class="flex flex-col sidebar-nav">
-          <button class="sidebar-nav-btn" id="this-is-nav">
-            This is
-          </button>
-          <button class="sidebar-nav-btn" id="rediscover-nav">
-            Re-discover Playlist
-          </button>
-        </nav>
-
-        <!-- Bottom navigation item -->
-        <div class="mt-auto">
-          <button class="sidebar-nav-btn" id="manage-playlists-nav" style="border-top: none; border-bottom: none;">
-            Manage Playlists
+<body class="bg-gray-50">
+  <!-- ========== HEADER ========== -->
+  <header class="w-full sm:mb-4 ">
+    <nav class="app-container px-4 sm:px-6 py-3">
+      <!-- Mobile menu toggle -->
+      <div class="flex items-center justify-between md:justify-start">
+        <div class="md:hidden">
+          <button type="button" class="hs-overlay-toggle relative size-8 flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50" data-hs-overlay="#hs-sidebar" aria-controls="hs-sidebar" aria-label="Toggle navigation">
+            <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" x2="21" y1="6" y2="6"/>
+              <line x1="3" x2="21" y1="12" y2="12"/>
+              <line x1="3" x2="21" y1="18" y2="18"/>
+            </svg>
+            <span class="sr-only">Toggle navigation</span>
           </button>
         </div>
+
+        <!-- Logo -->
+        <div class="flex-1 md:flex-none">
+          <a href="/" class="flex-none focus:outline-none focus:opacity-80" onclick="location.reload()">
+            <img src="/static/assets/ml-logo.svg" alt="Magic Lists" class="h-10 w-auto">
+          </a>
+        </div>
+
+        <!-- Header content placeholder (empty for now as requested) -->
+        <div class="hidden md:flex items-center justify-end gap-x-3 flex-1">
+          <!-- Future: breadcrumbs, user menu, etc. -->
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- ========== END HEADER ========== -->
+
+  <!-- ========== APP WRAPPER ========== -->
+  <div class="app-container">
+    <div class="flex min-h-screen relative">
+      <!-- ========== SIDEBAR ========== -->
+      <div id="hs-sidebar" class="hs-overlay hs-overlay-open:translate-x-0 -translate-x-full transition-all duration-300 transform w-[260px] h-full hidden fixed inset-y-0 start-0 z-[60] bg-white border-e border-gray-200 md:block md:translate-x-0 md:relative md:h-auto md:z-auto" role="dialog" tabindex="-1" aria-label="Sidebar">
+        <div class="relative flex flex-col h-full max-h-full">
+          <!-- Mobile Close Button -->
+          <div class="flex justify-end p-4 md:hidden">
+            <button type="button" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-lg border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200" data-hs-overlay="#hs-sidebar">
+              <span class="sr-only">Close</span>
+              <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m18 15-6-6-6 6"/>
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Content -->
+          <div class="h-full space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300">
+            <nav class="px-4 w-full">
+              <ul class="flex flex-col  border-t border-gray-200 py-4">
+                <!-- Playlists Section Header -->
+                <li class=" ">
+                  <div class="flex items-center gap-x-3.5 py-2 px-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <!-- <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 18V5l12-2v13"/>
+                      <circle cx="6" cy="18" r="3"/>
+                      <circle cx="18" cy="16" r="3"/>
+                    </svg> -->
+                    Playlists
+                  </div>
+                </li>
+                
+                <!-- Playlist Menu Items -->
+                <li>
+                  <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-100 cursor-pointer" id="this-is-nav">
+                    This is
+                  </a>
+                </li>
+                <li>
+                  <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-100 cursor-pointer" id="rediscover-nav">
+                    Re-Discover
+                  </a>
+                </li>
+
+                <!-- Manage Section Header -->
+                <li class="pt-4 border-t border-gray-200 mt-4">
+                  <div class="flex items-center gap-x-3.5 py-2 px-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <!-- <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg> -->
+                    Manage
+                  </div>
+                </li>
+                
+                <!-- Manage Menu Items -->
+                <li>
+                  <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-100 cursor-pointer" id="manage-playlists-nav">
+                    Playlists
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <!-- ========== END SIDEBAR ========== -->
+
+      <!-- ========== MAIN CONTENT ========== -->
+      <div class="flex-1 px-2 sm:p-6X space-y-4X sm:space-y-6X">
+      <!-- Toast Container -->
+      <div id="toast-container" class="fixed top-20 right-4 w-full max-w-sm z-50 space-y-3 pointer-events-none">
+        <!-- Toasts will be dynamically inserted here -->
       </div>
 
-      <!-- Main Content -->
-      <div class="content px-4 md:pr-5 pt-4 pb-4">
-        <!-- Welcome Content -->
-        <div id="welcome-content">
-          <h1 class="text-xl mt-0 leading-tight font-bold text-gray-900 mb-1 heading-spacing">Create Magic Playlists</h1>
-          <p class="text-l text-gray-600 leading-relaxed mt-0 mb-4">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
-
-          <div class="mb-4 mt-8"> 
-            <h2 class="text-lg font-semibold text-gray-900 mb-3">Features</h2>
-            <div class="mb-3">
-              <h3 class="text-base font-semibold text-gray-900 mb-2">This is</h3>
-              <p class="text-gray-600 leading-relaxed m-0">Create a 'This Is' playlist for a single artist from your music library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
-            </div>
-            <div class="mb-3">
-              <h3 class="text-base font-semibold text-gray-900 mb-2">Re-Discover Playlists</h3>
-              <p class="text-gray-600 leading-relaxed m-0">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
-            </div>
-            <div class="mb-3">
-              <h3 class="text-base font-semibold text-gray-900 mb-2">Auto-Refresh</h3>
-              <p class="text-gray-600 leading-relaxed m-0">Any playlist can be set to refresh each day, week or month.</p>
+      <!-- Welcome Content -->
+      <div id="welcome-content" class="!mt-0">  
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <h1 class="text-2xl font-bold text-gray-900 mb-3">Create Magic Playlists</h1>
+          <p class="text-lg text-gray-600 mb-6">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
+          
+          <div class="space-y-6">
+            <h2 class="text-lg font-semibold text-gray-900">Features</h2>
+            
+            <div class="grid gap-6 md:grid-cols-2">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900 mb-2">This is</h3>
+                <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your music library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
+              </div>
+              
+              <div>
+                <h3 class="text-base font-semibold text-gray-900 mb-2">Re-Discover Playlists</h3>
+                <p class="text-gray-600">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+              </div>
+              
+              <div class="md:col-span-2">
+                <h3 class="text-base font-semibold text-gray-900 mb-2">Auto-Refresh</h3>
+                <p class="text-gray-600">Any playlist can be set to refresh each day, week or month.</p>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- This Is Form (hidden by default) -->
-        <div id="this-is-content" style="display: none;">
-          <div class="mb-4">
-            <h1 class="text-2xl mt-0 leading-tight font-bold text-gray-900 mb-3 heading-spacing">This is</h1>
-            <p class="text-gray-600 leading-relaxed m-0">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
+      <!-- This Is Form (hidden by default) -->
+      <div id="this-is-content" style="display: none;">
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">This is</h1>
+            <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
           </div>
 
-          <form id="this-is-form" class="mb-4">
-            <!-- Artist Selection with Advanced Select -->
-            <div class="mb-6">
-              <label for="artist-search-select" class="block  text-sm font-bold mb-2 text-gray-900">Choose an artist from your library</label>
+          <form id="this-is-form" class="space-y-6">
+            <!-- Artist Selection -->
+            <div>
+              <label for="artist-search-select" class="block text-sm font-medium text-gray-900 mb-2">Choose an artist from your library</label>
               <div class="relative">
                 <select
                   id="artist-search-select"
@@ -301,7 +189,7 @@
                     "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 px-4 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
                     "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
                     "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
-                    "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http:.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                    "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
                     "hasSearch": true,
                     "searchPlaceholder": "Search...",
                     "searchClasses": "block w-full text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1] py-2 px-3",
@@ -314,22 +202,22 @@
               </div>
             </div>
 
-            <!-- Playlist Length & Refresh Frequency -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
+            <!-- Options Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Playlist Length -->
               <div>
-                <label class="block text-sm font-bold mb-3 text-gray-900">Playlist Length</label>
-                <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-900 mb-3">Playlist Length</label>
+                <div class="space-y-3">
                   <div class="flex items-center">
-                    <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
                   </div>
                   <div class="flex items-center">
-                    <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
                   </div>
                   <div class="flex items-center">
-                    <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
                   </div>
                 </div>
@@ -337,22 +225,22 @@
 
               <!-- Refresh Frequency -->
               <div>
-                <label class="block text-sm font-bold mb-3 text-gray-900">Refresh Frequency</label>
-                <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-900 mb-3">Refresh Frequency</label>
+                <div class="space-y-3">
                   <div class="flex items-center">
-                    <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-freq-none" class="text-sm text-gray-900 ms-2">Do not refresh</label>
                   </div>
                   <div class="flex items-center">
-                    <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
                   </div>
                   <div class="flex items-center">
-                    <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
                   </div>
                   <div class="flex items-center">
-                    <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                    <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
                     <label for="artist-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
                   </div>
                 </div>
@@ -360,8 +248,8 @@
             </div>
 
             <!-- AI Behavior (disabled) -->
-            <div class="mb-4">
-              <label class="block text-sm font-bold mb-3 text-gray-500">AI Behavior Preference</label>
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-3">AI Behavior Preference</label>
               <div class="flex items-center">
                 <input type="radio" id="artist-steer-balanced" name="artist-steer" value="balanced" checked disabled class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
                 <label for="artist-steer-balanced" class="text-sm text-gray-500 ms-2">AI behavior preference set to 'Balanced'</label>
@@ -369,84 +257,90 @@
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="mt-6 py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 disabled:pointer-events-none w-full md:w-auto justify-center md:justify-start">
+            <button type="submit" class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 disabled:pointer-events-none">
               Create This Is Playlist
             </button>
           </form>
         </div>
+      </div>
 
-        <!-- Re-discover Playlist Content (hidden by default) -->
-        <div id="rediscover-content" style="display: none;">
-          <div class="mb-4">
-            <h1 class="text-2xl mt-0 leading-tight font-bold text-gray-900 mb-3 heading-spacing">Re-discover Playlist</h1>
-            <p class="text-gray-600 leading-relaxed m-0">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
+      <!-- Re-discover Playlist Content (hidden by default) -->
+      <div id="rediscover-content" style="display: none;">
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-discover Playlist</h1>
+            <p class="text-gray-600">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
           </div>
 
-          <!-- Playlist Length & Refresh Frequency -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
-            <!-- Playlist Length -->
-            <div>
-              <label class="block text-sm font-medium mb-3 text-gray-900">Playlist Length</label>
-              <div class="space-y-2">
-                <div class="flex items-center">
-                  <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                  <label for="rediscover-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
+          <div class="space-y-6">
+            <!-- Options Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Playlist Length -->
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-3">Playlist Length</label>
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-length-100" name="rediscover-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
+                  </div>
                 </div>
-                <div class="flex items-center">
-                  <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                  <label for="rediscover-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
-                </div>
-                <div class="flex items-center">
-                  <input type="radio" id="rediscover-length-100" name="rediscover-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                  <label for="rediscover-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
+              </div>
+
+              <!-- Refresh Frequency -->
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-3">Refresh Frequency</label>
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Refresh Frequency -->
+            <!-- AI Behavior (disabled) -->
             <div>
-              <label class="block text-sm font-medium mb-3 text-gray-900">Refresh Frequency</label>
-              <div class="space-y-2">
-                <div class="flex items-center">
-                  <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                  <label for="rediscover-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
-                </div>
-                <div class="flex items-center">
-                  <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                  <label for="rediscover-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
-                </div>
-                <div class="flex items-center">
-                  <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-                  <label for="rediscover-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
-                </div>
+              <label class="block text-sm font-medium text-gray-500 mb-3">AI Behavior Preference</label>
+              <div class="flex items-center">
+                <input type="radio" id="rediscover-steer-balanced" name="rediscover-steer" value="balanced" checked disabled class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                <label for="rediscover-steer-balanced" class="text-sm text-gray-500 ms-2">AI behavior preference set to 'Balanced'</label>
               </div>
             </div>
-          </div>
 
-          <!-- AI Behavior (disabled) -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-3 text-gray-500">AI Behavior Preference</label>
-            <div class="flex items-center">
-              <input type="radio" id="rediscover-steer-balanced" name="rediscover-steer" value="balanced" checked disabled class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
-              <label for="rediscover-steer-balanced" class="text-sm text-gray-500 ms-2">AI behavior preference set to 'Balanced'</label>
-            </div>
+            <!-- Submit Button -->
+            <button id="rediscover-btn" class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 disabled:pointer-events-none">
+              Generate Re-Discover Playlist
+            </button>
           </div>
-
-          <!-- Submit Button -->
-          <button id="rediscover-btn" class="mt-6 py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 disabled:pointer-events-none w-full md:w-auto mb-4 justify-center md:justify-start">
-            Generate Re-Discover Playlist
-          </button>
         </div>
+      </div>
 
-        <!-- Manage Playlists Content (hidden by default) -->
-        <div id="manage-playlists-content" style="display: none;">
-          <div class="mb-4">
-            <h1 class="text-2xl mt-0 leading-tight font-bold text-gray-900 mb-3 heading-spacing">Manage Playlists</h1>
-            <p class="text-gray-600 leading-relaxed m-0">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
+      <!-- Manage Playlists Content (hidden by default) -->
+      <div id="manage-playlists-content" style="display: none;">
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>
+            <p class="text-gray-600">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
           </div>
 
           <!-- Loading State -->
-          <div id="playlists-loading" class="hidden text-center p-3 rounded-lg mb-3 bg-gray-100">
+          <div id="playlists-loading" class="hidden text-center p-4 rounded-lg mb-4 bg-gray-50">
             <span class="text-gray-600">Loading your playlists...</span>
           </div>
 
@@ -454,23 +348,13 @@
           <div id="playlists-container"></div>
         </div>
       </div>
+      <!-- ========== END MAIN CONTENT ========== -->
     </div>
   </div>
-
-  <!-- Mobile Menu Overlay -->
-  <div class="mobile-menu-overlay" id="mobile-menu-overlay">
-    <div class="mobile-menu">
-      <button class="mobile-menu-close" id="mobile-menu-close">&times;</button>
-      <button class="mobile-menu-item" data-target="welcome-content">Home</button>
-      <button class="mobile-menu-item" data-target="this-is-content">This is</button>
-      <button class="mobile-menu-item" data-target="rediscover-content">Re-Discover Playlist</button>
-      <button class="mobile-menu-item" data-target="manage-playlists-content">Manage Playlists</button>
-    </div>
-  </div>
-
+  <!-- ========== END APP WRAPPER ========== -->
 
   <!-- Footer -->
-  <footer class="text-center mt-3 text-gray-600 text-sm">
+  <footer class="text-center mt-6 py-4 text-gray-600 text-sm">
     Made by <a href="https://synnotstudio.com" class="text-blue-600 no-underline hover:underline">Synnot Studio</a> – Open Source (MIT)
   </footer>
 
@@ -578,17 +462,17 @@
       // Show the selected content
       document.getElementById(contentId).style.display = 'block';
 
-      // Update button states
-      const buttons = document.querySelectorAll('.sidebar-nav-btn');
-      buttons.forEach(btn => btn.classList.remove('selected'));
+      // Update sidebar active states
+      const sidebarItems = document.querySelectorAll('#hs-sidebar a');
+      sidebarItems.forEach(item => item.classList.remove('bg-gray-100'));
 
-      // Add selected state to clicked button
+      // Add active state to clicked item
       if (contentId === 'this-is-content') {
-        document.getElementById('this-is-nav').classList.add('selected');
+        document.getElementById('this-is-nav').classList.add('bg-gray-100');
       } else if (contentId === 'rediscover-content') {
-        document.getElementById('rediscover-nav').classList.add('selected');
+        document.getElementById('rediscover-nav').classList.add('bg-gray-100');
       } else if (contentId === 'manage-playlists-content') {
-        document.getElementById('manage-playlists-nav').classList.add('selected');
+        document.getElementById('manage-playlists-nav').classList.add('bg-gray-100');
       }
     }
 
@@ -597,82 +481,50 @@
       // Initialize Preline components
       if (window.HSStaticMethods) {
         window.HSStaticMethods.autoInit();
+        console.log('Preline initialized');
+      } else {
+        console.error('Preline not loaded');
       }
+      
+      // Debug: Test if overlay elements are found
+      const sidebar = document.getElementById('hs-sidebar');
+      const toggleBtn = document.querySelector('[data-hs-overlay="#hs-sidebar"]');
+      console.log('Sidebar element:', sidebar);
+      console.log('Toggle button:', toggleBtn);
 
-      // Desktop sidebar navigation
+      // Sidebar navigation
       const thisIsBtn = document.getElementById('this-is-nav');
-      const rediscoverNavBtn = document.getElementById('rediscover-nav');
+      const rediscoverBtn = document.getElementById('rediscover-nav');
       const managePlaylistsBtn = document.getElementById('manage-playlists-nav');
 
       if (thisIsBtn) {
-        thisIsBtn.addEventListener('click', () => {
+        thisIsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
           showContent('this-is-content');
           loadArtists();
         });
       }
 
-      if (rediscoverNavBtn) {
-        rediscoverNavBtn.addEventListener('click', () => {
+      if (rediscoverBtn) {
+        rediscoverBtn.addEventListener('click', (e) => {
+          e.preventDefault();
           showContent('rediscover-content');
         });
       }
 
       if (managePlaylistsBtn) {
-        managePlaylistsBtn.addEventListener('click', () => {
+        managePlaylistsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
           showContent('manage-playlists-content');
           loadPlaylists();
         });
       }
 
-      // Mobile menu functionality
-      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-      const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
-      const mobileMenuClose = document.getElementById('mobile-menu-close');
-      const mobileMenuItems = document.querySelectorAll('.mobile-menu-item');
-
-      // Show mobile menu
-      mobileMenuBtn.addEventListener('click', () => {
-        mobileMenuOverlay.style.display = 'block';
-      });
-
-      // Hide mobile menu
-      function hideMobileMenu() {
-        mobileMenuOverlay.style.display = 'none';
-      }
-
-      mobileMenuClose.addEventListener('click', hideMobileMenu);
-
-      // Hide menu when clicking overlay
-      mobileMenuOverlay.addEventListener('click', (e) => {
-        if (e.target === mobileMenuOverlay) {
-          hideMobileMenu();
-        }
-      });
-
-      // Handle mobile menu item clicks
-      mobileMenuItems.forEach(item => {
-        item.addEventListener('click', () => {
-          const target = item.getAttribute('data-target');
-
-          if (target === 'this-is-content') {
-            showContent('this-is-content');
-            loadArtists();
-          } else if (target === 'rediscover-content') {
-            showContent('rediscover-content');
-          } else if (target === 'manage-playlists-content') {
-            showContent('manage-playlists-content');
-            loadPlaylists();
-          } else {
-            showContent(target);
-          }
-
-          hideMobileMenu();
-        });
-      });
-
       // Re-discover playlist functionality
-      const rediscoverBtn = document.getElementById('rediscover-btn');
-      rediscoverBtn.addEventListener('click', generateRediscoverWeekly);
+      const rediscoverSubmitBtn = document.getElementById('rediscover-btn');
+      if (rediscoverSubmitBtn) {
+        rediscoverSubmitBtn.addEventListener('click', generateRediscoverWeekly);
+      }
 
       // Setup artist selection change handler
       const artistSelect = document.getElementById('artist-search-select');
@@ -681,6 +533,12 @@
           selectedArtistId = e.target.value;
           console.log('Selected artist ID:', selectedArtistId);
         });
+      }
+
+      // This Is form submission
+      const thisIsForm = document.getElementById('this-is-form');
+      if (thisIsForm) {
+        thisIsForm.addEventListener('submit', handleThisIsSubmit);
       }
     });
 
@@ -726,9 +584,8 @@
       }
     }
 
-    // This Is form submission
-    const thisIsForm = document.getElementById('this-is-form');
-    thisIsForm.addEventListener('submit', async function(e) {
+    // This Is form submission handler
+    async function handleThisIsSubmit(e) {
       e.preventDefault();
 
       if (!selectedArtistId) {
@@ -736,7 +593,7 @@
         return;
       }
 
-      const submitBtn = thisIsForm.querySelector('button[type="submit"]');
+      const submitBtn = e.target.querySelector('button[type="submit"]');
       const selectedArtist = allArtists.find(a => a.id === selectedArtistId);
       const selectedArtistName = selectedArtist ? selectedArtist.name : 'Artist';
 
@@ -781,7 +638,7 @@
       } finally {
         submitBtn.disabled = false;
       }
-    });
+    }
 
     // Re-discover Weekly functionality
     async function generateRediscoverWeekly() {
@@ -847,7 +704,7 @@
 
         if (playlists.length === 0) {
           containerDiv.innerHTML = `
-            <div class="text-center p-4 text-gray-600">
+            <div class="text-center p-6 text-gray-600">
               <p class="text-xl mb-2">No playlists found</p>
               <p class="text-sm m-0">Create your first playlist using This is or Re-Discover Weekly!</p>
             </div>
@@ -887,16 +744,16 @@
         }
 
         return `
-          <div class="bg-white border border-gray-200 rounded-lg p-3 mb-3 flex items-center">
+          <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex items-center">
             <div class="flex-auto">
-              <h3 class="text-base font-bold text-gray-900 m-0 mb-2">${playlist.playlist_name}</h3>
+              <h3 class="text-base font-semibold text-gray-900 m-0 mb-2">${playlist.playlist_name}</h3>
               <p class="text-sm text-gray-600 m-0">${metadataText}</p>
               ${playlist.reasoning ? `<p class="text-sm text-gray-600 m-0 mt-2 italic">${playlist.reasoning}</p>` : ''}
             </div>
             <div class="flex-none">
               <button
                 onclick="deletePlaylist(${playlist.id}, '${playlist.playlist_name}')"
-                class="text-sm font-bold underline cursor-pointer border-none bg-transparent text-red-600 hover:text-red-800"
+                class="text-sm font-medium underline cursor-pointer border-none bg-transparent text-red-600 hover:text-red-800 px-2 py-1"
               >
                 Delete
               </button>
