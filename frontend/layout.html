@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layout Test - Preline Components</title>
+    
+    <!-- Preline CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@preline/preline@1.7.0/dist/preline.css" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Main container with flex layout -->
+    <div class="flex flex-col min-h-screen md:max-w-[900px] md:mx-auto">
+        <!-- Navbar -->
+        <header class="bg-gray-100 top-0 z-50">
+            <nav class="py-2 px-4"> 
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <a class="flex items-center text-xl font-bold" href="#">
+                            <span>Music App</span>
+                            <!-- SVG Logo here -->
+                        </a>
+                    </div>
+                    <div class="mobile-toggle"> 
+                        <button type="button" class="md:hidden hs-collapse-toggle relative size-9 flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-white text-gray-800 shadow-2xs hover:bg-gray-50 focus:outline-hidden focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none " id="hs-navbar-alignment-collapse" aria-expanded="false" aria-controls="hs-navbar-alignment" aria-label="Toggle navigation" data-hs-collapse="#hs-navbar-alignment">
+                            <svg class="hs-collapse-open:hidden shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
+                            <svg class="hs-collapse-open:block hidden shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            <span class="sr-only">Menu</span>
+                        </button>
+                    </div>
+               </div>
+            </nav>
+        </header>
+
+        <!-- Content area with separate mobile and desktop layouts -->
+        <div class="flex flex-1">
+            <!-- Desktop sidebar - always visible on medium screens and up -->
+            <aside id="desktopSidebar" class="hidden md:block md:w-60 md:bg-gray-100 bg-white  min-h-[calc(80vh)]">
+                <div class="p-4 h-full overflow-y-auto">
+                    <nav class="hs-accordion-group pt-1 pb-2 w-full" role="tablist">
+                        
+                        <div class="border-t border-gray-200 w-full block mt-0 pt-2">
+                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm bg-gray-300 text-white rounded-md hover:bg-gray-400 focus:outline-none focus:bg-gray-400" href="#" data-page="home">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                </svg>
+                                Home
+                            </a>
+                        </div>
+
+                        <div class="border-t border-gray-200 w-full block mt-2 pt-2">
+                            <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
+                                CREATE
+                            </span>
+                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-slate-800 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="this-is-artist">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 18V5l12-2v13"/>
+                                    <circle cx="6" cy="18" r="3"/>
+                                    <circle cx="18" cy="16" r="3"/>
+                                </svg>
+                                <span class="">This is <span class="text-gray-400">Artist</span></span>
+                                <!-- <span class="text-xs">This is a description which spans two lines.</span> -->
+                            </a>
+                        
+
+                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-slate-700 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="re-discover">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 18V5l12-2v13"/>
+                                    <circle cx="6" cy="18" r="3"/>
+                                    <circle cx="18" cy="16" r="3"/>
+                                </svg>
+                                <span class="">Re-Discover</span>
+                                <!-- <span class="text-xs">This is a description which spans two lines.</span> -->
+                            </a>
+                        </div>
+
+                       
+
+
+                        <div class="border-t border-gray-200 w-full block mt-2 pt-2">
+                            <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
+                                MANAGE
+                            </span>
+
+
+                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-slate-700 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="playlists">
+                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/>
+                                    <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
+                                    <path d="M12 2v2"/>
+                                    <path d="M12 22v-2"/>
+                                    <path d="m1.05 9 1.97.5"/>
+                                    <path d="m21.95 15-1.97-.5"/>
+                                    <path d="m7 12 8-5"/>
+                                    <path d="m3.5 14.5.5-1.5"/>
+                                    <path d="m20.5 9.5-.5 1.5"/>
+                                    <path d="m6.76 15.24 1.5-1.5"/>
+                                    <path d="m16.24 8.76-1.5 1.5"/>
+                                </svg>
+                                Playlists
+                                <!-- <span class="text-xs">This is a description which spans two lines.</span> -->
+                            </a>
+                        </div>
+                        <div class="border-t border-gray-200 w-full block mt-2 pt-2"> </div>
+                            
+                         
+                        
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- Mobile sidebar - overlay and toggle -->
+            <div class="md:hidden">
+                <div id="sidebarOverlay" class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden transition-opacity duration-300"></div>
+                <aside id="mobileSidebar" class="sidebar fixed left-0 top-0 z-50 w-64 h-screen bg-white transform -translate-x-full transition-transform duration-300 ease-in-out">
+                    <div class="relative flex flex-col h-full max-h-full">
+                        <!-- Header with Brand and Close Button -->
+                        <header class="p-4 flex justify-between items-center gap-x-2">
+                            <a class="flex-none font-semibold text-xl text-black focus:outline-none focus:opacity-80" href="#" aria-label="Brand">Music App</a>
+                            
+                            <div class="-me-2">
+                                <!-- Close Button -->
+                                <button type="button" id="closeMobileSidebar" class="flex justify-center items-center gap-x-3 size-6 bg-white border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 rounded-full disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:bg-gray-100">
+                                    <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                    <span class="sr-only">Close</span>
+                                </button>
+                                <!-- End Close Button -->
+                            </div>
+                        </header>
+                        <!-- End Header -->
+
+                        <!-- Navigation -->
+                        <nav class="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300">
+                            <div class="p-2 w-full">
+                                
+                                <div class="border-t border-gray-200 w-full block mt-0 pt-2">
+                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm bg-gray-200 text-white rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-300" href="#" data-page="home">
+                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                        </svg>
+                                        Home
+                                    </a>
+                                </div>
+
+                                <div class="border-t border-gray-200 w-full block mt-2 pt-2">
+                                    <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
+                                        CREATE
+                                    </span>
+                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="this-is-artist">
+                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M9 18V5l12-2v13"/>
+                                            <circle cx="6" cy="18" r="3"/>
+                                            <circle cx="18" cy="16" r="3"/>
+                                        </svg>
+                                        <span class="">This is <span class="text-gray-400">Artist</span></span>
+                                    </a>
+                                
+                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="re-discover">
+                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M9 18V5l12-2v13"/>
+                                            <circle cx="6" cy="18" r="3"/>
+                                            <circle cx="18" cy="16" r="3"/>
+                                        </svg>
+                                        <span class="">Re-Discover</span>
+                                    </a>
+                                </div>
+
+                                <div class="border-t border-gray-200 w-full block mt-2 pt-2">
+                                    <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
+                                        MANAGE
+                                    </span>
+                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="playlists">
+                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/>
+                                            <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
+                                            <path d="M12 2v2"/>
+                                            <path d="M12 22v-2"/>
+                                            <path d="m1.05 9 1.97.5"/>
+                                            <path d="m21.95 15-1.97-.5"/>
+                                            <path d="m7 12 8-5"/>
+                                            <path d="m3.5 14.5.5-1.5"/>
+                                            <path d="m20.5 9.5-.5 1.5"/>
+                                            <path d="m6.76 15.24 1.5-1.5"/>
+                                            <path d="m16.24 8.76-1.5 1.5"/>
+                                        </svg>
+                                        Playlists
+                                    </a>
+                                </div>
+                                <div class="border-t border-gray-200 w-full block mt-2 pt-2"> </div>
+                                
+                            </div>
+                        </nav>
+                        <!-- End Navigation -->
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Main content area -->
+            <main class="flex-1 mt-3 md:mt-0 md:p-0 md:pr-4 md:py-0 md:pt-4  ">
+                <div class="bg-white md:border md:border-gray-200 p-4 md:p-6 md:rounded-lg">
+                    <h1 class="text-2xl font-bold mb-4">Main Content Area</h1>
+                    <p>This is the main content panel. On large screens, it appears to the right of the sidebar.</p>
+                    <p>On small screens, the sidebar is hidden and can be toggled with the mobile menu button.</p>
+                    
+                    
+               
+                </div>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="  py-3 px-4 mt-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="block w-full text-gray-500  text-center text-sm mb-2 md:mb-0">
+                    Made by <a href="https://synnotstudio.com" class="text-blue-600 no-underline hover:underline">Synnot Studio</a> – Open Source (MIT)
+                </div>
+                
+            </div>
+        </footer>
+    </div>
+
+    <!-- Preline JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@preline/preline@1.7.0/dist/preline.js"></script>
+    
+    <script>
+        // Mobile menu toggle functionality
+        const mobileMenuBtn = document.getElementById('hs-navbar-alignment-collapse');
+        const mobileSidebar = document.getElementById('mobileSidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const closeMobileSidebarBtn = document.getElementById('closeMobileSidebar');
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            mobileSidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        });
+        
+        // Close sidebar when clicking on close button
+        closeMobileSidebarBtn.addEventListener('click', function() {
+            mobileSidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        });
+        
+        // Close sidebar when clicking on overlay
+        sidebarOverlay.addEventListener('click', function() {
+            mobileSidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth < 768 && 
+                !mobileSidebar.contains(event.target) && 
+                !mobileMenuBtn.contains(event.target) &&
+                !mobileSidebar.classList.contains('-translate-x-full')) {
+                mobileSidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+        });
+        
+        // Handle window resize to ensure proper state
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) {
+                mobileSidebar.classList.add('-translate-x-full'); // Hide mobile sidebar on large screens
+                sidebarOverlay.classList.add('hidden'); // Hide overlay on large screens
+            } else {
+                // On mobile, ensure sidebar is hidden when switching from desktop view
+                mobileSidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+        });
+        
+        // Sidebar navigation active state management
+        function setActiveMenuItem(page) {
+            // Remove active state from all links in both sidebars
+            const allLinks = document.querySelectorAll('[data-page]');
+            allLinks.forEach(link => {
+                link.classList.remove('bg-gray-300', 'text-slate-700');
+                link.classList.add('text-gray-800', 'hover:bg-gray-200');
+                // For desktop sidebar
+                if (link.closest('#desktopSidebar')) {
+                    link.classList.add('text-slate-700', 'hover:bg-gray-200');
+                    link.classList.remove('text-gray-800', 'hover:bg-gray-100');
+                }
+            });
+            
+            // Add active state to clicked links in both sidebars
+            const activeLinks = document.querySelectorAll(`[data-page="${page}"]`);
+            activeLinks.forEach(link => {
+                link.classList.add('bg-gray-200', 'text-gray-700');
+                link.classList.remove('text-gray-800', 'text-slate-700', 'hover:bg-gray-100', 'hover:bg-gray-200');
+                link.classList.add('hover:bg-gray-300');
+            });
+        }
+        
+        // Add click handlers to all navigation links
+        document.addEventListener('click', function(event) {
+            const link = event.target.closest('[data-page]');
+            if (link) {
+                event.preventDefault();
+                const page = link.getAttribute('data-page');
+                setActiveMenuItem(page);
+                
+                // Close mobile sidebar if clicked
+                if (window.innerWidth < 768) {
+                    mobileSidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                }
+            }
+        });
+        
+        // Initialize Preline components after DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize any Preline components if needed
+            // hsSidebar.init() if using the actual sidebar component from Preline
+            
+            // Set home as active by default
+            setActiveMenuItem('home');
+        });
+    </script>
+</body>
+</html>
