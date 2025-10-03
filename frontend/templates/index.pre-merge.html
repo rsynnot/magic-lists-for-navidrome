@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Magic Lists</title>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Umami Analytics -->
+  <script defer src="https://umami.itsricky.com/script.js" data-website-id="e5a08463-74dd-4b83-b7ef-da5f5e088430"></script>
+
+  <!-- Tailwind CSS (required for Preline) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Preline UI -->
+  <script src="https://cdn.jsdelivr.net/npm/preline@latest/dist/preline.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Container styling */
+    .app-container {
+      max-width: 992px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <!-- ========== HEADER ========== -->
+  <header class="w-full sm:mb-4 ">
+    <nav class="app-container px-4 sm:px-6 py-3">
+      <!-- Mobile menu toggle -->
+      <div class="flex items-center justify-between md:justify-start">
+        <div class="md:hidden">
+          <button type="button" class="hs-overlay-toggle relative size-8 flex justify-center items-center gap-x-2 rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50" data-hs-overlay="#hs-sidebar" aria-controls="hs-sidebar" aria-label="Toggle navigation">
+            <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" x2="21" y1="6" y2="6"/>
+              <line x1="3" x2="21" y1="12" y2="12"/>
+              <line x1="3" x2="21" y1="18" y2="18"/>
+            </svg>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+        </div>
+
+        <!-- Logo -->
+        <div class="flex-1 md:flex-none">
+          <a href="/" class="flex-none focus:outline-none focus:opacity-80" onclick="location.reload()">
+            <img src="/static/assets/ml-logo.svg" alt="Magic Lists" class="h-10 w-auto">
+          </a>
+        </div>
+
+        <!-- Header content placeholder (empty for now as requested) -->
+        <div class="hidden md:flex items-center justify-end gap-x-3 flex-1">
+          <!-- Future: breadcrumbs, user menu, etc. -->
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- ========== END HEADER ========== -->
+
+  <!-- ========== APP WRAPPER ========== -->
+  <div class="app-container">
+    <div class="flex min-h-screen relative">
+      <!-- ========== SIDEBAR ========== -->
+      <div id="hs-sidebar" class="hs-overlay hs-overlay-open:translate-x-0 -translate-x-full transition-all duration-300 transform w-[260px] h-full hidden fixed inset-y-0 start-0 z-[60] bg-white border-e border-gray-200 md:block md:translate-x-0 md:relative md:h-auto md:z-auto" role="dialog" tabindex="-1" aria-label="Sidebar">
+        <div class="relative flex flex-col h-full max-h-full">
+          <!-- Mobile Close Button -->
+          <div class="flex justify-end p-4 md:hidden">
+            <button type="button" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-lg border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200" data-hs-overlay="#hs-sidebar">
+              <span class="sr-only">Close</span>
+              <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m18 15-6-6-6 6"/>
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Content -->
+          <div class="h-full space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300">
+            <nav class="px-4 w-full">
+              <ul class="flex flex-col  border-t border-gray-200 py-4">
+                <!-- Playlists Section Header -->
+                <li class=" ">
+                  <div class="flex items-center gap-x-3.5 py-2 px-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <!-- <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 18V5l12-2v13"/>
+                      <circle cx="6" cy="18" r="3"/>
+                      <circle cx="18" cy="16" r="3"/>
+                    </svg> -->
+                    Playlists
+                  </div>
+                </li>
+                
+                <!-- Playlist Menu Items -->
+                <li>
+                  <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-100 cursor-pointer" id="this-is-nav">
+                    This is
+                  </a>
+                </li>
+                <li>
+                  <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-100 cursor-pointer" id="rediscover-nav">
+                    Re-Discover
+                  </a>
+                </li>
+
+                <!-- Manage Section Header -->
+                <li class="pt-4 border-t border-gray-200 mt-4">
+                  <div class="flex items-center gap-x-3.5 py-2 px-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <!-- <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg> -->
+                    Manage
+                  </div>
+                </li>
+                
+                <!-- Manage Menu Items -->
+                <li>
+                  <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:bg-gray-100 cursor-pointer" id="manage-playlists-nav">
+                    Playlists
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <!-- ========== END SIDEBAR ========== -->
+
+      <!-- ========== MAIN CONTENT ========== -->
+      <div class="flex-1 px-2 sm:p-6X space-y-4X sm:space-y-6X">
+      <!-- Toast Container -->
+      <div id="toast-container" class="fixed top-20 right-4 w-full max-w-sm z-50 space-y-3 pointer-events-none">
+        <!-- Toasts will be dynamically inserted here -->
+      </div>
+
+      <!-- Welcome Content -->
+      <div id="welcome-content" class="!mt-0">  
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <h1 class="text-2xl font-bold text-gray-900 mb-3">Create Magic Playlists</h1>
+          <p class="text-lg text-gray-600 mb-6">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
+          
+          <div class="space-y-6">
+            <h2 class="text-lg font-semibold text-gray-900">Features</h2>
+            
+            <div class="grid gap-6 md:grid-cols-2">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900 mb-2">This is</h3>
+                <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your music library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
+              </div>
+              
+              <div>
+                <h3 class="text-base font-semibold text-gray-900 mb-2">Re-Discover Playlists</h3>
+                <p class="text-gray-600">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
+              </div>
+              
+              <div class="md:col-span-2">
+                <h3 class="text-base font-semibold text-gray-900 mb-2">Auto-Refresh</h3>
+                <p class="text-gray-600">Any playlist can be set to refresh each day, week or month.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- This Is Form (hidden by default) -->
+      <div id="this-is-content" style="display: none;">
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">This is</h1>
+            <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
+          </div>
+
+          <form id="this-is-form" class="space-y-6">
+            <!-- Artist Selection -->
+            <div>
+              <label for="artist-search-select" class="block text-sm font-medium text-gray-900 mb-2">Choose an artist from your library</label>
+              <div class="relative">
+                <select
+                  id="artist-search-select"
+                  data-hs-select='{
+                    "placeholder": "Search for an artist...",
+                    "toggleTag": "<button type=\"button\"></button>",
+                    "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 px-4 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
+                    "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
+                    "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
+                    "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                    "hasSearch": true,
+                    "searchPlaceholder": "Search...",
+                    "searchClasses": "block w-full text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1] py-2 px-3",
+                    "searchWrapperClasses": "bg-white p-2 -mx-1 sticky top-0"
+                  }'
+                  class="hidden"
+                >
+                  <option value="">Choose an artist</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Options Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Playlist Length -->
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-3">Playlist Length</label>
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Refresh Frequency -->
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-3">Refresh Frequency</label>
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-freq-none" class="text-sm text-gray-900 ms-2">Do not refresh</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="artist-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI Behavior (disabled) -->
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-3">AI Behavior Preference</label>
+              <div class="flex items-center">
+                <input type="radio" id="artist-steer-balanced" name="artist-steer" value="balanced" checked disabled class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                <label for="artist-steer-balanced" class="text-sm text-gray-500 ms-2">AI behavior preference set to 'Balanced'</label>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 disabled:pointer-events-none">
+              Create This Is Playlist
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Re-discover Playlist Content (hidden by default) -->
+      <div id="rediscover-content" style="display: none;">
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-discover Playlist</h1>
+            <p class="text-gray-600">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
+          </div>
+
+          <div class="space-y-6">
+            <!-- Options Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Playlist Length -->
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-3">Playlist Length</label>
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-length-100" name="rediscover-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Refresh Frequency -->
+              <div>
+                <label class="block text-sm font-medium text-gray-900 mb-3">Refresh Frequency</label>
+                <div class="space-y-3">
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
+                  </div>
+                  <div class="flex items-center">
+                    <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                    <label for="rediscover-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI Behavior (disabled) -->
+            <div>
+              <label class="block text-sm font-medium text-gray-500 mb-3">AI Behavior Preference</label>
+              <div class="flex items-center">
+                <input type="radio" id="rediscover-steer-balanced" name="rediscover-steer" value="balanced" checked disabled class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none">
+                <label for="rediscover-steer-balanced" class="text-sm text-gray-500 ms-2">AI behavior preference set to 'Balanced'</label>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="rediscover-btn" class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-gray-800 text-white hover:bg-gray-900 disabled:opacity-50 disabled:pointer-events-none">
+              Generate Re-Discover Playlist
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Playlists Content (hidden by default) -->
+      <div id="manage-playlists-content" style="display: none;">
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>
+            <p class="text-gray-600">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
+          </div>
+
+          <!-- Loading State -->
+          <div id="playlists-loading" class="hidden text-center p-4 rounded-lg mb-4 bg-gray-50">
+            <span class="text-gray-600">Loading your playlists...</span>
+          </div>
+
+          <!-- Playlists Container -->
+          <div id="playlists-container"></div>
+        </div>
+      </div>
+      <!-- ========== END MAIN CONTENT ========== -->
+    </div>
+  </div>
+  <!-- ========== END APP WRAPPER ========== -->
+
+  <!-- Footer -->
+  <footer class="text-center mt-6 py-4 text-gray-600 text-sm">
+    Made by <a href="https://synnotstudio.com" class="text-blue-600 no-underline hover:underline">Synnot Studio</a> – Open Source (MIT)
+  </footer>
+
+  <script>
+    // Global state for artist selection
+    let selectedArtistId = null;
+    let allArtists = [];
+    let currentToast = null;
+
+    // Toast utility functions
+    function showToast(type, message, duration = 5000) {
+      // Remove any existing toast
+      if (currentToast) {
+        hideToast(currentToast);
+      }
+
+      const container = document.getElementById('toast-container');
+      const toastId = 'toast-' + Date.now();
+
+      let icon = '';
+      let bgClass = '';
+      let textClass = '';
+      let borderClass = '';
+
+      if (type === 'loading') {
+        icon = `<svg class="animate-spin flex-shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>`;
+        bgClass = 'bg-white border-gray-200';
+        textClass = 'text-gray-800';
+        borderClass = 'border';
+      } else if (type === 'success') {
+        icon = `<svg class="flex-shrink-0 size-4 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>`;
+        bgClass = 'bg-teal-50 border-teal-200';
+        textClass = 'text-teal-800';
+        borderClass = 'border';
+      } else if (type === 'error') {
+        icon = `<svg class="flex-shrink-0 size-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>`;
+        bgClass = 'bg-red-50 border-red-200';
+        textClass = 'text-red-800';
+        borderClass = 'border';
+      }
+
+      const toast = document.createElement('div');
+      toast.id = toastId;
+      toast.className = `${bgClass} ${borderClass} ${textClass} rounded-lg shadow-lg p-4 pointer-events-auto transition-all duration-300 transform translate-x-0 opacity-100`;
+      toast.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="flex-shrink-0">
+            ${icon}
+          </div>
+          <div class="flex-grow">
+            <p class="text-sm font-medium">${message}</p>
+          </div>
+          ${type !== 'loading' ? `
+          <button type="button" class="flex-shrink-0 inline-flex items-center justify-center size-5 rounded-lg text-gray-800 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400" onclick="hideToast('${toastId}')">
+            <span class="sr-only">Close</span>
+            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          ` : ''}
+        </div>
+      `;
+
+      container.appendChild(toast);
+      currentToast = toastId;
+
+      // Auto-dismiss (except for loading toasts)
+      if (type !== 'loading' && duration > 0) {
+        setTimeout(() => hideToast(toastId), duration);
+      }
+
+      return toastId;
+    }
+
+    function hideToast(toastId) {
+      const toast = document.getElementById(toastId);
+      if (toast) {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+          if (currentToast === toastId) {
+            currentToast = null;
+          }
+        }, 300);
+      }
+    }
+
+    // Navigation functionality
+    function showContent(contentId) {
+      // Hide all content sections
+      document.getElementById('welcome-content').style.display = 'none';
+      document.getElementById('this-is-content').style.display = 'none';
+      document.getElementById('rediscover-content').style.display = 'none';
+      document.getElementById('manage-playlists-content').style.display = 'none';
+
+      // Show the selected content
+      document.getElementById(contentId).style.display = 'block';
+
+      // Update sidebar active states
+      const sidebarItems = document.querySelectorAll('#hs-sidebar a');
+      sidebarItems.forEach(item => item.classList.remove('bg-gray-100'));
+
+      // Add active state to clicked item
+      if (contentId === 'this-is-content') {
+        document.getElementById('this-is-nav').classList.add('bg-gray-100');
+      } else if (contentId === 'rediscover-content') {
+        document.getElementById('rediscover-nav').classList.add('bg-gray-100');
+      } else if (contentId === 'manage-playlists-content') {
+        document.getElementById('manage-playlists-nav').classList.add('bg-gray-100');
+      }
+    }
+
+    // Initialize Preline and setup event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Preline components
+      if (window.HSStaticMethods) {
+        window.HSStaticMethods.autoInit();
+        console.log('Preline initialized');
+      } else {
+        console.error('Preline not loaded');
+      }
+      
+      // Debug: Test if overlay elements are found
+      const sidebar = document.getElementById('hs-sidebar');
+      const toggleBtn = document.querySelector('[data-hs-overlay="#hs-sidebar"]');
+      console.log('Sidebar element:', sidebar);
+      console.log('Toggle button:', toggleBtn);
+
+      // Sidebar navigation
+      const thisIsBtn = document.getElementById('this-is-nav');
+      const rediscoverBtn = document.getElementById('rediscover-nav');
+      const managePlaylistsBtn = document.getElementById('manage-playlists-nav');
+
+      if (thisIsBtn) {
+        thisIsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          showContent('this-is-content');
+          loadArtists();
+        });
+      }
+
+      if (rediscoverBtn) {
+        rediscoverBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          showContent('rediscover-content');
+        });
+      }
+
+      if (managePlaylistsBtn) {
+        managePlaylistsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          showContent('manage-playlists-content');
+          loadPlaylists();
+        });
+      }
+
+      // Re-discover playlist functionality
+      const rediscoverSubmitBtn = document.getElementById('rediscover-btn');
+      if (rediscoverSubmitBtn) {
+        rediscoverSubmitBtn.addEventListener('click', generateRediscoverWeekly);
+      }
+
+      // Setup artist selection change handler
+      const artistSelect = document.getElementById('artist-search-select');
+      if (artistSelect) {
+        artistSelect.addEventListener('change', function(e) {
+          selectedArtistId = e.target.value;
+          console.log('Selected artist ID:', selectedArtistId);
+        });
+      }
+
+      // This Is form submission
+      const thisIsForm = document.getElementById('this-is-form');
+      if (thisIsForm) {
+        thisIsForm.addEventListener('submit', handleThisIsSubmit);
+      }
+    });
+
+    // Load artists and populate the select
+    async function loadArtists() {
+      try {
+        const response = await fetch('/api/artists');
+        if (!response.ok) {
+          throw new Error('Failed to fetch artists');
+        }
+        allArtists = await response.json();
+
+        // Clear any previous selection
+        selectedArtistId = null;
+
+        // Populate the select dropdown
+        const artistSelect = document.getElementById('artist-search-select');
+        if (artistSelect) {
+          // Clear existing options except the first one
+          while (artistSelect.options.length > 1) {
+            artistSelect.remove(1);
+          }
+
+          // Add artist options
+          allArtists.forEach(artist => {
+            const option = document.createElement('option');
+            option.value = artist.id;
+            option.textContent = artist.name;
+            artistSelect.appendChild(option);
+          });
+
+          // Reinitialize the HSSelect component
+          if (window.HSSelect) {
+            const selectInstance = window.HSSelect.getInstance(artistSelect);
+            if (selectInstance) {
+              selectInstance.destroy();
+            }
+            window.HSSelect.autoInit();
+          }
+        }
+      } catch (error) {
+        console.error('Error loading artists:', error);
+      }
+    }
+
+    // This Is form submission handler
+    async function handleThisIsSubmit(e) {
+      e.preventDefault();
+
+      if (!selectedArtistId) {
+        showToast('error', 'Please select an artist');
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const selectedArtist = allArtists.find(a => a.id === selectedArtistId);
+      const selectedArtistName = selectedArtist ? selectedArtist.name : 'Artist';
+
+      // Show loading toast
+      showToast('loading', 'Creating your playlist...', 0);
+      submitBtn.disabled = true;
+
+      try {
+        const refreshFrequency = document.querySelector('input[name="artist-refresh-frequency"]:checked').value;
+        const playlistLength = document.querySelector('input[name="artist-playlist-length"]:checked').value;
+
+        const response = await fetch('/api/create_playlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            artist_ids: [selectedArtistId],
+            refresh_frequency: refreshFrequency,
+            playlist_length: parseInt(playlistLength)
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to create playlist');
+        }
+
+        const data = await response.json();
+
+        // Track successful artist playlist creation
+        if (typeof umami !== 'undefined') {
+          umami.track('artist_playlist_created');
+        }
+
+        // Show success toast
+        showToast('success', `Playlist created with ${data.songs ? data.songs.length : 0} tracks`);
+
+      } catch (error) {
+        console.error('Error creating playlist:', error);
+        showToast('error', error.message);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    // Re-discover Weekly functionality
+    async function generateRediscoverWeekly() {
+      const button = document.getElementById('rediscover-btn');
+
+      // Show loading toast
+      showToast('loading', 'Analyzing your listening history...', 0);
+      button.disabled = true;
+
+      try {
+        const refreshFrequency = document.querySelector('input[name="rediscover-refresh-frequency"]:checked').value;
+        const playlistLength = document.querySelector('input[name="rediscover-playlist-length"]:checked').value;
+
+        const response = await fetch('/api/create-rediscover-playlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            refresh_frequency: refreshFrequency,
+            playlist_length: parseInt(playlistLength)
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to create Re-Discover playlist');
+        }
+
+        const data = await response.json();
+
+        // Track successful Re-Discover Weekly generation
+        if (typeof umami !== 'undefined') {
+          umami.track('rediscover_weekly_generated');
+        }
+
+        // Show success toast
+        showToast('success', `Re-Discover playlist created with ${data.tracks ? data.tracks.length : 0} tracks`);
+
+      } catch (error) {
+        console.error('Error generating Re-Discover Weekly:', error);
+        showToast('error', error.message);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    // Manage Playlists functionality
+    async function loadPlaylists() {
+      const loadingDiv = document.getElementById('playlists-loading');
+      const containerDiv = document.getElementById('playlists-container');
+
+      loadingDiv.classList.remove('hidden');
+      containerDiv.innerHTML = '';
+
+      try {
+        const response = await fetch('/api/playlists');
+        if (!response.ok) {
+          throw new Error('Failed to load playlists');
+        }
+
+        const playlists = await response.json();
+
+        if (playlists.length === 0) {
+          containerDiv.innerHTML = `
+            <div class="text-center p-6 text-gray-600">
+              <p class="text-xl mb-2">No playlists found</p>
+              <p class="text-sm m-0">Create your first playlist using This is or Re-Discover Weekly!</p>
+            </div>
+          `;
+        } else {
+          renderPlaylists(playlists);
+        }
+
+      } catch (error) {
+        console.error('Error loading playlists:', error);
+        containerDiv.innerHTML = `
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-800 m-0">Error loading playlists: ${error.message}</p>
+          </div>
+        `;
+      } finally {
+        loadingDiv.classList.add('hidden');
+      }
+    }
+
+    function renderPlaylists(playlists) {
+      const container = document.getElementById('playlists-container');
+
+      container.innerHTML = playlists.map(playlist => {
+        const createdDate = new Date(playlist.created_at).toLocaleDateString();
+        const songCount = playlist.songs.length;
+
+        let metadataText = `Created ${createdDate} • ${songCount} tracks`;
+
+        if (playlist.refresh_frequency && playlist.refresh_frequency !== 'once') {
+          metadataText += ` • Refreshes ${playlist.refresh_frequency}`;
+
+          if (playlist.next_refresh) {
+            const nextRefreshDate = new Date(playlist.next_refresh).toLocaleDateString();
+            metadataText += ` • Next: ${nextRefreshDate}`;
+          }
+        }
+
+        return `
+          <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex items-center">
+            <div class="flex-auto">
+              <h3 class="text-base font-semibold text-gray-900 m-0 mb-2">${playlist.playlist_name}</h3>
+              <p class="text-sm text-gray-600 m-0">${metadataText}</p>
+              ${playlist.reasoning ? `<p class="text-sm text-gray-600 m-0 mt-2 italic">${playlist.reasoning}</p>` : ''}
+            </div>
+            <div class="flex-none">
+              <button
+                onclick="deletePlaylist(${playlist.id}, '${playlist.playlist_name}')"
+                class="text-sm font-medium underline cursor-pointer border-none bg-transparent text-red-600 hover:text-red-800 px-2 py-1"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deletePlaylist(playlistId, playlistName) {
+      if (!confirm(`Are you sure you want to delete "${playlistName}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/playlists/${playlistId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          throw new Error(errorData.detail || 'Failed to delete playlist');
+        }
+
+        // Reload the playlists list
+        loadPlaylists();
+
+        // Show success toast
+        showToast('success', 'Playlist deleted successfully');
+
+      } catch (error) {
+        console.error('Error deleting playlist:', error);
+        showToast('error', error.message);
+      }
+    }
+  </script>
+</body>
+</html>
