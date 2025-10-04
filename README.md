@@ -1,39 +1,53 @@
-# MagicLists - Navidrome MVP
+## MagicLists for Navidrome
 
-A FastAPI web application that integrates with Navidrome to create AI-powered playlists from your music library.
+Free your music. Own your experience.
+
+MagicLists is an open-source experiment in AI-assisted music discovery for people who run their own Navidrome server. Instead of "renting" playlists from Apple or Spotify, you keep full control of your library and still enjoy smart, personalised mixes.
+
+It's an ongoing research project led by a product designer with 20+ years in tech, built with and for the Navidrome community. Together we're proving that AI-powered curation can be free, transparent and privacy-respecting.
 
 ## Features
+- 🎵 **This Is (Artist)** - A definitive, single-artist mix with primary and featured appearances, de-duplicated versions, and balanced hits and deep cuts
+- 🔄 **Re-Discover** - Surfaces tracks you haven't played recently so you can re-find forgotten favourites
+- ⏰ **Auto-Refresh** - Schedule playlists to refresh automatically (daily, weekly, monthly) to keep lists current
+- 🐳 **Easy Docker Setup** - Get running in minutes with Docker - no complex setup required
 
-- 🎵 **Artist Radio** - Create expertly curated playlists from your favorite artists with AI-powered track selection and flow
-- 🎯 **Multi-Artist Playlists** - Blend multiple artists into cohesive playlists for deeper music discovery
-- 🔄 **Re-Discover Weekly** - Automatically surface forgotten gems from your library that you haven't heard in a while
-- 🐳 **Easy Deployment** - Get running in minutes with Docker - no complex setup required
+### More to come:
+Song Radio, Multi-artist Radio, AI prompted lists, fresh discovery tools, and other experiments in open music curation.
 
 ## Screenshots
+![Artist Radio UI](assets/images/artist-playlist.png)
 
-![Artist Radio UI](assets/images/artist-radio.png)
-
-_Caption: Creating an Artist Radio playlist _ 
+_Caption: Creating a 'This is (Artist)' playlist _ 
 
 ## Project Structure
 
 ```
-magiclists-navidrome-mvp/
+magiclists-navidrome/
 ├── backend/
 │   ├── main.py              # FastAPI entrypoint
 │   ├── navidrome_client.py  # Navidrome API client
 │   ├── ai_client.py         # AI integration
 │   ├── database.py          # SQLite database manager
+│   ├── recipe_manager.py    # Playlist recipe system
+│   ├── rediscover.py        # Re-discover logic
 │   └── schemas.py           # Pydantic models
 ├── frontend/
 │   ├── templates/
 │   │   └── index.html       # Main web interface
 │   └── static/
-│       └── style.css        # CSS styles
-├── docker/
-│   ├── Dockerfile           # Container configuration
-│   └── docker-compose.yml   # Multi-service setup
+│       └── assets/
+│           └── ml-logo.svg  # Magic Lists logo
+├── recipes/
+│   ├── registry.json        # Recipe registry
+│   ├── this_is_v1_002.json  # This Is recipe v1.2
+│   └── re_discover_v1_004.json # Re-Discover recipe v1.4
+├── assets/
+│   └── images/
+│       └── artist-radio.png # Screenshot
 ├── requirements.txt         # Python dependencies
+├── Dockerfile               # Container configuration
+├── docker-compose.yml       # Docker Compose setup
 └── README.md               # This file
 ```
 
@@ -100,28 +114,17 @@ magiclists-navidrome-mvp/
 
 - `GET /` - Web interface
 - `GET /api/artists` - List all artists from Navidrome
-- `POST /api/create_playlist` - Create a new playlist
-  ```json
-  {
-    "artist_id": "artist_123",
-    "playlist_name": "My Favorite Songs"
-  }
-  ```
+- `POST /api/create_playlist` - Create a new "This Is" playlist
+- `POST /api/create_playlist_with_reasoning` - Create playlist with detailed reasoning
 - `GET /api/rediscover-weekly` - Generate Re-Discover Weekly recommendations
 - `POST /api/create-rediscover-playlist` - Create Re-Discover Weekly playlist in Navidrome
-
-## Re-Discover Weekly Feature
-
-The **Re-Discover Weekly** feature analyzes your Navidrome listening history to find tracks you've loved but haven't heard recently:
-
-- 📊 **Analyzes last 30 days** of listening history
-- 🎯 **Finds forgotten favorites** - tracks with high play counts but not played in 7+ days
-- 🧮 **Smart scoring** - ranks tracks by `(play count × days since last play)`
-- 🎨 **Artist diversity** - limits each artist to maximum 3 tracks
-- 📝 **Top 20 tracks** - returns the highest-scored tracks as a playlist
-- ⚡ **Lightweight** - no embedding libraries, just play counts and dates
-
-Simply click "Generate Re-Discover Weekly" in the web interface to discover tracks you might want to hear again!
+- `GET /api/playlists` - List all managed playlists
+- `DELETE /api/playlists/{playlist_id}` - Delete a managed playlist
+- `GET /api/recipes` - List available recipe versions
+- `GET /api/recipes/validate` - Validate recipe configurations
+- `GET /api/scheduler/status` - Check auto-refresh scheduler status
+- `POST /api/scheduler/trigger` - Manually trigger scheduled refreshes
+- `POST /api/scheduler/start` - Start the auto-refresh scheduler
 
 ## Configuration
 
@@ -184,7 +187,7 @@ AI_MODEL=openai/gpt-3.5-turbo
 1. **New API endpoints**: Add to `backend/main.py`
 2. **Database changes**: Modify `backend/database.py`
 3. **Frontend updates**: Edit `frontend/templates/index.html`
-4. **Styling**: Update `frontend/static/style.css`
+4. **Styling**: Styles are handled with Tailwind CSS in the HTML template
 
 ## Troubleshooting
 
