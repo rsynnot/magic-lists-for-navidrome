@@ -397,7 +397,7 @@ async def create_rediscover_playlist(
         
         # Store playlist in local database (using a synthetic artist_id for rediscover playlists)
         playlist = await db.create_playlist(
-            artist_id="rediscover_weekly",
+            artist_id="rediscover",
             playlist_name=playlist_name,
             songs=track_titles,
             reasoning=ai_reasoning if ai_curated else "Algorithmic selection",
@@ -410,7 +410,7 @@ async def create_rediscover_playlist(
             
             # Store the scheduled playlist
             await db.create_scheduled_playlist(
-                playlist_type="rediscover_weekly",
+                playlist_type="rediscover",
                 navidrome_playlist_id=navidrome_playlist_id,
                 refresh_frequency=request.refresh_frequency,
                 next_refresh=next_refresh
@@ -440,11 +440,23 @@ def calculate_next_refresh(frequency: str) -> datetime:
     """Calculate the next refresh time based on frequency"""
     now = datetime.now()
     if frequency == "daily":
-        return now + timedelta(days=1)
+        # Next day at 1:00 AM
+        next_day = now + timedelta(days=1)
+        return next_day.replace(hour=1, minute=0, second=0, microsecond=0)
     elif frequency == "weekly":
-        return now + timedelta(weeks=1)
+        # Next Monday at 1:00 AM
+        days_until_monday = (7 - now.weekday()) % 7
+        if days_until_monday == 0 and now.hour >= 1:
+            days_until_monday = 7  # If it's Monday after 1 AM, go to next Monday
+        next_monday = now + timedelta(days=days_until_monday)
+        return next_monday.replace(hour=1, minute=0, second=0, microsecond=0)
     elif frequency == "monthly":
-        return now + timedelta(days=30)  # Approximate month
+        # 1st of next month at 1:00 AM
+        if now.month == 12:
+            next_month = now.replace(year=now.year + 1, month=1, day=1, hour=1, minute=0, second=0, microsecond=0)
+        else:
+            next_month = now.replace(month=now.month + 1, day=1, hour=1, minute=0, second=0, microsecond=0)
+        return next_month
     else:
         return now  # Fallback
 
@@ -703,6 +715,63 @@ async def validate_recipes():
         return validation_results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to validate recipes: {str(e)}")
+
+@app.get("/api/scheduler/status")
+async def get_scheduler_status():
+    """Get scheduler status and active jobs"""
+    try:
+        global scheduler
+        if scheduler:
+            jobs = list(scheduler.get_jobs())
+            job_info = []
+            for job in jobs:
+                job_info.append({
+                    "id": job.id,
+                    "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                    "func": job.func.__name__ if hasattr(job, 'func') else str(job.func)
+                })
+            
+            return {
+                "scheduler_running": scheduler.running,
+                "active_jobs": len(jobs),
+                "jobs": job_info,
+                "scheduler_state": str(scheduler.state)
+            }
+        else:
+            return {
+                "scheduler_running": False,
+                "error": "Scheduler not initialized"
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get scheduler status: {str(e)}")
+
+@app.post("/api/scheduler/trigger")
+async def trigger_scheduler_check():
+    """Manually trigger the scheduler to check for playlists due for refresh"""
+    try:
+        scheduler_logger.info("🧪 Manual scheduler trigger requested via API")
+        await refresh_scheduled_playlists()
+        return {"message": "Scheduler check completed successfully"}
+    except Exception as e:
+        scheduler_logger.error(f"❌ Error in manual scheduler trigger: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to trigger scheduler: {str(e)}")
+
+@app.post("/api/scheduler/start")
+async def start_scheduler_job():
+    """Manually start the recurring scheduler job"""
+    try:
+        schedule_playlist_refresh()
+        global scheduler
+        jobs = list(scheduler.get_jobs()) if scheduler else []
+        scheduler_logger.info(f"🔄 Scheduler job registration requested. Active jobs: {len(jobs)}")
+        return {
+            "message": "Scheduler job started",
+            "active_jobs": len(jobs),
+            "jobs": [{"id": job.id, "next_run": job.next_run_time.isoformat() if job.next_run_time else None} for job in jobs]
+        }
+    except Exception as e:
+        scheduler_logger.error(f"❌ Error starting scheduler job: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start scheduler job: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

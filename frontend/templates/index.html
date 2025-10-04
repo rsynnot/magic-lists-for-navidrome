@@ -311,20 +311,20 @@
                                 <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
                                 <div class="space-y-3">
                                     <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-daily" class="text-sm text-gray-900  ms-2">Daily</label>
+                                        <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="artist-freq-none" class="text-sm text-gray-900  ms-2">Don't refresh</label>
                                     </div>
                                     <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly</label>
+                                        <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="artist-freq-daily" class="text-sm text-gray-900  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="artist-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-never" name="artist-refresh-frequency" value="never" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-never" class="text-sm text-gray-900  ms-2">Never</label>
+                                        <label for="artist-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
                                     </div>
                                 </div>
                             </div>
@@ -378,15 +378,15 @@
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
+                                        <label for="rediscover-freq-daily" class="text-sm text-gray-900 ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly</label>
+                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly</label>
+                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-never" name="rediscover-refresh-frequency" value="never" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
