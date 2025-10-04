@@ -21,6 +21,7 @@
         body {
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
+            font-size:16px; 
         }
 
         /* Container styling */
@@ -104,7 +105,7 @@
                             </span>
                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="playlists">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4"width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-                                Playlists
+                                <span id="desktop-playlists-text">Playlists</span>
                             </a>
                         </div>
                         <div class="border-t border-gray-200 w-full block mt-2 pt-2"> </div>
@@ -175,7 +176,7 @@
                                     </span>
                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="playlists">                                        
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4"width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-                                        Playlists
+                                        <span id="mobile-playlists-text">Playlists</span>
                                     </a>
                                 </div>
                                 <div class="border-t border-gray-200 w-full block mt-2 pt-2"> </div>
@@ -191,43 +192,77 @@
             <main class="flex-1 mt-3 md:mt-0 md:p-0 md:pr-4 md:py-0 md:pt-0">
 
                 <!-- Welcome Content (Home) -->
-                <div id="welcome-content" class="bg-white md:border md:border-gray-200 p-4 pb-6 md:p-6 md:pb-8 md:rounded-lg">
-                    <h1 class="text-2xl font-bold text-gray-900 mb-3">Create Magic Playlists</h1>
-                    <p class="text-lg text-gray-600 mb-6">A smart playlist generator that integrates with your Navidrome music library to create AI-powered playlists.</p>
+                <div id="welcome-content" class="bg-white md:border md:border-gray-200 p-4 pb-6 md:p-8 md:pb-10 md:rounded-lg">
+                    <h1 class="text-2xl font-bold text-gray-900 mb-3">Create playlists from your Navidrome&nbsp;library</h1>
+                    <p class="text-gray-600 mb-6">Generate, refresh and manage playlists locally. Fast, private, and under your control.</p>
                     
-                    <div class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900">Features</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Start</h2>
+                    <ol class="list-decimal list-inside space-y-2 mb-6 text-gray-700">
+                        <li><strong>Choose a tool</strong>: Pick between This Is or Re-Discover.</li>
+                        <li><strong>Configure your playlist</strong>: Set the track count and how often it should auto-refresh (daily, weekly, monthly or never).</li>
+                        <li><strong>Let it run</strong>: Magic Lists works in the background to keep your playlists fresh.</li>
+                    </ol>
+
+                    <h2 class="text-lg font-semibold text-gray-900 mb-3">What it does</h2>
+                    <p class="text-gray-600 mb-6">Magic Lists reads your local library metadata, then uses a versioned recipe to compose thoughtful playlists. Recipes can run locally or via your configured AI provider; the playlists and description are sent to your Navidrome library.</p>
+
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Key features</h2>
+                    
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900 mb-0">This Is</h3>
+                            <p class="text-gray-600">A definitive, single-artist mix. Includes primary and featured appearances, de-duplicates repeated versions, and balances hits and deep cuts.</p>
+                        </div>
                         
-                        <div class="grid gap-6 md:grid-cols-2">
-                            <div>
-                                <h3 class="text-base font-semibold text-gray-900 mb-2">This is</h3>
-                                <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your music library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
-                            </div>
-                            
-                            <div>
-                                <h3 class="text-base font-semibold text-gray-900 mb-2">Re-Discover Playlists</h3>
-                                <p class="text-gray-600">Enjoy tracks you loved but haven't heard recently. Our algorithm analyzes your listening history to surface forgotten gems from your music collection.</p>
-                            </div>
-                            
-                            <div class="md:col-span-2">
-                                <h3 class="text-base font-semibold text-gray-900 mb-2">Auto-Refresh</h3>
-                                <p class="text-gray-600">Any playlist can be set to refresh each day, week or month.</p>
-                            </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900 mb-0">Re-Discover</h3>
+                            <p class="text-gray-600">Surfaces tracks you haven't played recently so you can re-find forgotten favourites. Set it to refresh daily, weekly or monthly.</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900 mb-0">Auto-Refresh</h3>
+                            <p class="text-gray-600">Schedule playlists to refresh automatically on your machine so lists stay current without manual effort.</p>
                         </div>
                     </div>
+
+                    <h2 class="text-lg font-semibold text-gray-900 mb-1">Privacy & control</h2>
+                    <p class="text-gray-600 mb-6">Your music and metadata remain yours. No music files are uploaded — you choose whether AI runs locally or via a remote API key.</p>
+
+                    <h2 class="text-base font-semibold text-gray-900 mb-1">About this project</h2>
+                    <p class="text-gray-600 mb-4">MagicLists is an open-source experiment in AI-assisted music discovery for people who run their own Navidrome server. Instead of "renting" playlists from Apple or Spotify, you keep full control of your library and still enjoy smart, personalised mixes.</p>
+                    <p class="text-gray-600 mb-6">This is an ongoing research project led by a product designer with 20+ years in tech, built with and for the Navidrome community. Together we're proving that AI-powered curation can be free, transparent and privacy-respecting.</p>
+
+                    
+                    <h3 class="text-base font-semibold text-gray-900 mb-2">Available Today</h3>
+                    <ul class="list-disc list-inside space-y-1 text-gray-600 mb-4">
+                        <li>This Is — Create a curated mix for any single artist.</li>
+                        <li>Re-Discover — Rotate forgotten tracks back into your library.</li>
+                    </ul>
+                
+                    <h3 class="text-base font-semibold text-gray-900 mb-2">Coming Soon</h3>
+                    <ul class="list-disc list-inside space-y-1 text-gray-600 mb-4">
+                        <li>True Artist Radio (multi-artist blends)</li>
+                        <li>Fresh discovery tools</li>
+                        <li>Library embeddings for richer, similarity-based mixes</li>
+                    </ul>
+                     
+
+                    <h2 class="text-base font-semibold text-gray-900 mb-1">Get in Touch</h2>
+                    <p class="text-gray-600">Questions or feedback? Reach out at <a href="mailto:magiclists@synnotstudio.com" class="text-blue-600 hover:text-blue-800 underline">magiclists@synnotstudio.com</a></p>
+                   
                 </div>
 
                 <!-- This Is Artist Content (hidden by default) -->
-                <div id="this-is-content" style="display: none;" class="bg-white md:border md:border-gray-200 p-4 md:p-6 md:rounded-lg">
+                <div id="this-is-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">This is</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 mb-3">This is <span class="text-gray-300">Artist</span></h1>
                         <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
                     </div>
 
                     <form id="this-is-form" class="space-y-6">
                         <!-- Artist Selection -->
                         <div>
-                            <label for="artist-search-select" class="block text-sm font-medium text-gray-900 mb-2">Choose an artist from your library</label>
+                            <label for="artist-search-select" class="block text-sm text-gray-900 font-bold mb-2">Choose an artist from your library</label>
                             <div class="relative">
                                 <select
                                     id="artist-search-select"
@@ -254,38 +289,42 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Playlist Length -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Playlist Length</label>
+                                <label class="block text-sm text-gray-900 font-bold mb-3">Playlist Length</label>
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
+                                        <label for="artist-length-25" class="text-sm text-gray-900  ms-2">25 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
+                                        <label for="artist-length-50" class="text-sm text-gray-900  ms-2">50 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
+                                        <label for="artist-length-100" class="text-sm text-gray-900  ms-2">100 tracks</label>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Refresh Frequency -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Refresh Frequency</label>
+                                <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-daily" class="text-sm text-gray-900 ms-2">Daily</label>
+                                        <label for="artist-freq-daily" class="text-sm text-gray-900  ms-2">Daily</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
+                                        <label for="artist-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
+                                        <label for="artist-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="artist-freq-never" name="artist-refresh-frequency" value="never" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="artist-freq-never" class="text-sm text-gray-900  ms-2">Never</label>
                                     </div>
                                 </div>
                             </div>
@@ -296,8 +335,7 @@
                             <button
                                 type="submit"
                                 id="create-artist-playlist-btn"
-                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                disabled
+                                class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2  transition-colors"
                             >
                                 Create Playlist
                             </button>
@@ -306,7 +344,7 @@
                 </div>
 
                 <!-- Re-Discover Content (hidden by default) -->
-                <div id="rediscover-content" style="display: none;" class="bg-white md:border md:border-gray-200 p-4 md:p-6 md:rounded-lg">
+                <div id="rediscover-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-discover Playlist</h1>
                         <p class="text-gray-600">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
@@ -317,26 +355,26 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Playlist Length -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Playlist Length</label>
+                                <label class="block text-sm  text-gray-900 font-bold mb-3">Playlist Length</label>
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-length-25" class="text-sm text-gray-900 ms-2">25 tracks</label>
+                                        <label for="rediscover-length-25" class="text-sm text-gray-900  ms-2">25 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-length-50" class="text-sm text-gray-900 ms-2">50 tracks</label>
+                                        <label for="rediscover-length-50" class="text-sm text-gray-900  ms-2">50 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-length-100" name="rediscover-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-length-100" class="text-sm text-gray-900 ms-2">100 tracks</label>
+                                        <label for="rediscover-length-100" class="text-sm text-gray-900  ms-2">100 tracks</label>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Refresh Frequency -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Refresh Frequency</label>
+                                <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
@@ -344,11 +382,15 @@
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-900 ms-2">Weekly</label>
+                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-900 ms-2">Monthly</label>
+                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="rediscover-freq-never" name="rediscover-refresh-frequency" value="never" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="rediscover-freq-never" class="text-sm text-gray-900  ms-2">Never</label>
                                     </div>
                                 </div>
                             </div>
@@ -360,7 +402,7 @@
                                 type="button"
                                 id="rediscover-btn"
                                 onclick="generateRediscoverWeekly()"
-                                class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2 transition-colors"
                             >
                                 Generate Re-Discover Playlist
                             </button>
@@ -369,7 +411,7 @@
                 </div>
 
                 <!-- Manage Playlists Content (hidden by default) -->
-                <div id="manage-playlists-content" style="display: none;" class="bg-white md:border md:border-gray-200 p-4 md:p-6 md:rounded-lg">
+                <div id="manage-playlists-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>
                         <p class="text-gray-600">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
@@ -399,7 +441,7 @@
         </footer>
     </div>
 
-     <div id="toast-container" class="absolute top-2 right-0 w-full max-w-sm z-50 space-y-3 pointer-events-none">
+     <div id="toast-container" class="absolute top-2 right-2 w-full max-w-sm z-50 space-y-3 pointer-events-none">
         <!-- Toasts will be dynamically inserted here -->
     </div>
 
@@ -635,6 +677,9 @@
             if (artistSelect) {
                 artistSelect.addEventListener('change', handleArtistSelection);
             }
+            
+            // Load playlist count on page load
+            updatePlaylistCount();
         });
 
         // Load artists and populate the select (from original working code)
@@ -740,6 +785,9 @@
 
                 // Show success toast
                 showToast('success', `Playlist created with ${data.songs ? data.songs.length : 0} tracks`);
+                
+                // Update playlist count in sidebar
+                updatePlaylistCount();
 
             } catch (error) {
                 console.error('Error creating playlist:', error);
@@ -786,12 +834,41 @@
 
                 // Show success toast
                 showToast('success', `Re-Discover playlist created with ${data.tracks ? data.tracks.length : 0} tracks`);
+                
+                // Update playlist count in sidebar
+                updatePlaylistCount();
 
             } catch (error) {
                 console.error('Error generating Re-Discover Weekly:', error);
                 showToast('error', error.message);
             } finally {
                 button.disabled = false;
+            }
+        }
+
+        // Update playlist count in sidebar
+        async function updatePlaylistCount() {
+            try {
+                const response = await fetch('/api/playlists');
+                if (response.ok) {
+                    const playlists = await response.json();
+                    const count = playlists.length;
+                    
+                    // Update both desktop and mobile sidebar text
+                    const desktopText = document.getElementById('desktop-playlists-text');
+                    const mobileText = document.getElementById('mobile-playlists-text');
+                    
+                    if (count > 0) {
+                        if (desktopText) desktopText.textContent = `Playlists (${count})`;
+                        if (mobileText) mobileText.textContent = `Playlists (${count})`;
+                    } else {
+                        if (desktopText) desktopText.textContent = 'Playlists';
+                        if (mobileText) mobileText.textContent = 'Playlists';
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching playlist count:', error);
+                // Keep default text on error
             }
         }
 
@@ -809,9 +886,21 @@
                     throw new Error('Failed to load playlists');
                 }
 
-                const playlists = await response.json();
+                let playlists = await response.json();
                 
                 loadingDiv.classList.add('hidden');
+                
+                // Filter duplicates by navidrome_playlist_id to address backend JOIN issue
+                const seenIds = new Set();
+                playlists = playlists.filter(playlist => {
+                    // Use navidrome_playlist_id as unique identifier
+                    const id = playlist.navidrome_playlist_id || playlist.id; // fallback to id if no navidrome id
+                    if (seenIds.has(id)) {
+                        return false; // duplicate, filter out
+                    }
+                    seenIds.add(id);
+                    return true; // unique, keep
+                });
                 
                 if (playlists.length === 0) {
                     containerDiv.innerHTML = `
@@ -837,6 +926,11 @@
             }
         }
 
+        function truncateText(text, maxLength) {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        }
+
         function renderPlaylists(playlists) {
             const container = document.getElementById('playlists-container');
             
@@ -850,7 +944,7 @@
                                 Created ${new Date(playlist.created_at).toLocaleDateString()} • 
                                 Refreshes ${playlist.refresh_frequency || 'manually'}
                             </p>
-                            ${playlist.reasoning ? `<p class="text-sm text-gray-600 m-0 mt-2 italic">${playlist.reasoning}</p>` : ''}
+                            ${playlist.reasoning ? `<p class="text-sm text-gray-600 m-0 mt-2 italic">${truncateText(playlist.reasoning, 140)}</p>` : ''}
                         </div>
                         <div class="flex-none">
                             <button
@@ -880,11 +974,12 @@
                     throw new Error(errorData.detail || 'Failed to delete playlist');
                 }
 
-                // Reload the playlists list
+                // Reload the playlists list and update count
                 loadPlaylists();
+                updatePlaylistCount();
 
-                // Show success toast
-                showToast('success', 'Playlist deleted successfully');
+                // Show success toast - note that the backend may only delete locally if Navidrome deletion fails
+                showToast('success', 'Playlist deleted from local database (check Navidrome if it still appears there)');
 
             } catch (error) {
                 console.error('Error deleting playlist:', error);

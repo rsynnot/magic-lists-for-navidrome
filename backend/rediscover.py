@@ -375,8 +375,9 @@ class RediscoverWeekly:
                         return playlist_tracks
                         
                 except Exception as e:
-                    print(f"⚠️ AI curation failed, falling back to algorithmic selection: {e}")
+                    # AI curation failed, fall back to algorithmic selection silently
                     # Fall through to algorithmic selection
+                    pass
             
             # Step 6: Fallback to algorithmic selection
             top_tracks = candidate_tracks[:max_tracks]

@@ -207,9 +207,10 @@ class NavidromeClient:
             params["name"] = name
             if comment:
                 params["comment"] = comment
-                print(f"🔧 NavidromeClient: Adding comment to playlist '{name}': {comment[:100]}...")
+                # Comment logging moved to main.py scheduler_logger
             else:
-                print(f"🔧 NavidromeClient: No comment provided for playlist '{name}'")
+                # No comment logging needed
+                pass
             
             response = await self.client.get(
                 f"{self.base_url}/rest/createPlaylist.view",
@@ -331,7 +332,11 @@ class NavidromeClient:
             await self._ensure_authenticated()
             
             params = self._get_subsonic_params()
-            params["playlistId"] = playlist_id
+            params["id"] = playlist_id  # According to Subsonic API docs, parameter should be "id", not "playlistId"
+            
+            print(f"🗑️ Attempting to delete playlist with ID: {playlist_id}")
+            print(f"🔧 Delete request URL: {self.base_url}/rest/deletePlaylist.view")
+            print(f"🔧 Delete request params: {params}")
             
             response = await self.client.get(
                 f"{self.base_url}/rest/deletePlaylist.view",
@@ -340,18 +345,29 @@ class NavidromeClient:
             response.raise_for_status()
             
             data = response.json()
+            print(f"🔧 Delete response data: {data}")
+            
             subsonic_response = data.get("subsonic-response", {})
+            print(f"🔧 Subsonic response status: {subsonic_response.get('status')}")
+            
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
-                raise Exception(f"Failed to delete playlist: {error.get('message', 'Unknown error')}")
+                error_message = error.get('message', 'Unknown error')
+                error_code = error.get('code', 'Unknown code')
+                print(f"❌ Subsonic API error: {error_message} (code: {error_code})")
+                raise Exception(f"Failed to delete playlist: {error_message} (code: {error_code})")
             
+            print(f"✅ Successfully deleted playlist {playlist_id} from Navidrome")
             return True
                 
         except httpx.RequestError as e:
+            print(f"🌐 Network error deleting playlist: {e}")
             raise Exception(f"Network error connecting to Navidrome: {e}")
         except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+            print(f"🚨 HTTP error deleting playlist: {e.response.status_code} - {e.response.text}")
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code} - {e.response.text}")
         except Exception as e:
+            print(f"💥 Unexpected error deleting playlist: {e}")
             raise Exception(f"Unexpected error deleting playlist: {e}")
     
     async def close(self):

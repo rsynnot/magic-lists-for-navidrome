@@ -157,15 +157,17 @@ async def create_playlist(
             curated_track_ids = curation_result
             reasoning = ""
 
-        # Log the AI reasoning for debugging
+        # Log the AI reasoning for debugging (truncated)
         if reasoning:
-            scheduler_logger.info(f"🎵 AI REASONING for {', '.join(artist_names)}: {reasoning}")
+            reasoning_preview = reasoning[:200] + "..." if len(reasoning) > 200 else reasoning
+            scheduler_logger.info(f"🎵 AI curation applied for {', '.join(artist_names)} (reasoning length: {len(reasoning)} chars): {reasoning_preview}")
         else:
             scheduler_logger.info(f"⚠️ No AI reasoning provided for {', '.join(artist_names)}")
 
         # Create playlist in Navidrome with AI reasoning as comment
         comment_to_use = reasoning if reasoning else None
-        scheduler_logger.info(f"💬 Creating playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_to_use}")
+        comment_preview = comment_to_use[:200] + "..." if comment_to_use and len(comment_to_use) > 200 else comment_to_use
+        scheduler_logger.info(f"💬 Creating playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_preview}")
 
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
@@ -185,11 +187,12 @@ async def create_playlist(
             artist_id=request.artist_ids[0],
             playlist_name=playlist_name,
             songs=track_titles,
-            reasoning=reasoning
+            reasoning=reasoning,
+            navidrome_playlist_id=navidrome_playlist_id
         )
         
-        # Handle scheduling if not "none"
-        if request.refresh_frequency != "none":
+        # Handle scheduling if not "none" or "never"
+        if request.refresh_frequency not in ["none", "never"]:
             next_refresh = calculate_next_refresh(request.refresh_frequency)
             
             # Store the scheduled playlist
@@ -277,7 +280,8 @@ async def create_playlist_with_reasoning(
         playlist = await db.create_playlist(
             artist_id=first_artist_id,
             playlist_name=playlist_name,
-            songs=track_titles
+            songs=track_titles,
+            navidrome_playlist_id=navidrome_playlist_id
         )
         
         # Add Navidrome playlist ID and AI reasoning to response
@@ -359,9 +363,10 @@ async def create_rediscover_playlist(
             ai_reasoning = first_track.get("ai_reasoning", "")
             ai_curated = first_track.get("ai_curated", False)
         
-        # Log the AI reasoning for debugging
+        # Log the AI reasoning for debugging (truncated)
         if ai_reasoning and ai_curated:
-            scheduler_logger.info(f"🎵 AI REASONING for Re-Discover Weekly: {ai_reasoning}")
+            reasoning_preview = ai_reasoning[:200] + "..." if len(ai_reasoning) > 200 else ai_reasoning
+            scheduler_logger.info(f"🎵 AI curation applied for Re-Discover Weekly (reasoning length: {len(ai_reasoning)} chars): {reasoning_preview}")
         else:
             scheduler_logger.info(f"⚠️ Re-Discover Weekly used algorithmic selection (no AI reasoning)")
         
@@ -378,7 +383,8 @@ async def create_rediscover_playlist(
         
         # Create playlist in Navidrome with AI reasoning as comment if available
         comment_to_use = ai_reasoning if (ai_reasoning and ai_curated) else None
-        scheduler_logger.info(f"💬 Creating Re-Discover playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_to_use}")
+        comment_preview = comment_to_use[:200] + "..." if comment_to_use and len(comment_to_use) > 200 else comment_to_use
+        scheduler_logger.info(f"💬 Creating Re-Discover playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_preview}")
 
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
@@ -394,23 +400,27 @@ async def create_rediscover_playlist(
             artist_id="rediscover_weekly",
             playlist_name=playlist_name,
             songs=track_titles,
-            reasoning=ai_reasoning if ai_curated else "Algorithmic selection"
+            reasoning=ai_reasoning if ai_curated else "Algorithmic selection",
+            navidrome_playlist_id=navidrome_playlist_id
         )
         
-        # Handle scheduling (always schedule since we removed "once" option)
-        next_refresh = calculate_next_refresh(request.refresh_frequency)
-        
-        # Store the scheduled playlist
-        await db.create_scheduled_playlist(
-            playlist_type="rediscover_weekly",
-            navidrome_playlist_id=navidrome_playlist_id,
-            refresh_frequency=request.refresh_frequency,
-            next_refresh=next_refresh
-        )
-        
-        # Schedule the refresh job
-        schedule_playlist_refresh()
-        scheduler_logger.info(f"📅 Scheduled {request.refresh_frequency} refresh for playlist: {playlist_name}")
+        # Handle scheduling if not "never"
+        if request.refresh_frequency != "never":
+            next_refresh = calculate_next_refresh(request.refresh_frequency)
+            
+            # Store the scheduled playlist
+            await db.create_scheduled_playlist(
+                playlist_type="rediscover_weekly",
+                navidrome_playlist_id=navidrome_playlist_id,
+                refresh_frequency=request.refresh_frequency,
+                next_refresh=next_refresh
+            )
+            
+            # Schedule the refresh job
+            schedule_playlist_refresh()
+            scheduler_logger.info(f"📅 Scheduled {request.refresh_frequency} refresh for playlist: {playlist_name}")
+        else:
+            scheduler_logger.info(f"📅 No scheduling for playlist: {playlist_name} (refresh frequency: never)")
         
         # Add Navidrome playlist ID to response
         playlist_dict = playlist.dict() if hasattr(playlist, 'dict') else playlist.__dict__
@@ -501,9 +511,10 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
                 ai_reasoning = first_track.get("ai_reasoning", "")
                 ai_curated = first_track.get("ai_curated", False)
             
-            # Log the AI reasoning for scheduled refresh
+            # Log the AI reasoning for scheduled refresh (truncated)
             if ai_reasoning and ai_curated:
-                scheduler_logger.info(f"🎵 AI REASONING for scheduled Re-Discover refresh: {ai_reasoning}")
+                reasoning_preview = ai_reasoning[:200] + "..." if len(ai_reasoning) > 200 else ai_reasoning
+                scheduler_logger.info(f"🎵 AI curation applied for scheduled Re-Discover refresh (reasoning length: {len(ai_reasoning)} chars): {reasoning_preview}")
             else:
                 scheduler_logger.info(f"⚠️ Scheduled Re-Discover refresh used algorithmic selection")
             
@@ -615,6 +626,10 @@ async def get_all_playlists(db: DatabaseManager = Depends(get_db)):
     """Get all playlists with scheduling information"""
     try:
         playlists = await db.get_all_playlists_with_schedule_info()
+        # Add track count to each playlist
+        for playlist in playlists:
+            songs = playlist.get("songs", [])
+            playlist["track_count"] = len(songs) if isinstance(songs, list) else 0
         return playlists
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch playlists: {str(e)}")
@@ -623,9 +638,9 @@ async def get_all_playlists(db: DatabaseManager = Depends(get_db)):
 async def delete_playlist(playlist_id: int, db: DatabaseManager = Depends(get_db)):
     """Delete a playlist from both local database and Navidrome"""
     try:
-        # First, get the playlist to find the Navidrome playlist ID
-        playlists = await db.get_all_playlists_with_schedule_info()
-        playlist = next((p for p in playlists if p["id"] == playlist_id), None)
+        # First, get the specific playlist to find the Navidrome playlist ID
+        # Use a direct query instead of fetching all playlists
+        playlist = await db.get_playlist_by_id_with_schedule_info(playlist_id)
         
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
@@ -635,10 +650,14 @@ async def delete_playlist(playlist_id: int, db: DatabaseManager = Depends(get_db
         if navidrome_playlist_id:
             nav_client = get_navidrome_client()
             try:
-                await nav_client.delete_playlist(navidrome_playlist_id)
+                print(f"🗑️ Deleting playlist {playlist_id} from Navidrome (Navidrome ID: {navidrome_playlist_id})")
+                deletion_result = await nav_client.delete_playlist(navidrome_playlist_id)
+                print(f"✅ Navidrome deletion result: {deletion_result}")
             except Exception as e:
-                print(f"Warning: Failed to delete playlist from Navidrome: {e}")
+                print(f"❌ Warning: Failed to delete playlist from Navidrome: {e}")
                 # Continue with local deletion even if Navidrome deletion fails
+        else:
+            print(f"⚠️ No Navidrome playlist ID found for local playlist {playlist_id}, skipping Navidrome deletion")
         
         # Delete from scheduled playlists if it exists
         if navidrome_playlist_id:

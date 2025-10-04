@@ -23,6 +23,7 @@ class Playlist(BaseModel):
     playlist_name: str
     songs: List[str] = []
     reasoning: Optional[str] = None
+    navidrome_playlist_id: Optional[str] = None
     created_at: str
     updated_at: str
 

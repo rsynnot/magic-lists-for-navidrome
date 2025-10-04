@@ -47,7 +47,7 @@ class AIClient:
         
         if not self.api_key:
             print(f"❌ No AI API key configured, using fallback curation for {artist_name}")
-            print(f"📊 Processing {len(tracks_json)} tracks for curation")
+            # Processing tracks for curation (logging moved to scheduler_logger)
             # Fallback: return first num_tracks by play count
             sorted_tracks = sorted(
                 tracks_json,
@@ -63,7 +63,7 @@ class AIClient:
                 return track_ids
         
         try:
-            print(f"Using AI to curate playlist for {artist_name} from {len(tracks_json)} available tracks")
+            # Using AI to curate playlist (logging moved to scheduler_logger)
             
             # Prepare the tracks data for the AI prompt
             tracks_data = json.dumps(tracks_json, indent=2)
@@ -135,11 +135,12 @@ class AIClient:
                         filtered_ids = [tid for tid in track_ids if tid in valid_ids]
                         final_selection = filtered_ids[:num_tracks]
 
-                        print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
+                        # AI curation successful (logging moved to scheduler_logger)
                         if reasoning:
-                            print(f"AI reasoning: {reasoning[:200]}...")
+                            # AI reasoning available (logged in main.py scheduler_logger)
+                            pass
 
-                        if include_reasoning or reasoning:
+                        if include_reasoning:
                             return final_selection, reasoning
                         else:
                             return final_selection
@@ -152,7 +153,7 @@ class AIClient:
                     filtered_ids = [tid for tid in response_data if tid in valid_ids]
                     final_selection = filtered_ids[:num_tracks]
 
-                    print(f"AI successfully curated {len(final_selection)} tracks for {artist_name}")
+                    # AI curation successful (logging moved to scheduler_logger)
 
                     if include_reasoning:
                         return final_selection, ""  # No reasoning available
@@ -221,7 +222,7 @@ class AIClient:
         
         if not self.api_key:
             print(f"❌ No AI API key configured, using fallback curation for Re-Discover Weekly")
-            print(f"📊 Processing {len(candidate_tracks)} candidate tracks for curation")
+            # Processing candidate tracks for curation (logging moved to scheduler_logger)
             # Fallback: return first num_tracks by score (should already be sorted by rediscover algorithm)
             track_ids = [track["id"] for track in candidate_tracks[:num_tracks]]
 
@@ -232,7 +233,7 @@ class AIClient:
                 return track_ids
         
         try:
-            print(f"Using AI to curate Re-Discover Weekly from {len(candidate_tracks)} candidate tracks")
+            # Using AI to curate Re-Discover Weekly (logging moved to scheduler_logger)
             
             # Prepare the tracks data for the AI prompt
             tracks_data = json.dumps(candidate_tracks, indent=2)
@@ -304,9 +305,10 @@ class AIClient:
                         filtered_ids = [tid for tid in track_ids if tid in valid_ids]
                         final_selection = filtered_ids[:num_tracks]
 
-                        print(f"AI successfully curated {len(final_selection)} tracks for Re-Discover Weekly")
+                        # AI curation successful for Re-Discover Weekly (logging moved to scheduler_logger)
                         if reasoning:
-                            print(f"AI reasoning: {reasoning[:200]}...")
+                            # AI reasoning available (logged in main.py scheduler_logger)
+                            pass
 
                         if include_reasoning:
                             return final_selection, reasoning
@@ -321,7 +323,7 @@ class AIClient:
                     filtered_ids = [tid for tid in response_data if tid in valid_ids]
                     final_selection = filtered_ids[:num_tracks]
 
-                    print(f"AI successfully curated {len(final_selection)} tracks for Re-Discover Weekly")
+                    # AI curation successful for Re-Discover Weekly (logging moved to scheduler_logger)
 
                     if include_reasoning:
                         return final_selection, ""  # No reasoning available
