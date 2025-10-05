@@ -873,6 +873,25 @@
         }
 
         // Manage Playlists functionality
+        // Format next refresh time in a user-friendly way
+        function formatNextRefresh(nextRefreshTime) {
+            const nextRefresh = new Date(nextRefreshTime);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+            const nextRefreshDate = new Date(nextRefresh.getFullYear(), nextRefresh.getMonth(), nextRefresh.getDate());
+            
+            const timeString = nextRefresh.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true});
+            
+            if (nextRefreshDate.getTime() === today.getTime()) {
+                return `${timeString} today`;
+            } else if (nextRefreshDate.getTime() === tomorrow.getTime()) {
+                return `${timeString} tomorrow`;
+            } else {
+                return `${nextRefresh.toLocaleDateString('en-GB')} ${timeString}`;
+            }
+        }
+
         async function loadPlaylists() {
             const loadingDiv = document.getElementById('playlists-loading');
             const containerDiv = document.getElementById('playlists-container');
@@ -939,11 +958,17 @@
                     <div class="flex items-start justify-between p-4 border border-gray-200 rounded-lg mb-4">
                         <div class="flex-grow">
                             <h3 class="text-lg font-semibold text-gray-900 mb-1">${playlist.playlist_name}</h3>
-                            <p class="text-sm text-gray-600 mb-2">
-                                ${playlist.track_count || 0} tracks • 
-                                Created ${new Date(playlist.created_at).toLocaleDateString()} • 
-                                Refreshes ${playlist.refresh_frequency || 'manually'}
-                            </p>
+                            <div class="text-sm text-gray-600 mb-2 space-y-1">
+                                <p class="mb-0">
+                                    ${playlist.track_count || 0} tracks • 
+                                    Created ${new Date(playlist.created_at).toLocaleDateString('en-GB')} • 
+                                    ${playlist.last_refreshed ? `Refreshed ${new Date(playlist.last_refreshed).toLocaleDateString('en-GB')}` : 'Not refreshed yet'}
+                                </p>
+                                <p class="mb-0">
+                                    Refreshes ${playlist.refresh_frequency || 'manually'} • 
+                                    ${playlist.next_refresh ? `Next refresh ${formatNextRefresh(playlist.next_refresh)}` : 'No scheduled refresh'}
+                                </p>
+                            </div>
                             ${playlist.reasoning ? `<p class="text-sm text-gray-600 m-0 mt-2 italic">${truncateText(playlist.reasoning, 140)}</p>` : ''}
                         </div>
                         <div class="flex-none">

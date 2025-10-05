@@ -55,7 +55,7 @@ python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ### Option B: Docker Compose
 ```bash
 # Configure .env file first, then:
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose up -d
 ```
 
 ## Testing Your Setup
@@ -71,14 +71,21 @@ curl "http://localhost:8000/api/artists"
 # Get artists
 curl "http://localhost:8000/api/artists"
 
-# Create test playlist
+# Create test "This Is" playlist
 curl -X POST "http://localhost:8000/api/create_playlist" \
   -H "Content-Type: application/json" \
-  -d '{"artist_id": "some_artist_id"}'
+  -d '{"artist_ids": ["some_artist_id"], "playlist_length": 25}'
+
+# Get managed playlists
+curl "http://localhost:8000/api/playlists"
+
+# Check scheduler status
+curl "http://localhost:8000/api/scheduler/status"
 ```
 
 ### 3. Access Web Interface
-Open http://localhost:8000 in your browser
+- **Development**: http://localhost:8000
+- **Docker**: http://localhost:4545
 
 ## Troubleshooting
 
@@ -107,16 +114,44 @@ Open http://localhost:8000 in your browser
 ### AI Curation
 - **With AI**: Intelligent track selection considering quality, variety, and flow
 - **Without AI**: Falls back to play-count + recency based selection
-- **Track Limit**: Currently set to 20 tracks per playlist
+- **Track Limit**: User-configurable (default 25 tracks)
+
+### Playlist Types
+- **This Is (Artist)**: Single-artist playlists with hits and deep cuts
+- **Re-Discover**: Surface forgotten tracks from your library based on listening history
+
+### Auto-Refresh Scheduling
+- **Daily/Weekly/Monthly**: Automatic playlist refresh at scheduled times
+- **Catch-up Logic**: 7-day grace period for missed refreshes (system offline)
+- **Length Preservation**: Refreshes maintain original user-specified playlist length
 
 ### Playlist Storage
 - **Navidrome**: Actual playable playlists in your music server
-- **Local Database**: Metadata and track titles for MagicLists interface
-- **Sync**: Both databases updated when playlist is created
+- **Local Database**: Metadata, track titles, and scheduling information
+- **Refresh Tracking**: Last refreshed timestamps and next refresh scheduling
+
+## Scheduler System
+
+### Automatic Operation
+- **Runs every hour** checking for playlists due for refresh
+- **Logs activity** to `scheduler.log` for monitoring
+- **Heartbeat logging** shows when scheduler runs (even if no tasks)
+
+### Manual Control
+```bash
+# Check scheduler status
+curl "http://localhost:8000/api/scheduler/status"
+
+# Start scheduler (auto-starts on app launch)
+curl -X POST "http://localhost:8000/api/scheduler/start"
+
+# Manually trigger refresh check
+curl -X POST "http://localhost:8000/api/scheduler/trigger"
+```
 
 ## API Documentation
 
 Once running, visit:
-- **Web Interface**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+- **Web Interface**: http://localhost:8000 (dev) or http://localhost:4545 (Docker)
+- **API Docs**: http://localhost:8000/docs or http://localhost:4545/docs
 - **OpenAPI Schema**: http://localhost:8000/openapi.json

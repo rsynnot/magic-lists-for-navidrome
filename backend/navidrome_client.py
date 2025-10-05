@@ -274,15 +274,13 @@ class NavidromeClient:
         try:
             await self._ensure_authenticated()
             
-            # First, clear the existing playlist by updating it with no songs
-            clear_params = self._get_subsonic_params()
-            clear_params["playlistId"] = playlist_id
-            if comment:
-                clear_params["comment"] = comment
+            # First, get current playlist to find all song IDs to remove
+            get_params = self._get_subsonic_params()
+            get_params["id"] = playlist_id
             
             response = await self.client.get(
-                f"{self.base_url}/rest/updatePlaylist.view",
-                params=clear_params
+                f"{self.base_url}/rest/getPlaylist.view",
+                params=get_params
             )
             response.raise_for_status()
             
@@ -290,7 +288,43 @@ class NavidromeClient:
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
-                raise Exception(f"Failed to clear playlist: {error.get('message', 'Unknown error')}")
+                raise Exception(f"Failed to get playlist for clearing: {error.get('message', 'Unknown error')}")
+            
+            # Get current song IDs to remove
+            current_playlist = subsonic_response.get("playlist", {})
+            current_songs = current_playlist.get("entry", [])
+            current_song_ids = [song.get("id") for song in current_songs if song.get("id")]
+            
+            # Remove all existing songs if any exist
+            if current_song_ids:
+                clear_params = self._get_subsonic_params()
+                clear_params["playlistId"] = playlist_id
+                clear_params["songIndexToRemove"] = list(range(len(current_song_ids)))  # Remove all by index
+                if comment:
+                    clear_params["comment"] = comment
+                
+                response = await self.client.get(
+                    f"{self.base_url}/rest/updatePlaylist.view",
+                    params=clear_params
+                )
+                response.raise_for_status()
+                
+                data = response.json()
+                subsonic_response = data.get("subsonic-response", {})
+                if subsonic_response.get("status") != "ok":
+                    error = subsonic_response.get("error", {})
+                    raise Exception(f"Failed to clear playlist: {error.get('message', 'Unknown error')}")
+            elif comment:
+                # Just update comment if no songs to remove
+                clear_params = self._get_subsonic_params()
+                clear_params["playlistId"] = playlist_id
+                clear_params["comment"] = comment
+                
+                response = await self.client.get(
+                    f"{self.base_url}/rest/updatePlaylist.view",
+                    params=clear_params
+                )
+                response.raise_for_status()
             
             # Then add the new tracks
             if track_ids:

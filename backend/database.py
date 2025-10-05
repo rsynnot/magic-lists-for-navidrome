@@ -41,6 +41,20 @@ class DatabaseManager:
             except:
                 # Column already exists or other error - ignore
                 pass
+            
+            # Add last_refreshed column if it doesn't exist (for tracking refreshes)
+            try:
+                await db.execute("ALTER TABLE playlists ADD COLUMN last_refreshed TIMESTAMP")
+            except:
+                # Column already exists or other error - ignore
+                pass
+            
+            # Add playlist_length column if it doesn't exist (for storing original length)
+            try:
+                await db.execute("ALTER TABLE playlists ADD COLUMN playlist_length INTEGER")
+            except:
+                # Column already exists or other error - ignore
+                pass
 
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS scheduled_playlists (
@@ -55,7 +69,7 @@ class DatabaseManager:
             """)
             await db.commit()
     
-    async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None) -> Playlist:
+    async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None, playlist_length: Optional[int] = None) -> Playlist:
         """Create a new playlist in the database"""
         await self.init_db()
         
@@ -63,16 +77,16 @@ class DatabaseManager:
         
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("""
-                INSERT INTO playlists (artist_id, playlist_name, songs, reasoning, navidrome_playlist_id)
-                VALUES (?, ?, ?, ?, ?)
-            """, (artist_id, playlist_name, songs_json, reasoning, navidrome_playlist_id))
+                INSERT INTO playlists (artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, playlist_length)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (artist_id, playlist_name, songs_json, reasoning, navidrome_playlist_id, playlist_length))
             
             playlist_id = cursor.lastrowid
             await db.commit()
             
             # Fetch the created playlist
             async with db.execute("""
-                SELECT id, artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, created_at, updated_at
+                SELECT id, artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, created_at, updated_at, playlist_length
                 FROM playlists WHERE id = ?
             """, (playlist_id,)) as cursor:
                 row = await cursor.fetchone()
@@ -154,6 +168,8 @@ class DatabaseManager:
                     p.navidrome_playlist_id,
                     p.created_at, 
                     p.updated_at,
+                    p.last_refreshed,
+                    p.playlist_length,
                     sp.refresh_frequency,
                     sp.next_refresh,
                     sp.playlist_type
@@ -173,9 +189,11 @@ class DatabaseManager:
                         "navidrome_playlist_id": row[5],
                         "created_at": row[6],
                         "updated_at": row[7],
-                        "refresh_frequency": row[8],
-                        "next_refresh": row[9],
-                        "playlist_type": row[10]
+                        "last_refreshed": row[8],
+                        "playlist_length": row[9],
+                        "refresh_frequency": row[10],
+                        "next_refresh": row[11],
+                        "playlist_type": row[12]
                     }
                     playlists.append(playlist_data)
         
@@ -294,17 +312,27 @@ class DatabaseManager:
                         updated_at=row[6]
                     )
     
-    async def get_scheduled_playlists_due(self, current_time: datetime) -> List[ScheduledPlaylist]:
-        """Get all scheduled playlists that are due for refresh"""
+    async def get_scheduled_playlists_due(self, current_time: datetime, grace_hours: int = 168) -> List[ScheduledPlaylist]:
+        """Get all scheduled playlists that are due for refresh, including overdue ones within grace period
+        
+        Args:
+            current_time: Current timestamp to check against
+            grace_hours: Hours to look back for missed refreshes (default 7 days = 168 hours)
+        """
         await self.init_db()
+        
+        # Calculate grace period cutoff (7 days ago by default)
+        from datetime import timedelta
+        grace_cutoff = current_time - timedelta(hours=grace_hours)
         
         scheduled_playlists = []
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute("""
                 SELECT id, playlist_type, navidrome_playlist_id, refresh_frequency, next_refresh, created_at, updated_at
                 FROM scheduled_playlists 
-                WHERE next_refresh <= ?
-            """, (current_time.isoformat(),)) as cursor:
+                WHERE next_refresh <= ? AND next_refresh >= ?
+                ORDER BY next_refresh ASC
+            """, (current_time.isoformat(), grace_cutoff.isoformat())) as cursor:
                 rows = await cursor.fetchall()
                 
                 for row in rows:
@@ -331,6 +359,20 @@ class DatabaseManager:
                 SET next_refresh = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (next_refresh.isoformat(), scheduled_id))
+            
+            await db.commit()
+            return cursor.rowcount > 0
+    
+    async def update_playlist_last_refreshed(self, navidrome_playlist_id: str) -> bool:
+        """Update the last_refreshed timestamp for a playlist"""
+        await self.init_db()
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                UPDATE playlists 
+                SET last_refreshed = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                WHERE navidrome_playlist_id = ?
+            """, (navidrome_playlist_id,))
             
             await db.commit()
             return cursor.rowcount > 0

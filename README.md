@@ -1,19 +1,28 @@
 ## MagicLists for Navidrome
 
-Free your music. Own your experience.
+AI-assisted playlists for your own music library.
 
-MagicLists is an open-source experiment in AI-assisted music discovery for people who run their own Navidrome server. Instead of "renting" playlists from Apple or Spotify, you keep full control of your library and still enjoy smart, personalised mixes.
+MagicLists adds the kind of curated, evolving playlists you’d expect from Spotify or Apple Music—except it works entirely on your self-hosted Navidrome server. No subscriptions, no renting your music back. Just smart mixes generated from the library you already own.
 
-It's an ongoing research project led by a product designer with 20+ years in tech, built with and for the Navidrome community. Together we're proving that AI-powered curation can be free, transparent and privacy-respecting.
+# What it does
+- 🎵 **This Is (Artist)** — Builds a definitive playlist for any artist in your library, combining hits, deep cuts, and featured appearances without duplicates.
+- 🔄 **Re-Discover** — Rotates tracks you haven’t played in a while, helping you fall back in love with your collection.
+- ⏰ **Auto-Refresh** — Keep playlists fresh with daily, weekly, or monthly updates.
+- 🐳 **Quick Setup** — Simple Docker install; get started in minutes.
 
-## Features
-- 🎵 **This Is (Artist)** - A definitive, single-artist mix with primary and featured appearances, de-duplicated versions, and balanced hits and deep cuts
-- 🔄 **Re-Discover** - Surfaces tracks you haven't played recently so you can re-find forgotten favourites
-- ⏰ **Auto-Refresh** - Schedule playlists to refresh automatically (daily, weekly, monthly) to keep lists current
-- 🐳 **Easy Docker Setup** - Get running in minutes with Docker - no complex setup required
+# Why it matters
+Navidrome users already own their music. MagicLists brings modern curation tools into that world—so your playlists feel alive, not static, and your collection keeps surprising you.
 
-### More to come:
-Song Radio, Multi-artist Radio, AI prompted lists, fresh discovery tools, and other experiments in open music curation.
+# Who’s behind it
+I’m Ricky, a product designer with 20+ years in tech. I’m building MagicLists feature by feature, from UI and CSS to playlist logic, because I’m passionate about open-source, privacy-friendly music tools. This isn’t vaporware or a throwaway experiment—it’s genuine, ongoing research into how AI can enrich personal music libraries.
+
+# What’s next
+Upcoming experiments include:
+- Multi-artist “radio” blends
+- Decade and discovery-focused lists
+- Creative journeys like The Long Way Home (a track-to-track sonic path) and Genre Archaeology (tracing influences backwards through time).
+
+MagicLists is just getting started, and I’d love your feedback as it grows.
 
 ## Screenshots
 ![Artist Radio UI](assets/images/artist-playlist.png)
@@ -21,7 +30,6 @@ Song Radio, Multi-artist Radio, AI prompted lists, fresh discovery tools, and ot
 _Caption: Creating a 'This is (Artist)' playlist _ 
 
 ## Project Structure
-
 ```
 magiclists-navidrome/
 ├── backend/

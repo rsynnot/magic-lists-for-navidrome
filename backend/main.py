@@ -188,7 +188,8 @@ async def create_playlist(
             playlist_name=playlist_name,
             songs=track_titles,
             reasoning=reasoning,
-            navidrome_playlist_id=navidrome_playlist_id
+            navidrome_playlist_id=navidrome_playlist_id,
+            playlist_length=request.playlist_length
         )
         
         # Handle scheduling if not "none" or "never"
@@ -401,7 +402,8 @@ async def create_rediscover_playlist(
             playlist_name=playlist_name,
             songs=track_titles,
             reasoning=ai_reasoning if ai_curated else "Algorithmic selection",
-            navidrome_playlist_id=navidrome_playlist_id
+            navidrome_playlist_id=navidrome_playlist_id,
+            playlist_length=request.playlist_length
         )
         
         # Handle scheduling if not "never"
@@ -475,22 +477,46 @@ def schedule_playlist_refresh():
 async def refresh_scheduled_playlists():
     """Check for and refresh scheduled playlists that are due"""
     try:
+        current_time = datetime.now()
+        scheduler_logger.info(f"🔄 Scheduler auto-run initiated at {current_time.strftime('%H:%M:%S')}")
         scheduler_logger.info("🔍 Checking for playlists due for refresh...")
         
         db = DatabaseManager()
         current_time = datetime.now()
         
-        # Get playlists due for refresh
-        scheduled_playlists = await db.get_scheduled_playlists_due(current_time)
+        # Get playlists due for refresh (including 7-day catch-up window)
+        scheduled_playlists = await db.get_scheduled_playlists_due(current_time, grace_hours=168)
         
         if not scheduled_playlists:
             scheduler_logger.info("✅ No playlists due for refresh at this time")
             return
         
-        scheduler_logger.info(f"📋 Found {len(scheduled_playlists)} playlist(s) due for refresh")
+        # Group by navidrome_playlist_id to prevent duplicate processing
+        # Only process the most recent overdue refresh for each playlist
+        unique_playlists = {}
+        for playlist in scheduled_playlists:
+            playlist_id = playlist.navidrome_playlist_id
+            if playlist_id not in unique_playlists:
+                unique_playlists[playlist_id] = playlist
+            else:
+                # Keep the more recent one (closer to current time)
+                existing = datetime.fromisoformat(unique_playlists[playlist_id].next_refresh)
+                current = datetime.fromisoformat(playlist.next_refresh)
+                if current > existing:
+                    unique_playlists[playlist_id] = playlist
         
-        for scheduled_playlist in scheduled_playlists:
-            if scheduled_playlist.playlist_type == "rediscover_weekly":
+        final_playlists = list(unique_playlists.values())
+        
+        scheduler_logger.info(f"📋 Found {len(final_playlists)} playlist(s) due for refresh (deduplicated from {len(scheduled_playlists)} total)")
+        
+        for scheduled_playlist in final_playlists:
+            # Check if this is a catch-up refresh
+            scheduled_time = datetime.fromisoformat(scheduled_playlist.next_refresh)
+            if scheduled_time < current_time:
+                overdue_hours = (current_time - scheduled_time).total_seconds() / 3600
+                scheduler_logger.info(f"🕐 Catching up on overdue playlist {scheduled_playlist.navidrome_playlist_id} (missed by {overdue_hours:.1f} hours)")
+            
+            if scheduled_playlist.playlist_type == "rediscover":
                 await refresh_rediscover_playlist(scheduled_playlist, db)
             elif scheduled_playlist.playlist_type == "this_is":
                 await refresh_this_is_playlist(scheduled_playlist, db)
@@ -548,6 +574,9 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
                 next_refresh
             )
             
+            # Update the main playlist's last_refreshed timestamp
+            await db.update_playlist_last_refreshed(scheduled_playlist.navidrome_playlist_id)
+            
             scheduler_logger.info(f"✅ Successfully refreshed playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             scheduler_logger.warning(f"⚠️ No tracks generated for playlist {scheduled_playlist.navidrome_playlist_id}")
@@ -592,11 +621,26 @@ async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
         if tracks:
             scheduler_logger.info(f"🎵 Found {len(tracks)} tracks for artist: {artist_name}")
             
-            # Use AI to curate a new playlist with reasoning (use default 25 for refreshes)
+            # Get original playlist length (fallback to 25 if not stored)
+            original_length = original_playlist.get("playlist_length", 25)
+            scheduler_logger.info(f"🎯 Using original playlist length: {original_length}")
+            
+            # Get previous playlist songs for context (to encourage variety)
+            previous_songs = original_playlist.get("songs", [])[:5]  # Get first 5 songs for variety context
+            variety_context = f" REFRESH CONSTRAINT: Previous version started with: {', '.join(previous_songs)}. Create a different arrangement - vary the opening tracks and tell a fresh story." if previous_songs else ""
+            
+            # Modify tracks_json to include variety instruction for the AI
+            tracks_with_context = tracks.copy()
+            if variety_context:
+                # Add the context as a special instruction in the first track (AI will see this)
+                if tracks_with_context:
+                    tracks_with_context[0]["__refresh_instruction"] = variety_context
+            
+            # Use AI to curate a new playlist with reasoning and enforced variety
             curation_result = await ai_client_instance.curate_this_is(
                 artist_name=artist_name,
-                tracks_json=tracks,
-                num_tracks=25,  # Default for refreshes, could be enhanced to store original length
+                tracks_json=tracks_with_context,
+                num_tracks=original_length,
                 include_reasoning=True
             )
             
@@ -623,6 +667,9 @@ async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
                     scheduled_playlist.id, 
                     next_refresh
                 )
+                
+                # Update the main playlist's last_refreshed timestamp
+                await db.update_playlist_last_refreshed(scheduled_playlist.navidrome_playlist_id)
                 
                 scheduler_logger.info(f"✅ Successfully refreshed This Is playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
