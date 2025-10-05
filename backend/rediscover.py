@@ -221,7 +221,7 @@ class RediscoverWeekly:
         
         return filtered_tracks
     
-    async def generate_rediscover_weekly(self, max_tracks: int = 20, use_ai: bool = True) -> List[Dict[str, Any]]:
+    async def generate_rediscover_weekly(self, max_tracks: int = 20, use_ai: bool = True, variety_context: str = None) -> List[Dict[str, Any]]:
         """
         Main method to generate the Re-Discover Weekly playlist.
         Returns a list of track metadata for the final tracks.
@@ -324,26 +324,43 @@ class RediscoverWeekly:
                 from .ai_client import AIClient
                 ai_client = AIClient()
                 
-                # Prepare candidate tracks for AI with relevant metadata
+                # Prepare candidate tracks for AI with relevant metadata including genre
                 ai_candidates = []
                 for song_id, score, stats in candidate_tracks:
+                    # Get full track data to extract genre information
+                    try:
+                        # We need to fetch the full track data to get genre
+                        all_artists = await self.navidrome_client.get_artists()
+                        artist_match = next((a for a in all_artists if a["name"] == stats["artist"]), None)
+                        
+                        genre = "Unknown"
+                        if artist_match:
+                            tracks = await self.navidrome_client.get_tracks_by_artist(artist_match["id"])
+                            track_match = next((t for t in tracks if t["id"] == song_id), None)
+                            if track_match:
+                                genre = track_match.get("genre", "Unknown")
+                    except:
+                        genre = "Unknown"
+                    
                     ai_candidates.append({
                         "id": song_id,
                         "title": stats["title"],
                         "artist": stats["artist"],
                         "album": stats["album"],
+                        "genre": genre,
                         "historical_plays": stats["total_plays"],
                         "days_since_last_play": (datetime.now() - stats["last_play"]).days if stats["last_play"] else "30+",
                         "rediscover_score": round(score, 2)
                     })
                 
                 try:
-                    # Get AI curation with reasoning
+                    # Get AI curation with reasoning and variety context
                     ai_result = await ai_client.curate_rediscover_weekly(
                         candidate_tracks=ai_candidates,
                         analysis_summary=analysis_summary,
                         num_tracks=max_tracks,
-                        include_reasoning=True
+                        include_reasoning=True,
+                        variety_context=variety_context
                     )
                     
                     if isinstance(ai_result, tuple):

@@ -376,6 +376,22 @@ class DatabaseManager:
             
             await db.commit()
             return cursor.rowcount > 0
+    
+    async def update_playlist_content(self, navidrome_playlist_id: str, songs: List[str], reasoning: Optional[str] = None) -> bool:
+        """Update the songs and reasoning for a playlist during refresh"""
+        await self.init_db()
+        
+        songs_json = json.dumps(songs)
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                UPDATE playlists 
+                SET songs = ?, reasoning = ?, last_refreshed = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                WHERE navidrome_playlist_id = ?
+            """, (songs_json, reasoning, navidrome_playlist_id))
+            
+            await db.commit()
+            return cursor.rowcount > 0
 
 # Dependency for FastAPI
 async def get_db() -> DatabaseManager:

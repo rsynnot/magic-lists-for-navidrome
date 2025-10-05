@@ -26,6 +26,6 @@
   "llm_params": {
     "temperature": 0.8,
     "max_tokens": 2000,
-    "model_fallback": "openai/gpt-3.5-turbo"
+    "model_fallback": "openai/gpt-4"
   }
 }

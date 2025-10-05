@@ -985,7 +985,7 @@
         }
 
         async function deletePlaylist(playlistId, playlistName) {
-            if (!confirm(`Are you sure you want to delete "${playlistName}"?`)) {
+            if (!confirm(`Are you sure you want to delete "${playlistName}"?\n\nThis will permanently remove the playlist from both Magic Lists and your Navidrome library.`)) {
                 return;
             }
 

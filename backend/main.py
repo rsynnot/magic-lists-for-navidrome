@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 import os
 import logging
+import logging.handlers
 from typing import List
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -15,12 +16,20 @@ import asyncio
 # Load environment variables first
 load_dotenv()
 
-# Configure logging for scheduler activities
+# Get log level from environment (ERROR=minimal, INFO=normal, DEBUG=verbose)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Configure logging for scheduler activities with rotation
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('scheduler.log'),
+        logging.handlers.RotatingFileHandler(
+            'scheduler.log',
+            maxBytes=5*1024*1024,  # 5MB per file
+            backupCount=2,         # Keep 2 old files (total ~10MB)
+            encoding='utf-8'
+        ),
         logging.StreamHandler()  # Also log to console
     ]
 )
@@ -48,6 +57,9 @@ async def startup_event():
     scheduler = AsyncIOScheduler()
     scheduler.start()
     scheduler_logger.info("✅ Scheduler started successfully")
+    # Auto-start the cron job
+    await start_scheduler_job()
+    scheduler_logger.info("✅ Cron job auto-started on application startup")
 
 @app.on_event("shutdown") 
 async def shutdown_event():
@@ -478,8 +490,15 @@ async def refresh_scheduled_playlists():
     """Check for and refresh scheduled playlists that are due"""
     try:
         current_time = datetime.now()
-        scheduler_logger.info(f"🔄 Scheduler auto-run initiated at {current_time.strftime('%H:%M:%S')}")
-        scheduler_logger.info("🔍 Checking for playlists due for refresh...")
+        
+        # Only log heartbeat in DEBUG mode, always log when tasks are found
+        if LOG_LEVEL == "DEBUG":
+            scheduler_logger.debug(f"🔄 Scheduler auto-run initiated at {current_time.strftime('%H:%M:%S')}")
+        
+        if LOG_LEVEL == "DEBUG":
+            scheduler_logger.debug("🔍 Checking for playlists due for refresh...")
+        else:
+            scheduler_logger.info("🔍 Checking for playlists due for refresh...")
         
         db = DatabaseManager()
         current_time = datetime.now()
@@ -488,7 +507,8 @@ async def refresh_scheduled_playlists():
         scheduled_playlists = await db.get_scheduled_playlists_due(current_time, grace_hours=168)
         
         if not scheduled_playlists:
-            scheduler_logger.info("✅ No playlists due for refresh at this time")
+            if LOG_LEVEL == "DEBUG":
+                scheduler_logger.debug("✅ No playlists due for refresh at this time")
             return
         
         # Group by navidrome_playlist_id to prevent duplicate processing
@@ -532,14 +552,41 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         # Get clients
         nav_client = get_navidrome_client()
         
+        # Get original playlist to find user's preferred length
+        playlists = await db.get_all_playlists_with_schedule_info()
+        original_playlist = next((p for p in playlists if p.get("navidrome_playlist_id") == scheduled_playlist.navidrome_playlist_id), None)
+        
+        if not original_playlist:
+            scheduler_logger.error(f"❌ Could not find original playlist data for {scheduled_playlist.navidrome_playlist_id}")
+            return
+        
+        # Get original playlist length (MUST respect user's choice)
+        original_length = original_playlist.get("playlist_length", 20)
+        scheduler_logger.info(f"🎯 Using original playlist length: {original_length}")
+        
+        # Get previous playlist songs for variety context
+        previous_songs = original_playlist.get("songs", [])[:10]
+        variety_instruction = f"REFRESH CONSTRAINT: Avoid repeating this previous selection pattern: {', '.join(previous_songs[:5])}. Create a fresh discovery experience with different tracks and artists." if previous_songs else ""
+        
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
 
-        # Generate new tracks with AI curation (use default length for scheduled refreshes)
-        tracks = await rediscover.generate_rediscover_weekly(use_ai=True)
+        # Generate new tracks with FRESH data analysis and user's exact length
+        # Pass variety instruction to encourage different selections
+        tracks = await rediscover.generate_rediscover_weekly(
+            max_tracks=original_length,
+            use_ai=True,
+            variety_context=variety_instruction if previous_songs else None
+        )
         
         if tracks:
             scheduler_logger.info(f"🎵 Generated {len(tracks)} new tracks for refresh")
+            
+            # VALIDATE: Ensure we got the expected number of tracks
+            if len(tracks) != original_length:
+                scheduler_logger.warning(f"⚠️ Generated {len(tracks)} tracks but user requested {original_length}")
+            else:
+                scheduler_logger.info(f"✅ Generated exact number of requested tracks: {len(tracks)}")
             
             # Extract AI reasoning if available
             ai_reasoning = ""
@@ -565,6 +612,15 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
                 comment=comment_to_use
             )
             
+            # Update the local database with new songs and reasoning
+            track_titles = [track["title"] for track in tracks]
+            reasoning_to_store = ai_reasoning if ai_curated else "Algorithmic selection"
+            await db.update_playlist_content(
+                navidrome_playlist_id=scheduled_playlist.navidrome_playlist_id,
+                songs=track_titles,
+                reasoning=reasoning_to_store
+            )
+            
             # Calculate next refresh time
             next_refresh = calculate_next_refresh(scheduled_playlist.refresh_frequency)
             
@@ -573,9 +629,6 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
                 scheduled_playlist.id, 
                 next_refresh
             )
-            
-            # Update the main playlist's last_refreshed timestamp
-            await db.update_playlist_last_refreshed(scheduled_playlist.navidrome_playlist_id)
             
             scheduler_logger.info(f"✅ Successfully refreshed playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
@@ -615,33 +668,35 @@ async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
         
         artist_name = artist["name"]
         
-        # Get tracks for the artist
+        # FRESH DATA: Re-fetch ALL tracks for the artist (gets latest play counts, dates)
         tracks = await nav_client.get_tracks_by_artist(artist_id)
         
         if tracks:
-            scheduler_logger.info(f"🎵 Found {len(tracks)} tracks for artist: {artist_name}")
+            scheduler_logger.info(f"🎵 Found {len(tracks)} tracks for artist: {artist_name} (fresh data)")
             
-            # Get original playlist length (fallback to 25 if not stored)
+            # ENFORCE original playlist length (MUST respect user's choice)
             original_length = original_playlist.get("playlist_length", 25)
-            scheduler_logger.info(f"🎯 Using original playlist length: {original_length}")
+            scheduler_logger.info(f"🎯 ENFORCING original playlist length: {original_length}")
             
-            # Get previous playlist songs for context (to encourage variety)
-            previous_songs = original_playlist.get("songs", [])[:5]  # Get first 5 songs for variety context
-            variety_context = f" REFRESH CONSTRAINT: Previous version started with: {', '.join(previous_songs)}. Create a different arrangement - vary the opening tracks and tell a fresh story." if previous_songs else ""
+            # Check if we have enough tracks
+            if len(tracks) < original_length:
+                scheduler_logger.warning(f"⚠️ Artist only has {len(tracks)} tracks, but user requested {original_length}. Using all available tracks.")
+                original_length = len(tracks)
             
-            # Modify tracks_json to include variety instruction for the AI
-            tracks_with_context = tracks.copy()
-            if variety_context:
-                # Add the context as a special instruction in the first track (AI will see this)
-                if tracks_with_context:
-                    tracks_with_context[0]["__refresh_instruction"] = variety_context
+            # Get previous playlist songs for STRONG variety enforcement
+            previous_songs = original_playlist.get("songs", [])
+            variety_instruction = f"REFRESH CONSTRAINT: This is a REFRESH, not a copy. Previous playlist had these tracks: {', '.join(previous_songs[:10])}. Create a completely different track selection and arrangement. Prioritize tracks NOT in the previous list. Tell a fresh musical story. Avoid identical opening sequences." if previous_songs else "Create a fresh, engaging playlist arrangement."
             
-            # Use AI to curate a new playlist with reasoning and enforced variety
+            # Prepare tracks with variety instruction - use a more direct approach
+            tracks_for_ai = tracks.copy()
+            
+            # Use AI to curate a FRESH playlist with STRONG variety enforcement
             curation_result = await ai_client_instance.curate_this_is(
                 artist_name=artist_name,
-                tracks_json=tracks_with_context,
+                tracks_json=tracks_for_ai,
                 num_tracks=original_length,
-                include_reasoning=True
+                include_reasoning=True,
+                variety_context=variety_instruction
             )
             
             # Handle both old and new return formats
@@ -652,11 +707,36 @@ async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
                 reasoning = ""
             
             if curated_track_ids:
+                # VALIDATE: Ensure we got the right number of tracks
+                if len(curated_track_ids) < original_length and len(tracks) >= original_length:
+                    scheduler_logger.warning(f"⚠️ AI returned only {len(curated_track_ids)} tracks but user requested {original_length}. Using fallback to fill gap.")
+                    # Fill the gap with remaining tracks
+                    used_ids = set(curated_track_ids)
+                    remaining_tracks = [t for t in tracks if t["id"] not in used_ids]
+                    additional_needed = original_length - len(curated_track_ids)
+                    additional_tracks = remaining_tracks[:additional_needed]
+                    curated_track_ids.extend([t["id"] for t in additional_tracks])
+                
+                scheduler_logger.info(f"🎯 Final track count: {len(curated_track_ids)} (requested: {original_length})")
+                
                 # Update the existing playlist in Navidrome with new reasoning
                 await nav_client.update_playlist(
                     playlist_id=scheduled_playlist.navidrome_playlist_id,
                     track_ids=curated_track_ids,
                     comment=reasoning if reasoning else None
+                )
+                
+                # Update the local database with new songs and reasoning
+                track_titles = []
+                track_id_to_title = {track["id"]: track["title"] for track in tracks}
+                for track_id in curated_track_ids:
+                    if track_id in track_id_to_title:
+                        track_titles.append(track_id_to_title[track_id])
+                
+                await db.update_playlist_content(
+                    navidrome_playlist_id=scheduled_playlist.navidrome_playlist_id,
+                    songs=track_titles,
+                    reasoning=reasoning
                 )
                 
                 # Calculate next refresh time
@@ -667,9 +747,6 @@ async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
                     scheduled_playlist.id, 
                     next_refresh
                 )
-                
-                # Update the main playlist's last_refreshed timestamp
-                await db.update_playlist_last_refreshed(scheduled_playlist.navidrome_playlist_id)
                 
                 scheduler_logger.info(f"✅ Successfully refreshed This Is playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
             else:

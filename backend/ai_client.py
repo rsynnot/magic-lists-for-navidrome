@@ -31,7 +31,8 @@ class AIClient:
         artist_name: str, 
         tracks_json: List[Dict[str, Any]], 
         num_tracks: int = 20,
-        include_reasoning: bool = False
+        include_reasoning: bool = False,
+        variety_context: str = None
     ) -> Union[List[str], Tuple[List[str], str]]:
         """Curate a 'This Is' playlist for a single artist using AI
         
@@ -72,15 +73,16 @@ class AIClient:
             recipe_inputs = {
                 "artists": artist_name,
                 "tracks_data": tracks_data,
-                "num_tracks": num_tracks
+                "num_tracks": num_tracks,
+                "variety_context": variety_context or ""
             }
             
             recipe_result = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
             prompt = recipe_result["prompt"]
             llm_params = recipe_result["llm_params"]
             
-            # Use model from recipe or fall back to environment/default
-            model = llm_params.get("model_fallback", self.model)
+            # Use model from environment first, only fallback to recipe if not set
+            model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
             temperature = llm_params.get("temperature", 0.7)
             max_tokens = llm_params.get("max_tokens", 1000)
             
@@ -206,7 +208,8 @@ class AIClient:
         candidate_tracks: List[Dict[str, Any]], 
         analysis_summary: str,
         num_tracks: int = 20,
-        include_reasoning: bool = True
+        include_reasoning: bool = True,
+        variety_context: str = None
     ) -> Union[List[str], Tuple[List[str], str]]:
         """Curate a Re-Discover Weekly playlist using AI
         
@@ -242,15 +245,16 @@ class AIClient:
             recipe_inputs = {
                 "candidate_tracks": tracks_data,
                 "analysis_summary": analysis_summary,
-                "num_tracks": num_tracks
+                "num_tracks": num_tracks,
+                "variety_context": variety_context or ""
             }
             
             recipe_result = recipe_manager.apply_recipe("re_discover", recipe_inputs, include_reasoning)
             prompt = recipe_result["prompt"]
             llm_params = recipe_result["llm_params"]
             
-            # Use model from recipe or fall back to environment/default
-            model = llm_params.get("model_fallback", self.model)
+            # Use model from environment first, only fallback to recipe if not set
+            model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
             temperature = llm_params.get("temperature", 0.8)
             max_tokens = llm_params.get("max_tokens", 2500)
             
