@@ -467,8 +467,8 @@ def schedule_playlist_refresh():
     if not scheduler.get_job('playlist_refresh'):
         scheduler.add_job(
             refresh_scheduled_playlists,
-            'interval',
-            hours=1,
+            'cron',
+            minute=1,  # Run at 1 minute past every hour (12:01, 1:01, 2:01, etc.)
             id='playlist_refresh',
             replace_existing=True
         )
