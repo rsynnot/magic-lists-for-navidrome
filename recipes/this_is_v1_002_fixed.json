@@ -1,0 +1,20 @@
+{
+  "version": "1.0.3",
+  "description": "Curates a 'This Is <Artist>' playlist highlighting the artist's career. Includes primary and featured tracks, deduplicates across releases, and balances hits with deep cuts. Features concise tweet-length reasoning.",
+  "inputs": ["artists", "tracks_data", "num_tracks", "variety_context"],
+  "prompt_template": "You are an expert music curator creating a 'This Is: {artists}' playlist.\n\nAvailable tracks with metadata (includes both primary and featured appearances):\n{tracks_data}\n\nPLAYLIST TARGET: Select exactly {num_tracks} tracks.\n\nCURATION STRATEGY:\n- Begin with 2-3 iconic tracks (highest play_count) to anchor the playlist.\n- Deduplicate: avoid selecting multiple copies of the same song (studio, live, remaster, greatest hits).\n- Include tracks where {artists} appears as featured artist or collaborator (look for album_artist != {artists}).\n- Balance popular hits (high play_count) with quality deep cuts (lower play_count but good albums).\n- Create intelligent sequencing: vary energy, tempo, and mood throughout the playlist.\n- Avoid placing tracks from the same album consecutively - mix different eras and albums.\n- Consider chronological flow: early career → peak hits → recent work, but prioritize listening flow over strict chronology.\n- End with a memorable, impactful track that represents the artist well.\n\n{variety_context}\n\nIMPORTANT CURATION RULES:\n1. DO NOT simply group tracks by album - this creates boring, predictable playlists\n2. MIX different albums and eras throughout the playlist for variety\n3. Consider track energy and mood when sequencing - create dynamic flow\n4. Prioritize the BEST VERSION of each song (highest play_count if duplicates exist)\n5. Include both mainstream hits AND interesting deep cuts for comprehensive representation\n\nRESPONSE FORMAT:\nRespond with valid JSON only:\n{\n  \"track_ids\": [\"id1\", \"id2\", \"id3\", ...],\n  \"reasoning\": \"Brief explanation of curation choices (max 280 chars)\"\n}",
+  "strategy_notes": {
+    "iconic_opening": "Start with 2-3 of the artist's most recognizable hits to establish the artist's identity",
+    "deduplication": "Avoid multiple versions of the same song - select the best version based on play count",
+    "featured_tracks": "Include tracks where the specified artist appears as featured or collaborating artist",
+    "balance": "Combine popular hits with quality deep cuts for comprehensive artist representation",
+    "sequencing": "Create intelligent flow by mixing albums, eras, and energy levels - avoid album-by-album grouping",
+    "variety": "Vary tempo, mood, and chronology throughout the playlist for engaging listening experience",
+    "memorable_closing": "End with a strong, memorable track that leaves a lasting impression",
+    "reasoning_length": "Maximum 280 characters, tweet-style concise explanation"
+  },
+  "llm_params": {
+    "temperature": 0.7,
+    "max_tokens": 2000
+  }
+}

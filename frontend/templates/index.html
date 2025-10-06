@@ -6,7 +6,10 @@
     <title>Magic Lists</title>
     
     <!-- Inter font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet"> -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
 
     <!-- Umami Analytics -->
     <script defer src="https://umami.itsricky.com/script.js" data-website-id="e5a08463-74dd-4b83-b7ef-da5f5e088430"></script>
@@ -19,21 +22,28 @@
 
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: "Inter", sans-serif;
+            font-optical-sizing: auto;
+            font-style: normal;
             -webkit-font-smoothing: antialiased;
             font-size:16px; 
         }
 
         /* Container styling */
         .app-container {
-            max-width: 992px;
+            max-width: 1024;
             margin: 0 auto;
+        }
+        .font-serif{
+            font-family: "IBM Plex Serif", serif;
+            font-weight: 400;
+            font-style: normal;
         }
     </style>
 </head>
 <body class="bg-gray-100">
     <!-- Main container with flex layout -->
-    <div id="magic" class="flex flex-col min-h-screen md:max-w-[900px] md:mx-auto relative">
+    <div id="magic" class="flex flex-col min-h-screen md:max-w-[1024px] md:mx-auto relative">
         <!-- Navbar -->
         <header class="bg-gray-100 top-0 z-50">
             <nav class="py-4 px-4"> 
@@ -192,70 +202,69 @@
             <main class="flex-1 mt-3 md:mt-0 md:p-0 md:pr-4 md:py-0 md:pt-0">
 
                 <!-- Welcome Content (Home) -->
-                <div id="welcome-content" class="bg-white md:border md:border-gray-200 p-4 pb-6 md:p-8 md:pb-10 md:rounded-lg">
-                    <h1 class="text-2xl font-bold text-gray-900 mb-3">Create playlists from your Navidrome&nbsp;library</h1>
-                    <p class="text-gray-600 mb-6">Generate, refresh and manage playlists locally. Fast, private, and under your control.</p>
+                <div id="welcome-content" class="bg-white md:border md:border-gray-200 p-4 pb-10 md:pt-10 md:pl-10 md:pr-14 md:pb-12   md:rounded-lg">
+                    <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 mb-4 md:mb-6" style="font-stretch: normal; font-optical-sizing: auto;">Create playlists from your Navidrome&nbsp;library</h1>
+                    <p class="text-gray-500 mb-6">Generate, refresh and manage playlists locally. Fast, private, and under your control.</p>
                     
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Start</h2>
-                    <ol class="list-decimal list-inside space-y-2 mb-6 text-gray-700">
-                        <li><strong>Choose a tool</strong>: Pick between This Is or Re-Discover.</li>
+                    <h2 class="text-xl font-semibold text-gray-900 mb-2">Quick Start</h2>
+                    <ol class="list-decimal list-ouside ml-5 space-y-2 mb-1 text-gray-500">
+                        <li><strong>Choose a tool</strong>: <a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a> or <a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a>.</li>
                         <li><strong>Configure your playlist</strong>: Set the track count and how often it should auto-refresh (daily, weekly, monthly or never).</li>
                         <li><strong>Let it run</strong>: Magic Lists works in the background to keep your playlists fresh.</li>
                     </ol>
 
-                    <h2 class="text-lg font-semibold text-gray-900 mb-3">What it does</h2>
+                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">What it does</h2>
                     <p class="text-gray-600 mb-6">Magic Lists reads your local library metadata, then uses a versioned recipe to compose thoughtful playlists. Recipes can run locally or via your configured AI provider; the playlists and description are sent to your Navidrome library.</p>
 
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Key features</h2>
+                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">Key features</h2>
                     
-                    <div class="space-y-4 mb-6">
+                    <div class="space-y-4 mb-2">
                         <div>
-                            <h3 class="text-base font-semibold text-gray-900 mb-0">This Is</h3>
+                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a></h3>
                             <p class="text-gray-600">A definitive, single-artist mix. Includes primary and featured appearances, de-duplicates repeated versions, and balances hits and deep cuts.</p>
                         </div>
                         
                         <div>
-                            <h3 class="text-base font-semibold text-gray-900 mb-0">Re-Discover</h3>
+                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a></h3>
                             <p class="text-gray-600">Surfaces tracks you haven't played recently so you can re-find forgotten favourites. Set it to refresh daily, weekly or monthly.</p>
                         </div>
                         
                         <div>
-                            <h3 class="text-base font-semibold text-gray-900 mb-0">Auto-Refresh</h3>
+                            <h3 class="text-base font-bold text-gray-500 mb-0">Auto-Refresh</h3>
                             <p class="text-gray-600">Schedule playlists to refresh automatically on your machine so lists stay current without manual effort.</p>
                         </div>
                     </div>
 
-                    <h2 class="text-lg font-semibold text-gray-900 mb-1">Privacy & control</h2>
-                    <p class="text-gray-600 mb-6">Your music and metadata remain yours. No music files are uploaded — you choose whether AI runs locally or via a remote API key.</p>
+                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">Privacy & control</h2>
+                    <p class="text-gray-600 mb-4">Your music and metadata remain yours. No music files are uploaded — you choose whether AI runs locally or via a remote API key.</p>
 
-                    <h2 class="text-base font-semibold text-gray-900 mb-1">About this project</h2>
+                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">About this project</h2>
                     <p class="text-gray-600 mb-4">MagicLists is an open-source experiment in AI-assisted music discovery for people who run their own Navidrome server. Instead of "renting" playlists from Apple or Spotify, you keep full control of your library and still enjoy smart, personalised mixes.</p>
-                    <p class="text-gray-600 mb-6">This is an ongoing research project led by a product designer with 20+ years in tech, built with and for the Navidrome community. Together we're proving that AI-powered curation can be free, transparent and privacy-respecting.</p>
+                    <p class="text-gray-600 mb-4">This is an ongoing research project led by a product designer with 20+ years in tech, built with and for the Navidrome community. Together we're proving that AI-powered curation can be free, transparent and privacy-respecting.</p>
 
                     
-                    <h3 class="text-base font-semibold text-gray-900 mb-2">Available Today</h3>
-                    <ul class="list-disc list-inside space-y-1 text-gray-600 mb-4">
-                        <li>This Is — Create a curated mix for any single artist.</li>
-                        <li>Re-Discover — Rotate forgotten tracks back into your library.</li>
+                    <h3 class="text-base font-semibold text-gray-500 mt-5 mb-2">Available Today</h3>
+                    <ul class="list-disc list-outside ml-5 space-y-1 text-gray-600 mb-2">
+                        <li>This Is: Create a curated mix for any artist.</li>
+                        <li>Re-Discover: Rotate forgotten tracks back into your library.</li>
                     </ul>
                 
-                    <h3 class="text-base font-semibold text-gray-900 mb-2">Coming Soon</h3>
-                    <ul class="list-disc list-inside space-y-1 text-gray-600 mb-4">
+                    <h3 class="text-base font-semibold text-gray-500 mt-5 mb-2">Coming Soon</h3>
+                    <ul class="list-disc list-outside ml-5 space-y-1 text-gray-600 mb-4">
                         <li>True Artist Radio (multi-artist blends)</li>
                         <li>Fresh discovery tools</li>
                         <li>Library embeddings for richer, similarity-based mixes</li>
                     </ul>
-                     
 
-                    <h2 class="text-base font-semibold text-gray-900 mb-1">Get in Touch</h2>
-                    <p class="text-gray-600">Questions or feedback? Reach out at <a href="mailto:magiclists@synnotstudio.com" class="text-blue-600 hover:text-blue-800 underline">magiclists@synnotstudio.com</a></p>
+                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">Get in Touch</h2>
+                    <p class="text-gray-600">Questions or feedback? Reach out at <a href="mailto:magiclists@synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">magiclists@synnotstudio.com</a></p>
                    
                 </div>
 
                 <!-- This Is Artist Content (hidden by default) -->
                 <div id="this-is-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">This is <span class="text-gray-300">Artist</span></h1>
+                        <h1 class="text-2xl font-bold text-gray-500 mb-3">This is <span class="text-gray-300">Artist</span></h1>
                         <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
                     </div>
 
@@ -293,15 +302,15 @@
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-25" class="text-sm text-gray-900  ms-2">25 tracks</label>
+                                        <label for="artist-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-50" class="text-sm text-gray-900  ms-2">50 tracks</label>
+                                        <label for="artist-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-100" class="text-sm text-gray-900  ms-2">100 tracks</label>
+                                        <label for="artist-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
                                     </div>
                                 </div>
                             </div>
@@ -312,19 +321,19 @@
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-none" class="text-sm text-gray-900  ms-2">Don't refresh</label>
+                                        <label for="artist-freq-none" class="text-sm text-gray-500  ms-2">Don't refresh</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-daily" class="text-sm text-gray-900  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
+                                        <label for="artist-freq-daily" class="text-sm text-gray-500  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
+                                        <label for="artist-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
+                                        <label for="artist-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
                                     </div>
                                 </div>
                             </div>
@@ -359,15 +368,15 @@
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-length-25" class="text-sm text-gray-900  ms-2">25 tracks</label>
+                                        <label for="rediscover-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-length-50" class="text-sm text-gray-900  ms-2">50 tracks</label>
+                                        <label for="rediscover-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-length-100" name="rediscover-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-length-100" class="text-sm text-gray-900  ms-2">100 tracks</label>
+                                        <label for="rediscover-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
                                     </div>
                                 </div>
                             </div>
@@ -378,19 +387,19 @@
                                 <div class="space-y-3">
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-daily" class="text-sm text-gray-900 ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
+                                        <label for="rediscover-freq-daily" class="text-sm text-gray-500 ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-900  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
+                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-900  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
+                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
                                     </div>
                                     <div class="flex items-center">
                                         <input type="radio" id="rediscover-freq-never" name="rediscover-refresh-frequency" value="never" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-never" class="text-sm text-gray-900  ms-2">Never</label>
+                                        <label for="rediscover-freq-never" class="text-sm text-gray-500  ms-2">Never</label>
                                     </div>
                                 </div>
                             </div>
@@ -435,7 +444,7 @@
         <footer class="py-5 px-4 mt-auto">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="block w-full text-gray-500 text-center text-sm mb-2 md:mb-0">
-                    Made by <a href="https://synnotstudio.com" class="text-blue-600 no-underline hover:underline">Synnot Studio</a> – Open Source (MIT)
+                    Made by <a href="https://synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">Synnot Studio</a> – Open Source (MIT)
                 </div>
             </div>
         </footer>
@@ -451,6 +460,26 @@
         let selectedArtistId = null;
         let allArtists = [];
         let currentToast = null;
+
+        // Helper function to format dates in friendly format (e.g., "5 Oct 2025 10:12am")
+        function formatFriendlyDate(dateString) {
+            if (!dateString) return 'Never';
+            
+            const date = new Date(dateString);
+            const day = date.getDate();
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear();
+            
+            let hours = date.getHours();
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'pm' : 'am';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 should be 12
+            
+            return `${day} ${month} ${year} ${hours}:${minutes}${ampm}`;
+        }
 
         // Toast utility functions
         function showToast(type, message, duration = 5000) {
@@ -961,12 +990,12 @@
                             <div class="text-sm text-gray-600 mb-2 space-y-1">
                                 <p class="mb-0">
                                     ${playlist.track_count || 0} tracks • 
-                                    Created ${new Date(playlist.created_at).toLocaleDateString('en-GB')} • 
-                                    ${playlist.last_refreshed ? `Refreshed ${new Date(playlist.last_refreshed).toLocaleDateString('en-GB')}` : 'Not refreshed yet'}
-                                </p>
-                                <p class="mb-0">
                                     Refreshes ${playlist.refresh_frequency || 'manually'} • 
                                     ${playlist.next_refresh ? `Next refresh ${formatNextRefresh(playlist.next_refresh)}` : 'No scheduled refresh'}
+                                </p>
+                                <p class="mb-0">
+                                    Created ${formatFriendlyDate(playlist.created_at)} • 
+                                    ${playlist.last_refreshed ? `Refreshed ${formatFriendlyDate(playlist.last_refreshed)}` : 'Not refreshed yet'}
                                 </p>
                             </div>
                             ${playlist.reasoning ? `<p class="text-sm text-gray-600 m-0 mt-2 italic">${truncateText(playlist.reasoning, 140)}</p>` : ''}
