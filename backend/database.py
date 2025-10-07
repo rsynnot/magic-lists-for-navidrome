@@ -67,6 +67,18 @@ class DatabaseManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS scheduled_playlists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    playlist_type TEXT NOT NULL,
+                    navidrome_playlist_id TEXT NOT NULL,
+                    refresh_frequency TEXT NOT NULL,
+                    next_refresh TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             await db.commit()
     
     async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None, playlist_length: Optional[int] = None) -> Playlist:
