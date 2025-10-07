@@ -1,5 +1,5 @@
 {
-  "recipe_id": "This_Is_Artist_v1_004",
+  "recipe_id": "This_Is_Artist_v1_006",
   "name": "Single Artist Metadata & Play Count Based Playlist",
   "user_parameters": {
     "target_artist": "{{TARGET_ARTIST}}",
@@ -7,10 +7,10 @@
   },
   "llm_config": {
     "max_output_tokens": 2000,
-    "temperature": 0.6,
+    "temperature": 0.8,
     "model_name": "google/gemini-2.5-flash"
   },
-  "model_instructions": "Create a playlist of {{DESIRED_TRACK_COUNT}} tracks by the target artist '{{TARGET_ARTIST}}'. The primary decision factor MUST be the 'local_library_likes' score, followed by 'play_count'. Ensure strong diversity across albums and release years to avoid monotony.",
+  "model_instructions": "You are a world-class music curator creating a 'This Is {{TARGET_ARTIST}}' playlist of {{DESIRED_TRACK_COUNT}} tracks. CURATION RULES: 1. DIVERSITY IS PARAMOUNT: **NEVER** group tracks from the same album consecutively—mix albums and release years throughout. 2. Prioritize tracks with high local_library_likes and play_count (10+ plays are major hits). 3. Ensure chronological breadth by mixing old and new releases. 4. Vary energy levels and moods. 5. Start with 2-3 iconic hits (use internal knowledge to identify singles/revered tracks), end with a memorable track. 6. Maximum 3 total tracks per album, spread throughout the playlist. Respond with JSON: {\"track_ids\": [\"id1\", \"id2\", ...], \"reasoning\": \"Brief explanation of curation strategy and flow\"}",
   "global_strategy": {
     "final_track_count": 25,
     "tie_breaker_priority": ["local_library_likes", "play_count", "release_year"],
@@ -37,7 +37,7 @@
         {"field": "artist_name", "operator": "EQUAL_TO", "value": "{{TARGET_ARTIST}}"},
         {"field": "local_library_likes", "operator": "EQUAL_TO", "value": true},
         {"field": "play_count", "operator": "GREATER_THAN", "value": 10},
-        {"field": "genre", "operator": "IN", "value": ["Alternative Rock", "Pop Rock", "Post-Britpop"]}
+        {"field": "genre", "operator": "IN", "value": "{{STEP1_GENRES_IN}}"}
       ]
     },
     {
@@ -50,7 +50,7 @@
         {"field": "artist_name", "operator": "EQUAL_TO", "value": "{{TARGET_ARTIST}}"},
         {"field": "play_count", "operator": "BETWEEN", "value": [3, 10]},
         {"field": "local_library_likes", "operator": "EQUAL_TO", "value": false},
-        {"field": "genre", "operator": "NOT_IN", "value": ["Ambient", "Dance-Pop", "House"]}
+        {"field": "genre", "operator": "NOT_IN", "value": "{{STEP2_GENRES_OUT}}"}
       ]
     },
     {
@@ -62,7 +62,7 @@
       "filters": [
         {"field": "artist_name", "operator": "EQUAL_TO", "value": "{{TARGET_ARTIST}}"},
         {"field": "release_year", "operator": "LESS_THAN", "value": 2010},
-        {"field": "genre", "operator": "IN", "value": ["Alternative Rock", "Post-Britpop"]}
+        {"field": "genre", "operator": "IN", "value": "{{STEP3_GENRES_IN}}"}
       ]
     }
   ]

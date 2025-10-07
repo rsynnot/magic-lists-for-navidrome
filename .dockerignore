@@ -103,9 +103,14 @@ dmypy.json
 .pyre/
 .pytype/
 
+# Temporary files
+tmp_*
+
 # Project specific
 .claude/
 wipe_playlists.py
+debug_payloads
+debug_payloads/
 
-# Temporary files
-tmp_*
+
+

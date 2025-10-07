@@ -187,12 +187,13 @@ async def create_playlist(
             comment=comment_to_use
         )
         
-        # Get track titles for database storage
+        # Get track titles for database storage - PRESERVE AI CURATION ORDER
         track_titles = []
         track_id_to_title = {track["id"]: track["title"] for track in all_tracks}
-        for track_id in curated_track_ids:
+        for track_id in curated_track_ids:  # Iterate in AI-curated order
             if track_id in track_id_to_title:
                 track_titles.append(track_id_to_title[track_id])
+        
         
         # Store playlist in local database (using the first artist_id for now)
         playlist = await db.create_playlist(
@@ -475,16 +476,17 @@ def calculate_next_refresh(frequency: str) -> datetime:
         return now  # Fallback
 
 def schedule_playlist_refresh():
-    """Schedule the playlist refresh job to run every hour"""
+    """Schedule the playlist refresh job to run every 12 hours"""
     if not scheduler.get_job('playlist_refresh'):
         scheduler.add_job(
             refresh_scheduled_playlists,
             'cron',
-            minute=1,  # Run at 1 minute past every hour (12:01, 1:01, 2:01, etc.)
+            hour='1,13',  # Run at 1 AM and 1 PM
+            minute=1,     # Run at 1 minute past (1:01 AM and 1:01 PM)
             id='playlist_refresh',
             replace_existing=True
         )
-        scheduler_logger.info("🔄 Playlist refresh job scheduled to run every hour")
+        scheduler_logger.info("🔄 Playlist refresh job scheduled to run every 12 hours (1:01 AM and 1:01 PM)")
 
 async def refresh_scheduled_playlists():
     """Check for and refresh scheduled playlists that are due"""
@@ -566,18 +568,27 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         
         # Get previous playlist songs for variety context
         previous_songs = original_playlist.get("songs", [])[:10]
-        variety_instruction = f"REFRESH CONSTRAINT: Avoid repeating this previous selection pattern: {', '.join(previous_songs[:5])}. Create a fresh discovery experience with different tracks and artists." if previous_songs else ""
+        variety_instruction = f"REFRESH CHALLENGE: The current playlist opens with these tracks in this order: {', '.join(previous_songs[:5])}. Your goal is to create a FRESH arrangement that tells a different musical story. You may include some of the same excellent tracks if they're rediscovery-worthy, but avoid replicating the same opening sequence or overall flow. Think creatively about re-ordering, substituting, or finding better transitions to ensure a genuinely refreshed listening experience." if previous_songs else ""
         
-        # Create RediscoverWeekly instance
+        # Create RediscoverWeekly instance  
         rediscover = RediscoverWeekly(nav_client)
 
-        # Generate new tracks with FRESH data analysis and user's exact length
-        # Pass variety instruction to encourage different selections
+        # Enhanced variety instruction with current playlist context for AI
+        current_playlist_context = f"CURRENT PLAYLIST FLOW TO REFRESH: {', '.join(previous_songs[:10])}" if previous_songs else ""
+        enhanced_variety_context = f"{variety_instruction}\n\nFor reference, here's the complete current playlist sequence: {current_playlist_context}".strip() if variety_instruction or current_playlist_context else None
+        
+        # Log refresh context for debugging
+        scheduler_logger.info(f"🔄 Re-Discover refresh context - Previous tracks: {len(previous_songs)}, Enhanced variety: {bool(enhanced_variety_context)}")
+
+        # Generate new tracks using NEW recipe system with fresh data analysis
+        # Use the modern recipe-based approach like This Is playlists
         tracks = await rediscover.generate_rediscover_weekly(
             max_tracks=original_length,
             use_ai=True,
-            variety_context=variety_instruction if previous_songs else None
+            variety_context=enhanced_variety_context
         )
+        
+        # The rediscover.generate_rediscover_weekly() method now uses the new recipe system internally
         
         if tracks:
             scheduler_logger.info(f"🎵 Generated {len(tracks)} new tracks for refresh")

@@ -232,11 +232,14 @@ class NavidromeClient:
             if not playlist_id:
                 raise Exception("Failed to get playlist ID from response")
             
-            # Add tracks to the playlist if provided
+            # Add tracks to the playlist if provided - PRESERVE ORDER
             if track_ids:
-                # Update playlist with songs using Subsonic API
+                print(f"🎵 Adding {len(track_ids)} tracks to playlist in AI-curated order using updatePlaylist...")
+                
+                # Use proper Subsonic API with multiple songIdToAdd parameters in single call
                 update_params = self._get_subsonic_params()
                 update_params["playlistId"] = playlist_id
+                # Set as list - httpx will create multiple parameters: songIdToAdd=id1&songIdToAdd=id2&...
                 update_params["songIdToAdd"] = track_ids
                 
                 response = await self.client.get(
@@ -250,6 +253,8 @@ class NavidromeClient:
                 if update_subsonic.get("status") != "ok":
                     error = update_subsonic.get("error", {})
                     raise Exception(f"Failed to add songs to playlist: {error.get('message', 'Unknown error')}")
+                
+                print(f"🎯 Successfully added all {len(track_ids)} tracks in single API call")
                 
             return playlist_id
                 
@@ -326,10 +331,14 @@ class NavidromeClient:
                 )
                 response.raise_for_status()
             
-            # Then add the new tracks
+            # Then add the new tracks - PRESERVE ORDER
             if track_ids:
+                print(f"🎵 Updating playlist with {len(track_ids)} tracks in AI-curated order...")
+                
+                # Use proper Subsonic API with multiple songIdToAdd parameters in single call
                 update_params = self._get_subsonic_params()
                 update_params["playlistId"] = playlist_id
+                # Set as list - httpx will create multiple parameters: songIdToAdd=id1&songIdToAdd=id2&...
                 update_params["songIdToAdd"] = track_ids
                 
                 response = await self.client.get(
@@ -343,6 +352,8 @@ class NavidromeClient:
                 if update_subsonic.get("status") != "ok":
                     error = update_subsonic.get("error", {})
                     raise Exception(f"Failed to add songs to playlist: {error.get('message', 'Unknown error')}")
+                
+                print(f"🎯 Successfully updated playlist with all {len(track_ids)} tracks in single API call")
             
             return True
                 

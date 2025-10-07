@@ -49,46 +49,102 @@ class RecipeManager:
         recipe_filename = registry[playlist_type]
         return self._load_recipe(recipe_filename)
     
+    def _recursive_replace(self, obj: Any, replacements: Dict[str, str]) -> Any:
+        """Recursively traverse and replace placeholders in strings within nested structures"""
+        if isinstance(obj, dict):
+            return {key: self._recursive_replace(value, replacements) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._recursive_replace(item, replacements) for item in obj]
+        elif isinstance(obj, str):
+            # Replace all placeholders in the string
+            result = obj
+            for placeholder, replacement in replacements.items():
+                result = result.replace(placeholder, replacement)
+            return result
+        else:
+            # Return unchanged for other types (int, float, bool, None)
+            return obj
+    
     def apply_recipe(self, playlist_type: str, inputs: Dict[str, Any], include_reasoning: bool = False) -> Dict[str, Any]:
-        """Apply a recipe with given inputs and return the prepared prompt and parameters"""
+        """Apply a recipe with given inputs and return the fully substituted recipe"""
         recipe = self.get_recipe(playlist_type)
         
-        # Validate inputs
-        required_inputs = recipe.get("inputs", [])
-        missing_inputs = [inp for inp in required_inputs if inp not in inputs]
-        if missing_inputs:
-            raise Exception(f"Missing required inputs for {playlist_type}: {missing_inputs}")
+        # Get recipe filename for logging
+        registry = self._load_registry()
+        recipe_filename = registry.get(playlist_type, "unknown")
         
-        # Select the appropriate prompt template
-        if include_reasoning and "prompt_template_with_reasoning" in recipe:
-            prompt_template = recipe["prompt_template_with_reasoning"]
+        # Check if this is a new-style recipe (has llm_config) or legacy recipe
+        if "llm_config" in recipe:
+            # New recipe format - use recursive replacement
+            replacements = {}
+            
+            # Map common inputs to new placeholder format
+            if "artists" in inputs:
+                replacements["{{TARGET_ARTIST}}"] = str(inputs["artists"])
+            if "num_tracks" in inputs:
+                replacements["{{DESIRED_TRACK_COUNT}}"] = str(inputs["num_tracks"])
+            
+            # Map re-discover specific inputs
+            if "candidate_tracks_json" in inputs:
+                replacements["{{CANDIDATE_TRACKS_JSON}}"] = str(inputs["candidate_tracks_json"])
+            if "analysis_summary" in inputs:
+                replacements["{{ANALYSIS_SUMMARY}}"] = str(inputs["analysis_summary"])
+            
+            
+            # Apply recursive replacement to the entire recipe
+            final_recipe = self._recursive_replace(recipe, replacements)
+            
+            # Add tracks data to the final recipe for AI processing
+            if "tracks_data" in inputs:
+                final_recipe["tracks_data"] = inputs["tracks_data"]
+            
+            return final_recipe
+        
         else:
-            prompt_template = recipe["prompt_template"]
-        
-        if prompt_template is None:
-            # This recipe doesn't use LLM (e.g., re_discover uses algorithmic approach)
+            # Legacy recipe format - maintain backward compatibility
+            print(f"🍳 Using LEGACY recipe format: {recipe_filename}")
+            print(f"📋 Recipe version: {recipe.get('version', 'N/A')}")
+            print(f"📝 Recipe description: {recipe.get('description', 'N/A')[:100]}...")
+            if recipe.get('llm_params'):
+                print(f"🤖 Model fallback: {recipe.get('llm_params', {}).get('model_fallback', 'N/A')}")
+                print(f"🌡️ Temperature: {recipe.get('llm_params', {}).get('temperature', 'N/A')}")
+                print(f"🔢 Max tokens: {recipe.get('llm_params', {}).get('max_tokens', 'N/A')}")
+            # Validate inputs
+            required_inputs = recipe.get("inputs", [])
+            missing_inputs = [inp for inp in required_inputs if inp not in inputs]
+            if missing_inputs:
+                raise Exception(f"Missing required inputs for {playlist_type}: {missing_inputs}")
+            
+            # Select the appropriate prompt template
+            if include_reasoning and "prompt_template_with_reasoning" in recipe:
+                prompt_template = recipe["prompt_template_with_reasoning"]
+            else:
+                prompt_template = recipe["prompt_template"]
+            
+            if prompt_template is None:
+                # This recipe doesn't use LLM (e.g., re_discover uses algorithmic approach)
+                return {
+                    "recipe": recipe,
+                    "prompt": None,
+                    "llm_params": recipe.get("llm_params"),
+                    "inputs": inputs
+                }
+            
+            # Fill in the prompt template
+            try:
+                filled_prompt = prompt_template.format(**inputs)
+            except KeyError as e:
+                raise Exception(f"Missing template variable in recipe {playlist_type}: {e}")
+            
+            # Get LLM parameters
+            llm_params = recipe.get("llm_params", {})
+            
             return {
                 "recipe": recipe,
-                "prompt": None,
-                "llm_params": recipe.get("llm_params"),
+                "prompt": filled_prompt,
+                "llm_params": llm_params,
                 "inputs": inputs
             }
-        
-        # Fill in the prompt template
-        try:
-            filled_prompt = prompt_template.format(**inputs)
-        except KeyError as e:
-            raise Exception(f"Missing template variable in recipe {playlist_type}: {e}")
-        
-        # Get LLM parameters
-        llm_params = recipe.get("llm_params", {})
-        
-        return {
-            "recipe": recipe,
-            "prompt": filled_prompt,
-            "llm_params": llm_params,
-            "inputs": inputs
-        }
     
     def list_available_recipes(self) -> Dict[str, Dict[str, Any]]:
         """List all available recipes with their metadata"""

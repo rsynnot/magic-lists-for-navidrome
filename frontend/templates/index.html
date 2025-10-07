@@ -49,7 +49,7 @@
             <nav class="py-4 px-4"> 
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <a class="flex items-center text-xl font-bold" href="/" onclick="location.reload()">
+                        <a class="flex items-center text-xl font-bold" href="#" data-page="home">
                             <img src="/static/assets/ml-logo.svg" alt="Magic Lists" class="h-10 w-auto">
                         </a>
                     </div>
@@ -208,7 +208,7 @@
                     
                     <h2 class="text-xl font-semibold text-gray-900 mb-2">Quick Start</h2>
                     <ol class="list-decimal list-ouside ml-5 space-y-2 mb-1 text-gray-500">
-                        <li><strong>Choose a tool</strong>: <a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a> or <a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a>.</li>
+                        <li><strong>Choose a tool</strong>: <a href="#" data-page="this-is-artist" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a> or <a href="#" data-page="re-discover" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a>.</li>
                         <li><strong>Configure your playlist</strong>: Set the track count and how often it should auto-refresh (daily, weekly, monthly or never).</li>
                         <li><strong>Let it run</strong>: Magic Lists works in the background to keep your playlists fresh.</li>
                     </ol>
@@ -220,12 +220,12 @@
                     
                     <div class="space-y-4 mb-2">
                         <div>
-                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a></h3>
+                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" data-page="this-is-artist" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a></h3>
                             <p class="text-gray-600">A definitive, single-artist mix. Includes primary and featured appearances, de-duplicates repeated versions, and balances hits and deep cuts.</p>
                         </div>
                         
                         <div>
-                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a></h3>
+                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" data-page="re-discover" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a></h3>
                             <p class="text-gray-600">Surfaces tracks you haven't played recently so you can re-find forgotten favourites. Set it to refresh daily, weekly or monthly.</p>
                         </div>
                         

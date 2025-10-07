@@ -14,11 +14,7 @@ class AIClient:
         self.client = httpx.AsyncClient()
 
         # Debug logging
-        print(f"🔍 AIClient initialized:")
-        print(f"   🔑 API Key present: {bool(self.api_key)}")
-        print(f"   🔑 API Key length: {len(self.api_key) if self.api_key else 0}")
-        print(f"   🤖 Model: {self.model}")
-        print(f"   🌐 Base URL: {self.base_url}")
+        print(f"🔍 AIClient initialized")
         
     async def _get_client(self):
         """Get or recreate the HTTP client if needed"""
@@ -66,8 +62,13 @@ class AIClient:
         try:
             # Using AI to curate playlist (logging moved to scheduler_logger)
             
+            # SHUFFLE tracks to prevent AI from album-grouping based on input order
+            import random
+            shuffled_tracks = tracks_json.copy()  # Don't modify the original list
+            random.shuffle(shuffled_tracks)
+            
             # Prepare the tracks data for the AI prompt
-            tracks_data = json.dumps(tracks_json, indent=2)
+            tracks_data = json.dumps(shuffled_tracks, indent=2)
             
             # Use recipe system to generate prompt and get LLM parameters
             recipe_inputs = {
@@ -77,35 +78,79 @@ class AIClient:
                 "variety_context": variety_context or ""
             }
             
-            recipe_result = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
-            prompt = recipe_result["prompt"]
-            llm_params = recipe_result["llm_params"]
+            final_recipe = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
             
-            # Use model from environment first, only fallback to recipe if not set
-            model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
-            temperature = llm_params.get("temperature", 0.7)
-            max_tokens = llm_params.get("max_tokens", 1000)
+            # Check if this is new recipe format (has llm_config) or legacy format
+            if "llm_config" in final_recipe:
+                # New recipe format
+                llm_config = final_recipe.get("llm_config", {})
+                model_instructions = final_recipe.get("model_instructions", "")
+                
+                # Use model from recipe first, then fallback to environment
+                model = llm_config.get("model_name") or self.model or "openai/gpt-3.5-turbo"
+                temperature = llm_config.get("temperature", 0.7)
+                max_tokens = llm_config.get("max_output_tokens", 1000)
+                
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": model_instructions
+                        },
+                        {
+                            "role": "user", 
+                            "content": f"Here are the available tracks to choose from:\n{tracks_data}\n\nPlease create the playlist according to the instructions and respond with valid JSON containing track_ids array and reasoning string."
+                        }
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature
+                }
+            else:
+                # Legacy recipe format
+                prompt = final_recipe["prompt"]
+                llm_params = final_recipe["llm_params"]
+                
+                # Use model from environment first, only fallback to recipe if not set
+                model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
+                temperature = llm_params.get("temperature", 0.7)
+                max_tokens = llm_params.get("max_tokens", 1000)
+                
+                print(f"🤖 AI CLIENT - LEGACY RECIPE FORMAT DETECTED")
+                print(f"🎯 Environment model: {self.model}")
+                print(f"🎯 Recipe model fallback: {llm_params.get('model_fallback')}")
+                print(f"🎯 Final model to use: {model}")
+                print(f"🌡️ Temperature: {temperature}")
+                print(f"🔢 Max tokens: {max_tokens}")
+                print(f"📝 Prompt length: {len(prompt)} characters")
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
+                        },
+                        {
+                            "role": "user", 
+                            "content": prompt
+                        }
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature
+                }
             
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            payload = {
-                "model": model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": max_tokens,
-                "temperature": temperature
-            }
             
             client = await self._get_client()
             response = await client.post(
@@ -118,13 +163,72 @@ class AIClient:
             result = response.json()
             content = result["choices"][0]["message"]["content"].strip()
 
-            # Log the raw AI response for debugging
-            print(f"🤖 RAW AI RESPONSE for {artist_name}: {content}")
+            # Log API response details
+            print(f"📊 AI Response status: {response.status_code}")
+            
+            # Log the raw AI response for debugging (truncated preview)
+            import re
+            
+            # Extract first 3 track IDs for preview
+            track_preview = ""
+            try:
+                # Look for track_ids array in the content
+                track_ids_match = re.search(r'"track_ids":\s*\[(.*?)\]', content, re.DOTALL)
+                if track_ids_match:
+                    track_ids_content = track_ids_match.group(1)
+                    # Split by commas and take first 3
+                    track_lines = [line.strip() for line in track_ids_content.split(',')]
+                    first_three = track_lines[:3]
+                    track_preview = '[\n    ' + ',\n    '.join(first_three) + ',\n    ...\n  ]'
+                else:
+                    track_preview = content[:100] + "..."
+            except:
+                track_preview = content[:100] + "..."
+            
+            print(f"🤖 RAW AI RESPONSE for {artist_name}: {track_preview}")
 
             # Parse the JSON response
             try:
-                # Try to parse as JSON object first (new recipe format)
-                response_data = json.loads(content)
+                # Clean up the response - remove markdown code fences and comments
+                cleaned_content = content.strip()
+                
+                # Remove markdown code fences if present
+                if cleaned_content.startswith("```json"):
+                    cleaned_content = cleaned_content[7:]  # Remove ```json
+                if cleaned_content.startswith("```"):
+                    cleaned_content = cleaned_content[3:]   # Remove ```
+                if cleaned_content.endswith("```"):
+                    cleaned_content = cleaned_content[:-3]  # Remove trailing ```
+                
+                cleaned_content = cleaned_content.strip()
+                
+                # Remove JavaScript-style comments (// comments) 
+                import re
+                lines = cleaned_content.split('\n')
+                cleaned_lines = []
+                
+                for line in lines:
+                    # Remove // comments but preserve URLs like http://
+                    if '//' in line and 'http://' not in line and 'https://' not in line:
+                        comment_pos = line.find('//')
+                        line = line[:comment_pos].rstrip()
+                    
+                    # Fix unquoted strings like: "track123",\n    Say You Will
+                    # Should be: "track123",\n    "Say You Will"
+                    line = re.sub(r'^(\s*)(Say You Will)(\s*$)', r'\1"\2"\3', line)
+                    line = re.sub(r'^(\s*)([A-Za-z][A-Za-z0-9\s\']+)(\s*$)', r'\1"\2"\3', line)
+                    
+                    # Remove trailing commas before closing brackets
+                    line = re.sub(r',(\s*[\]}])', r'\1', line)
+                    
+                    if line.strip():  # Only add non-empty lines
+                        cleaned_lines.append(line)
+                
+                cleaned_content = '\n'.join(cleaned_lines)
+                
+                
+                # Try to parse as JSON object (new recipe format)
+                response_data = json.loads(cleaned_content)
 
                 if isinstance(response_data, dict) and "track_ids" in response_data:
                     # New format with reasoning
@@ -133,7 +237,7 @@ class AIClient:
 
                     # Validate track IDs
                     if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
-                        valid_ids = {track["id"] for track in tracks_json}
+                        valid_ids = {track["id"] for track in shuffled_tracks}
                         filtered_ids = [tid for tid in track_ids if tid in valid_ids]
                         final_selection = filtered_ids[:num_tracks]
 
@@ -151,7 +255,7 @@ class AIClient:
 
                 # Handle simple array format (legacy)
                 elif isinstance(response_data, list) and all(isinstance(tid, str) for tid in response_data):
-                    valid_ids = {track["id"] for track in tracks_json}
+                    valid_ids = {track["id"] for track in shuffled_tracks}
                     filtered_ids = [tid for tid in response_data if tid in valid_ids]
                     final_selection = filtered_ids[:num_tracks]
 
@@ -241,43 +345,99 @@ class AIClient:
             # Prepare the tracks data for the AI prompt
             tracks_data = json.dumps(candidate_tracks, indent=2)
             
-            # Use recipe system to generate prompt and get LLM parameters
+            # Use recipe system with proper placeholder replacement
             recipe_inputs = {
                 "candidate_tracks": tracks_data,
                 "analysis_summary": analysis_summary,
-                "num_tracks": num_tracks,
-                "variety_context": variety_context or ""
+                "num_tracks": num_tracks
             }
             
-            recipe_result = recipe_manager.apply_recipe("re_discover", recipe_inputs, include_reasoning)
-            prompt = recipe_result["prompt"]
-            llm_params = recipe_result["llm_params"]
+            final_recipe = recipe_manager.apply_recipe("re_discover", recipe_inputs, include_reasoning)
             
-            # Use model from environment first, only fallback to recipe if not set
-            model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
-            temperature = llm_params.get("temperature", 0.8)
-            max_tokens = llm_params.get("max_tokens", 2500)
+            # Check if this is new recipe format (has llm_config) or legacy format
+            if "llm_config" in final_recipe:
+                # New recipe format with placeholders properly replaced
+                llm_config = final_recipe.get("llm_config", {})
+                model_instructions = final_recipe.get("model_instructions", "")
+                
+                # Use model from recipe first, then fallback to environment
+                model = llm_config.get("model_name") or self.model or "openai/gpt-3.5-turbo"
+                temperature = llm_config.get("temperature", 0.7)
+                max_tokens = llm_config.get("max_output_tokens", 1500)
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": model_instructions
+                        },
+                        {
+                            "role": "user", 
+                            "content": f"Here are the candidate tracks to choose from:\n{tracks_data}\n\n{f'REFRESH CONTEXT: {variety_context}\n\n' if variety_context else ''}Please analyze these candidate tracks and create the playlist according to the instructions. Respond with valid JSON containing track_ids array and reasoning string."
+                        }
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature
+                }
+            else:
+                # Legacy recipe format fallback
+                prompt = final_recipe.get("prompt", "")
+                llm_params = final_recipe.get("llm_params", {})
+                
+                model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
+                temperature = llm_params.get("temperature", 0.8)
+                max_tokens = llm_params.get("max_tokens", 2500)
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a professional music curator specializing in rediscovery playlists. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
+                        },
+                        {
+                            "role": "user", 
+                            "content": prompt
+                        }
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature
+                }
             
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
+            # DEBUG: Dump payload to file for inspection (disabled by default)
+            DEBUG_DUMP_PAYLOADS = False  # Set to True to enable payload dumping for development
             
-            payload = {
-                "model": model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a professional music curator specializing in rediscovery playlists. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": max_tokens,
-                "temperature": temperature
-            }
+            if DEBUG_DUMP_PAYLOADS:
+                import time
+                
+                timestamp = int(time.time())
+                dump_filename = f"debug_payloads/rediscover_payload_{timestamp}.json"
+                dump_path = os.path.join(os.getcwd(), dump_filename)
+                
+                try:
+                    os.makedirs(os.path.dirname(dump_path), exist_ok=True)
+                    with open(dump_path, 'w') as f:
+                        json.dump(payload, f, indent=2)
+                    print(f"✅ DEBUG: Re-Discover payload dumped to: {dump_filename}")
+                except Exception as e:
+                    print(f"❌ DEBUG: Failed to dump Re-Discover payload: {e}")
+            
+            print(f"🚀 MAKING API CALL FOR RE-DISCOVER")
+            print(f"🎯 Model in payload: {payload['model']}")
+            print(f"🌡️ Temperature: {payload['temperature']}")
+            print(f"🔢 Max tokens: {payload['max_tokens']}")
+            print(f"💬 Messages: {len(payload['messages'])}")
             
             client = await self._get_client()
             response = await client.post(
@@ -290,13 +450,66 @@ class AIClient:
             result = response.json()
             content = result["choices"][0]["message"]["content"].strip()
 
-            # Log the raw AI response for debugging
-            print(f"🤖 RAW AI RESPONSE for Re-Discover Weekly: {content}")
+            # Log API response details
+            print(f"📊 Re-Discover AI Response status: {response.status_code}")
+            
+            # Log the raw AI response for debugging (truncated preview)
+            import re
+            
+            # Extract first 3 track IDs for preview
+            track_preview = ""
+            try:
+                # Look for track_ids array in the content
+                track_ids_match = re.search(r'"track_ids":\s*\[(.*?)\]', content, re.DOTALL)
+                if track_ids_match:
+                    track_ids_content = track_ids_match.group(1)
+                    # Split by commas and take first 3
+                    track_lines = [line.strip() for line in track_ids_content.split(',')]
+                    first_three = track_lines[:3]
+                    track_preview = '[\n    ' + ',\n    '.join(first_three) + ',\n    ...\n  ]'
+                else:
+                    track_preview = content[:100] + "..."
+            except:
+                track_preview = content[:100] + "..."
+            
+            print(f"🤖 RAW AI RESPONSE for Re-Discover Weekly: {track_preview}")
 
             # Parse the JSON response
             try:
+                # Clean up the response - remove markdown code fences and comments
+                cleaned_content = content.strip()
+                
+                # Remove markdown code fences if present
+                if cleaned_content.startswith("```json"):
+                    cleaned_content = cleaned_content[7:]  # Remove ```json
+                if cleaned_content.startswith("```"):
+                    cleaned_content = cleaned_content[3:]   # Remove ```
+                if cleaned_content.endswith("```"):
+                    cleaned_content = cleaned_content[:-3]  # Remove trailing ```
+                
+                cleaned_content = cleaned_content.strip()
+                
+                # Remove JavaScript-style comments (// comments) 
+                import re
+                lines = cleaned_content.split('\n')
+                cleaned_lines = []
+                
+                for line in lines:
+                    # Remove // comments but preserve URLs like http://
+                    if '//' in line and 'http://' not in line and 'https://' not in line:
+                        comment_pos = line.find('//')
+                        line = line[:comment_pos].rstrip()
+                    
+                    # Remove trailing commas before closing brackets
+                    line = re.sub(r',(\s*[\]}])', r'\1', line)
+                    
+                    if line.strip():  # Only add non-empty lines
+                        cleaned_lines.append(line)
+                
+                cleaned_content = '\n'.join(cleaned_lines)
+                
                 # Try to parse as JSON object
-                response_data = json.loads(content)
+                response_data = json.loads(cleaned_content)
 
                 if isinstance(response_data, dict) and "track_ids" in response_data:
                     # New format with reasoning
