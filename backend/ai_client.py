@@ -379,7 +379,7 @@ class AIClient:
                         },
                         {
                             "role": "user", 
-                            "content": f"Here are the candidate tracks to choose from:\n{tracks_data}\n\n{f'REFRESH CONTEXT: {variety_context}\n\n' if variety_context else ''}Please analyze these candidate tracks and create the playlist according to the instructions. Respond with valid JSON containing track_ids array and reasoning string."
+                            "content": f"Here are the candidate tracks to choose from:\n{tracks_data}\n\n" + (f"REFRESH CONTEXT: {variety_context}\n\n" if variety_context else "") + "Please analyze these candidate tracks and create the playlist according to the instructions. Respond with valid JSON containing track_ids array and reasoning string."
                         }
                     ],
                     "max_tokens": max_tokens,
