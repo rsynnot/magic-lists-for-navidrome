@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
+COPY recipes/ ./recipes/
 
 # Create database directory and set permissions
 RUN mkdir -p /app/data && chmod 755 /app/data

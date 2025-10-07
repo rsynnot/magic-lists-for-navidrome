@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import json
+from .recipe_manager import recipe_manager
 
 
 class RediscoverWeekly:
@@ -159,32 +160,37 @@ class RediscoverWeekly:
         
         return dict(track_stats)
     
-    def score_tracks_for_rediscovery(self, track_stats: Dict[str, Any]) -> List[Tuple[str, float, Dict[str, Any]]]:
+    def score_tracks_for_rediscovery(self, track_stats: Dict[str, Any], min_gap_days: int = 7, max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
         """
         Score tracks for re-discovery based on:
         - Historical play count (higher = better)
         - Time since last play (longer = better)
-        - No recent plays (last 7 days)
+        - No recent plays (configurable via min_gap_days)
+
+        Args:
+            track_stats: Dictionary of track statistics
+            min_gap_days: Minimum days since last play to consider (default: 7)
+            max_per_artist: Maximum tracks per artist (not used in scoring, but kept for API compatibility)
         """
         candidates = []
         now = datetime.now()
-        
+
         for song_id, stats in track_stats.items():
             # Only consider tracks with some historical plays (reduced threshold)
             if stats["total_plays"] < 1:
                 continue
 
-            # Skip tracks played recently (last 7 days)
+            # Skip tracks played recently (based on min_gap_days)
             if stats["recent_plays"] > 0:
                 continue
 
             # Calculate days since last play
-            days_since_last_play = 7  # Minimum for synthetic data
+            days_since_last_play = min_gap_days  # Minimum for synthetic data
             if stats["last_play"]:
                 days_since_last_play = (now - stats["last_play"]).days
 
-            # Only consider tracks not played in last 7 days
-            if days_since_last_play < 7:
+            # Only consider tracks not played in the minimum gap period
+            if days_since_last_play < min_gap_days:
                 continue
 
             # Score: (historical play count) × (days since last play)
@@ -192,11 +198,105 @@ class RediscoverWeekly:
             score = stats["total_plays"] * min(days_since_last_play, 90)  # Cap at 90 days
 
             candidates.append((song_id, score, stats))
-        
+
         # Sort by score (highest first)
         candidates.sort(key=lambda x: x[1], reverse=True)
-        
+
         return candidates
+    
+    def _generate_analysis_summary(self, track_stats: Dict[str, Any], history: List[Dict[str, Any]]) -> str:
+        """Generate analysis summary for the user's listening patterns"""
+        try:
+            # Count plays by genre and artist in last 90 days
+            genre_counts = {}
+            artist_counts = {}
+            
+            for entry in history:
+                genre = entry.get("genre", "Unknown")
+                artist = entry.get("artist", "Unknown")
+                
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
+                artist_counts[artist] = artist_counts.get(artist, 0) + 1
+            
+            # Get top 5 genres and artists
+            top_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            top_artists = sorted(artist_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            
+            # Format summary
+            genre_list = ", ".join([genre for genre, _ in top_genres if genre != "Unknown"])
+            artist_list = ", ".join([artist for artist, _ in top_artists if artist != "Unknown"])
+            
+            summary = f"Top Genres: {genre_list or 'Mixed'}. Top Artists: {artist_list or 'Various'}."
+            return summary
+            
+        except Exception as e:
+            return "Top Genres: Mixed. Top Artists: Various."
+    
+    def _calculate_rediscovery_scores(self, track_stats: Dict[str, Any]) -> List[Tuple[str, float, Dict[str, Any]]]:
+        """Calculate rediscovery scores and apply recipe filters"""
+        scored_tracks = []
+        current_year = datetime.now().year
+        cutoff_year = current_year - 15  # Dynamic cutoff year
+        
+        print(f"🔍 Analyzing {len(track_stats)} tracks from listening history...")
+        
+        # Debug counters
+        debug_stats = {
+            "total_tracks": len(track_stats),
+            "filtered_days": 0,
+            "filtered_play_count": 0,
+            "passed_filters": 0
+        }
+        
+        for song_id, stats in track_stats.items():
+            try:
+                # Calculate days since last play
+                if stats.get("last_play"):
+                    days_since_last_play = (datetime.now() - stats["last_play"]).days
+                else:
+                    days_since_last_play = 90  # Default for never played
+                
+                play_count = stats.get("total_plays", 0)
+                year = stats.get("year", 2000)
+                
+                # Filtering for re-discovery candidates
+                # 1. Days filter: 7-120 days (wider rediscovery window)
+                if not (7 <= days_since_last_play <= 120):
+                    debug_stats["filtered_days"] += 1
+                    continue
+                
+                # 2. Play count filter: at least 1 play (must have been played before)
+                if play_count < 1:
+                    debug_stats["filtered_play_count"] += 1
+                    continue
+                
+                # No year filter - rediscovery should include tracks from any era
+                
+                debug_stats["passed_filters"] += 1
+                
+                # Calculate rediscovery_score = play_count * days_since_last_play
+                rediscovery_score = play_count * days_since_last_play
+                
+                # Add to candidate list
+                scored_tracks.append((song_id, rediscovery_score, {
+                    **stats,
+                    "rediscovery_score": rediscovery_score,
+                    "days_since_last_play": days_since_last_play
+                }))
+                
+            except Exception as e:
+                continue  # Skip problematic tracks
+        
+        print(f"📊 Filter results:")
+        print(f"   Total tracks analyzed: {debug_stats['total_tracks']}")
+        print(f"   Filtered by days (7-120): {debug_stats['filtered_days']}")
+        print(f"   Filtered by play count (<1): {debug_stats['filtered_play_count']}")
+        print(f"   Passed all filters: {debug_stats['passed_filters']}")
+        
+        # Sort by rediscovery_score descending and take more candidates for AI selection
+        scored_tracks.sort(key=lambda x: x[1], reverse=True)
+        candidate_limit = max(150, len(scored_tracks))  # Take all if less than 150
+        return scored_tracks[:candidate_limit]
     
     def filter_artist_diversity(self, scored_tracks: List[Tuple[str, float, Dict[str, Any]]], max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
         """
@@ -215,70 +315,144 @@ class RediscoverWeekly:
         
         return filtered_tracks
     
-    async def generate_rediscover_weekly(self) -> List[Dict[str, Any]]:
+    async def generate_rediscover_weekly(self, max_tracks: int = 20, use_ai: bool = True, variety_context: str = None) -> List[Dict[str, Any]]:
         """
         Main method to generate the Re-Discover Weekly playlist.
-        Returns a list of track metadata for the top 20 tracks.
+        Returns a list of track metadata for the final tracks.
         """
         try:
-            # Step 1: Get listening history (last 30 days)
-            history = await self.get_listening_history(days_back=30)
+            # Step 1: Get listening history first to build analysis summary
+            history = await self.get_listening_history(days_back=90)  # Use 90 days for analysis
             
             if not history:
-                raise Exception("No listening history found")
+                raise Exception("No listening history found in the last 90 days")
             
-            # Step 2: Analyze patterns
+            # Step 2: Analyze patterns and create analysis summary
             track_stats = await self.analyze_listening_patterns(history)
+            analysis_summary = self._generate_analysis_summary(track_stats, history)
             
-            # Step 3: Score tracks for re-discovery
-            scored_tracks = self.score_tracks_for_rediscovery(track_stats)
+            print(f"📊 Listening history analysis:")
+            print(f"   Raw history entries: {len(history)}")
+            print(f"   Unique tracks analyzed: {len(track_stats)}")
+            print(f"   Analysis summary: {analysis_summary}")
+            
+            # Initial recipe inputs (will be updated with candidates later)
+            recipe_inputs = {
+                "num_tracks": max_tracks,
+                "analysis_summary": analysis_summary,
+                "candidate_tracks_json": "[]"  # Placeholder for now
+            }
+            
+            # Step 3: Score tracks for re-discovery with new rediscovery_score calculation
+            scored_tracks = self._calculate_rediscovery_scores(track_stats)
             
             if not scored_tracks:
                 raise Exception("No tracks found for re-discovery")
             
-            # Step 4: Filter for artist diversity
-            diverse_tracks = self.filter_artist_diversity(scored_tracks, max_per_artist=3)
+            # Step 4: Prepare candidate tracks for AI (top 150 rediscovery_score tracks)
+            candidate_tracks = scored_tracks  # Already limited to 150 and sorted by rediscovery_score
             
-            # Step 5: Select top 20 tracks (or all available if fewer than 20)
-            target_tracks = 20
-            top_tracks = diverse_tracks[:target_tracks]
-
-            # If we have fewer than 20 tracks, try to get more by relaxing filters
-            if len(top_tracks) < target_tracks:
-                # Try again with more lenient filters
-                lenient_candidates = []
-                for song_id, stats in track_stats.items():
-                    # More lenient: include any track with play count > 0
-                    if stats["total_plays"] < 1:
-                        continue
-
-                    # Allow tracks played up to 3 days ago instead of 7
-                    if stats["recent_plays"] > 0:
-                        continue
-
-                    days_since_last_play = 3  # Reduced from 7 days
-                    if stats["last_play"]:
-                        days_since_last_play = (datetime.now() - stats["last_play"]).days
-
-                    if days_since_last_play < 3:  # Reduced threshold
-                        continue
-
-                    score = stats["total_plays"] * min(days_since_last_play, 90)
-                    lenient_candidates.append((song_id, score, stats))
-
-                # Sort and apply diversity filter
-                lenient_candidates.sort(key=lambda x: x[1], reverse=True)
-                lenient_diverse = self.filter_artist_diversity(lenient_candidates, max_per_artist=4)  # Allow more per artist
-
-                # Combine with existing tracks (avoid duplicates)
-                existing_ids = {track[0] for track in top_tracks}
-                additional_tracks = [track for track in lenient_diverse if track[0] not in existing_ids]
-
-                # Add additional tracks to reach target
-                needed = target_tracks - len(top_tracks)
-                top_tracks.extend(additional_tracks[:needed])
+            if not candidate_tracks:
+                raise Exception("No suitable tracks found for re-discovery")
             
-            # Step 6: Format response
+            print(f"🔍 Found {len(candidate_tracks)} rediscovery candidates with scores ranging from {candidate_tracks[0][1]:.1f} to {candidate_tracks[-1][1]:.1f}")
+            
+            # Step 5: Prepare candidate tracks JSON for recipe placeholder replacement
+            ai_candidates = []
+            for song_id, score, stats in candidate_tracks:
+                # Try to get genre information if available
+                genre = "Unknown"
+                try:
+                    if "genre" in stats:
+                        genre = stats["genre"]
+                    elif hasattr(self, 'all_tracks_cache'):
+                        track_match = next((t for t in self.all_tracks_cache if t["id"] == song_id), None)
+                        if track_match:
+                            genre = track_match.get("genre", "Unknown")
+                except:
+                    genre = "Unknown"
+                
+                ai_candidates.append({
+                    "id": song_id,
+                    "title": stats["title"],
+                    "artist": stats["artist"],
+                    "album": stats["album"],
+                    "genre": genre,
+                    "year": stats.get("year", 2000),
+                    "play_count": stats.get("total_plays", 0),
+                    "days_since_last_play": stats["days_since_last_play"],
+                    "rediscovery_score": round(score, 2)
+                })
+            
+            # Step 6: Use AI curation if enabled
+            if use_ai:
+                # Update recipe inputs with actual candidate tracks
+                import json
+                recipe_inputs["candidate_tracks_json"] = json.dumps(ai_candidates, indent=2)
+                
+                # Apply recipe with all placeholders resolved
+                final_recipe = recipe_manager.apply_recipe("re_discover", recipe_inputs, include_reasoning=True)
+                
+                print(f"🍳 Re-Discover recipe applied: {final_recipe.get('recipe_id', 'N/A')}")
+                print(f"🏷️ Recipe name: {final_recipe.get('name', 'N/A')}")
+                if "llm_config" in final_recipe:
+                    print(f"🤖 Model: {final_recipe.get('llm_config', {}).get('model_name', 'N/A')}")
+                    print(f"🌡️ Temperature: {final_recipe.get('llm_config', {}).get('temperature', 'N/A')}")
+                    print(f"🔢 Max tokens: {final_recipe.get('llm_config', {}).get('max_output_tokens', 'N/A')}")
+                
+                # Use new recipe format for AI curation
+                if "llm_config" in final_recipe:
+                    # Import AI client here to avoid circular imports
+                    from .ai_client import AIClient
+                    ai_client = AIClient()
+                    
+                    try:
+                        # Use the new recipe-based AI curation method
+                        ai_result = await ai_client.curate_rediscover_weekly(
+                            candidate_tracks=ai_candidates,
+                            analysis_summary=analysis_summary,
+                            num_tracks=max_tracks,
+                            include_reasoning=True,
+                            variety_context=variety_context
+                        )
+                        
+                        if isinstance(ai_result, tuple):
+                            curated_track_ids, reasoning = ai_result
+                        else:
+                            curated_track_ids = ai_result
+                            reasoning = ""
+                        
+                        # Create final playlist with AI selections
+                        playlist_tracks = []
+                        id_to_candidate = {candidate["id"]: candidate for candidate in ai_candidates}
+                        
+                        for track_id in curated_track_ids:
+                            if track_id in id_to_candidate:
+                                candidate = id_to_candidate[track_id]
+                                playlist_tracks.append({
+                                    "id": track_id,
+                                    "title": candidate["title"],
+                                    "artist": candidate["artist"],
+                                    "album": candidate["album"],
+                                    "score": candidate["rediscovery_score"],
+                                    "historical_plays": candidate["play_count"],
+                                    "days_since_last_play": candidate["days_since_last_play"],
+                                    "ai_curated": True,
+                                    "ai_reasoning": reasoning if reasoning else "AI curation applied"
+                                })
+                        
+                        if playlist_tracks:
+                            return playlist_tracks
+                            
+                    except Exception as e:
+                        # AI curation failed, fall back to algorithmic selection
+                        print(f"❌ AI curation failed for Re-Discover Weekly: {e}")
+                        import traceback
+                        print(f"📋 Full traceback: {traceback.format_exc()}")
+                        # Fall through to algorithmic selection
+            
+            # Step 7: Fallback to algorithmic selection
+            top_tracks = candidate_tracks[:max_tracks]
             playlist_tracks = []
             for song_id, score, stats in top_tracks:
                 playlist_tracks.append({
@@ -288,7 +462,9 @@ class RediscoverWeekly:
                     "album": stats["album"],
                     "score": round(score, 2),
                     "historical_plays": stats["total_plays"],
-                    "days_since_last_play": (datetime.now() - stats["last_play"]).days if stats["last_play"] else "30+"
+                    "days_since_last_play": (datetime.now() - stats["last_play"]).days if stats["last_play"] else "30+",
+                    "ai_curated": False,
+                    "ai_reasoning": "Algorithmic selection used (AI not available or failed)"
                 })
             
             return playlist_tracks

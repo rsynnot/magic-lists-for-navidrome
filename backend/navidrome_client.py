@@ -188,12 +188,13 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
     
-    async def create_playlist(self, name: str, track_ids: List[str]) -> str:
+    async def create_playlist(self, name: str, track_ids: List[str], comment: str = None) -> str:
         """Create a new playlist in Navidrome using Subsonic API
         
         Args:
             name: Name of the playlist
             track_ids: List of track IDs to add to playlist
+            comment: Optional comment/description for the playlist
             
         Returns:
             playlist_id: The ID of the created playlist
@@ -204,6 +205,12 @@ class NavidromeClient:
             # Create the playlist using Subsonic API
             params = self._get_subsonic_params()
             params["name"] = name
+            if comment:
+                params["comment"] = comment
+                # Comment logging moved to main.py scheduler_logger
+            else:
+                # No comment logging needed
+                pass
             
             response = await self.client.get(
                 f"{self.base_url}/rest/createPlaylist.view",
@@ -225,11 +232,14 @@ class NavidromeClient:
             if not playlist_id:
                 raise Exception("Failed to get playlist ID from response")
             
-            # Add tracks to the playlist if provided
+            # Add tracks to the playlist if provided - PRESERVE ORDER
             if track_ids:
-                # Update playlist with songs using Subsonic API
+                print(f"🎵 Adding {len(track_ids)} tracks to playlist in AI-curated order using updatePlaylist...")
+                
+                # Use proper Subsonic API with multiple songIdToAdd parameters in single call
                 update_params = self._get_subsonic_params()
                 update_params["playlistId"] = playlist_id
+                # Set as list - httpx will create multiple parameters: songIdToAdd=id1&songIdToAdd=id2&...
                 update_params["songIdToAdd"] = track_ids
                 
                 response = await self.client.get(
@@ -243,6 +253,8 @@ class NavidromeClient:
                 if update_subsonic.get("status") != "ok":
                     error = update_subsonic.get("error", {})
                     raise Exception(f"Failed to add songs to playlist: {error.get('message', 'Unknown error')}")
+                
+                print(f"🎯 Successfully added all {len(track_ids)} tracks in single API call")
                 
             return playlist_id
                 
@@ -253,12 +265,13 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error creating playlist: {e}")
     
-    async def update_playlist(self, playlist_id: str, track_ids: List[str]) -> bool:
+    async def update_playlist(self, playlist_id: str, track_ids: List[str], comment: str = None) -> bool:
         """Update an existing playlist by replacing all tracks
         
         Args:
             playlist_id: ID of the playlist to update
             track_ids: List of track IDs to replace current tracks with
+            comment: Optional comment/description to update
             
         Returns:
             bool: True if successful, False otherwise
@@ -266,13 +279,13 @@ class NavidromeClient:
         try:
             await self._ensure_authenticated()
             
-            # First, clear the existing playlist by updating it with no songs
-            clear_params = self._get_subsonic_params()
-            clear_params["playlistId"] = playlist_id
+            # First, get current playlist to find all song IDs to remove
+            get_params = self._get_subsonic_params()
+            get_params["id"] = playlist_id
             
             response = await self.client.get(
-                f"{self.base_url}/rest/updatePlaylist.view",
-                params=clear_params
+                f"{self.base_url}/rest/getPlaylist.view",
+                params=get_params
             )
             response.raise_for_status()
             
@@ -280,12 +293,52 @@ class NavidromeClient:
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
-                raise Exception(f"Failed to clear playlist: {error.get('message', 'Unknown error')}")
+                raise Exception(f"Failed to get playlist for clearing: {error.get('message', 'Unknown error')}")
             
-            # Then add the new tracks
+            # Get current song IDs to remove
+            current_playlist = subsonic_response.get("playlist", {})
+            current_songs = current_playlist.get("entry", [])
+            current_song_ids = [song.get("id") for song in current_songs if song.get("id")]
+            
+            # Remove all existing songs if any exist
+            if current_song_ids:
+                clear_params = self._get_subsonic_params()
+                clear_params["playlistId"] = playlist_id
+                clear_params["songIndexToRemove"] = list(range(len(current_song_ids)))  # Remove all by index
+                if comment:
+                    clear_params["comment"] = comment
+                
+                response = await self.client.get(
+                    f"{self.base_url}/rest/updatePlaylist.view",
+                    params=clear_params
+                )
+                response.raise_for_status()
+                
+                data = response.json()
+                subsonic_response = data.get("subsonic-response", {})
+                if subsonic_response.get("status") != "ok":
+                    error = subsonic_response.get("error", {})
+                    raise Exception(f"Failed to clear playlist: {error.get('message', 'Unknown error')}")
+            elif comment:
+                # Just update comment if no songs to remove
+                clear_params = self._get_subsonic_params()
+                clear_params["playlistId"] = playlist_id
+                clear_params["comment"] = comment
+                
+                response = await self.client.get(
+                    f"{self.base_url}/rest/updatePlaylist.view",
+                    params=clear_params
+                )
+                response.raise_for_status()
+            
+            # Then add the new tracks - PRESERVE ORDER
             if track_ids:
+                print(f"🎵 Updating playlist with {len(track_ids)} tracks in AI-curated order...")
+                
+                # Use proper Subsonic API with multiple songIdToAdd parameters in single call
                 update_params = self._get_subsonic_params()
                 update_params["playlistId"] = playlist_id
+                # Set as list - httpx will create multiple parameters: songIdToAdd=id1&songIdToAdd=id2&...
                 update_params["songIdToAdd"] = track_ids
                 
                 response = await self.client.get(
@@ -299,6 +352,8 @@ class NavidromeClient:
                 if update_subsonic.get("status") != "ok":
                     error = update_subsonic.get("error", {})
                     raise Exception(f"Failed to add songs to playlist: {error.get('message', 'Unknown error')}")
+                
+                print(f"🎯 Successfully updated playlist with all {len(track_ids)} tracks in single API call")
             
             return True
                 
@@ -322,7 +377,11 @@ class NavidromeClient:
             await self._ensure_authenticated()
             
             params = self._get_subsonic_params()
-            params["playlistId"] = playlist_id
+            params["id"] = playlist_id  # According to Subsonic API docs, parameter should be "id", not "playlistId"
+            
+            print(f"🗑️ Attempting to delete playlist with ID: {playlist_id}")
+            print(f"🔧 Delete request URL: {self.base_url}/rest/deletePlaylist.view")
+            print(f"🔧 Delete request params: {params}")
             
             response = await self.client.get(
                 f"{self.base_url}/rest/deletePlaylist.view",
@@ -331,18 +390,29 @@ class NavidromeClient:
             response.raise_for_status()
             
             data = response.json()
+            print(f"🔧 Delete response data: {data}")
+            
             subsonic_response = data.get("subsonic-response", {})
+            print(f"🔧 Subsonic response status: {subsonic_response.get('status')}")
+            
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
-                raise Exception(f"Failed to delete playlist: {error.get('message', 'Unknown error')}")
+                error_message = error.get('message', 'Unknown error')
+                error_code = error.get('code', 'Unknown code')
+                print(f"❌ Subsonic API error: {error_message} (code: {error_code})")
+                raise Exception(f"Failed to delete playlist: {error_message} (code: {error_code})")
             
+            print(f"✅ Successfully deleted playlist {playlist_id} from Navidrome")
             return True
                 
         except httpx.RequestError as e:
+            print(f"🌐 Network error deleting playlist: {e}")
             raise Exception(f"Network error connecting to Navidrome: {e}")
         except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+            print(f"🚨 HTTP error deleting playlist: {e.response.status_code} - {e.response.text}")
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code} - {e.response.text}")
         except Exception as e:
+            print(f"💥 Unexpected error deleting playlist: {e}")
             raise Exception(f"Unexpected error deleting playlist: {e}")
     
     async def close(self):

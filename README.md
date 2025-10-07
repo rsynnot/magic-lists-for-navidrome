@@ -1,39 +1,61 @@
-# MagicLists - Navidrome MVP
+## MagicLists for Navidrome
 
-A FastAPI web application that integrates with Navidrome to create AI-powered playlists from your music library.
+AI-assisted playlists for your own music library.
 
-## Features
+MagicLists adds the kind of curated, evolving playlists you’d expect from Spotify or Apple Music—except it works entirely on your self-hosted Navidrome server. No subscriptions, no renting your music back. Just smart mixes generated from the library you already own.
 
-- 🎵 **Artist Radio** - Create expertly curated playlists from your favorite artists with AI-powered track selection and flow
-- 🎯 **Multi-Artist Playlists** - Blend multiple artists into cohesive playlists for deeper music discovery
-- 🔄 **Re-Discover Weekly** - Automatically surface forgotten gems from your library that you haven't heard in a while
-- 🐳 **Easy Deployment** - Get running in minutes with Docker - no complex setup required
+# What it does
+- 🎵 **This Is (Artist)** — Builds a definitive playlist for any artist in your library, combining hits, deep cuts, and featured appearances without duplicates.
+- 🔄 **Re-Discover** — Rotates tracks you haven’t played in a while, helping you fall back in love with your collection.
+- ⏰ **Auto-Refresh** — Keep playlists fresh with daily, weekly, or monthly updates.
+- 🐳 **Quick Setup** — Simple Docker install; get started in minutes.
+
+# Why it matters
+Navidrome users already own their music. MagicLists brings modern curation tools into that world—so your playlists feel alive, not static, and your collection keeps surprising you.
+
+# Who’s behind it
+I’m Ricky, a product designer with 20+ years in tech. I’m building MagicLists feature by feature, from UI and CSS to playlist logic, because I’m passionate about open-source, privacy-friendly music tools. This isn’t vaporware or a throwaway experiment—it’s genuine, ongoing research into how AI can enrich personal music libraries.
+
+# What’s next
+Upcoming experiments include:
+- Multi-artist “radio” blends
+- Decade and discovery-focused lists
+- Creative journeys like The Long Way Home (a track-to-track sonic path) and Genre Archaeology (tracing influences backwards through time).
+
+MagicLists is just getting started, and I’d love your feedback as it grows.
 
 ## Screenshots
+![Artist Radio UI](assets/images/artist-playlist.png)
 
-![Artist Radio UI](assets/images/artist-radio.png)
-
-_Caption: Creating an Artist Radio playlist _ 
+_Caption: Creating a 'This is (Artist)' playlist _ 
 
 ## Project Structure
-
 ```
-magiclists-navidrome-mvp/
+magiclists-navidrome/
 ├── backend/
 │   ├── main.py              # FastAPI entrypoint
 │   ├── navidrome_client.py  # Navidrome API client
 │   ├── ai_client.py         # AI integration
 │   ├── database.py          # SQLite database manager
+│   ├── recipe_manager.py    # Playlist recipe system
+│   ├── rediscover.py        # Re-discover logic
 │   └── schemas.py           # Pydantic models
 ├── frontend/
 │   ├── templates/
 │   │   └── index.html       # Main web interface
 │   └── static/
-│       └── style.css        # CSS styles
-├── docker/
-│   ├── Dockerfile           # Container configuration
-│   └── docker-compose.yml   # Multi-service setup
+│       └── assets/
+│           └── ml-logo.svg  # Magic Lists logo
+├── recipes/
+│   ├── registry.json        # Recipe registry
+│   ├── this_is_v1_002.json  # This Is recipe v1.2
+│   └── re_discover_v1_004.json # Re-Discover recipe v1.4
+├── assets/
+│   └── images/
+│       └── artist-radio.png # Screenshot
 ├── requirements.txt         # Python dependencies
+├── Dockerfile               # Container configuration
+├── docker-compose.yml       # Docker Compose setup
 └── README.md               # This file
 ```
 
@@ -100,28 +122,17 @@ magiclists-navidrome-mvp/
 
 - `GET /` - Web interface
 - `GET /api/artists` - List all artists from Navidrome
-- `POST /api/create_playlist` - Create a new playlist
-  ```json
-  {
-    "artist_id": "artist_123",
-    "playlist_name": "My Favorite Songs"
-  }
-  ```
+- `POST /api/create_playlist` - Create a new "This Is" playlist
+- `POST /api/create_playlist_with_reasoning` - Create playlist with detailed reasoning
 - `GET /api/rediscover-weekly` - Generate Re-Discover Weekly recommendations
 - `POST /api/create-rediscover-playlist` - Create Re-Discover Weekly playlist in Navidrome
-
-## Re-Discover Weekly Feature
-
-The **Re-Discover Weekly** feature analyzes your Navidrome listening history to find tracks you've loved but haven't heard recently:
-
-- 📊 **Analyzes last 30 days** of listening history
-- 🎯 **Finds forgotten favorites** - tracks with high play counts but not played in 7+ days
-- 🧮 **Smart scoring** - ranks tracks by `(play count × days since last play)`
-- 🎨 **Artist diversity** - limits each artist to maximum 3 tracks
-- 📝 **Top 20 tracks** - returns the highest-scored tracks as a playlist
-- ⚡ **Lightweight** - no embedding libraries, just play counts and dates
-
-Simply click "Generate Re-Discover Weekly" in the web interface to discover tracks you might want to hear again!
+- `GET /api/playlists` - List all managed playlists
+- `DELETE /api/playlists/{playlist_id}` - Delete a managed playlist
+- `GET /api/recipes` - List available recipe versions
+- `GET /api/recipes/validate` - Validate recipe configurations
+- `GET /api/scheduler/status` - Check auto-refresh scheduler status
+- `POST /api/scheduler/trigger` - Manually trigger scheduled refreshes
+- `POST /api/scheduler/start` - Start the auto-refresh scheduler
 
 ## Configuration
 
@@ -184,7 +195,7 @@ AI_MODEL=openai/gpt-3.5-turbo
 1. **New API endpoints**: Add to `backend/main.py`
 2. **Database changes**: Modify `backend/database.py`
 3. **Frontend updates**: Edit `frontend/templates/index.html`
-4. **Styling**: Update `frontend/static/style.css`
+4. **Styling**: Styles are handled with Tailwind CSS in the HTML template
 
 ## Troubleshooting
 

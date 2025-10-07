@@ -14,6 +14,7 @@ class CreatePlaylistRequest(BaseModel):
     artist_ids: List[str]
     playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
+    playlist_length: int = 25  # Number of tracks to include
 
 class Playlist(BaseModel):
     """Schema for a stored playlist"""
@@ -21,6 +22,8 @@ class Playlist(BaseModel):
     artist_id: str
     playlist_name: str
     songs: List[str] = []
+    reasoning: Optional[str] = None
+    navidrome_playlist_id: Optional[str] = None
     created_at: str
     updated_at: str
 
@@ -56,7 +59,8 @@ class RediscoverWeeklyResponse(BaseModel):
 
 class CreateRediscoverPlaylistRequest(BaseModel):
     """Request schema for creating a Re-Discover Weekly playlist"""
-    refresh_frequency: str = "once"  # "once", "daily", "weekly", "monthly"
+    refresh_frequency: str = "weekly"  # "daily", "weekly", "monthly"
+    playlist_length: int = 25  # Number of tracks to include
 
 class ScheduledPlaylist(BaseModel):
     """Schema for a scheduled playlist"""
