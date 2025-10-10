@@ -66,7 +66,7 @@ magiclists-navidrome/
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/rsynnot/magic-lists-for-navidrome.git
-   cd magiclists-navidrome-mvp
+   cd magiclists-navidrome-navidrome
    ```
 
 2. **Create your environment file:**
