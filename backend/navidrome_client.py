@@ -84,6 +84,19 @@ class NavidromeClient:
             await self._ensure_authenticated()
             
             params = self._get_subsonic_params()
+            
+            # MULTIPLE LIBRARIES FIX - START
+            # Add optional library ID if configured
+            library_id = os.getenv("NAVIDROME_LIBRARY_ID")
+            if library_id:
+                params["musicFolderId"] = library_id
+                print(f"🎵 Using configured library ID: {library_id}")
+            # MULTIPLE LIBRARIES FIX - END
+            
+            # Log the full request for debugging (minus auth details)
+            log_params = {k: v for k, v in params.items() if k not in ['t', 's']}
+            print(f"🌐 getArtists request: GET {self.base_url}/rest/getArtists.view with params: {log_params}")
+            
             response = await self.client.get(
                 f"{self.base_url}/rest/getArtists.view",
                 params=params
@@ -91,12 +104,50 @@ class NavidromeClient:
             response.raise_for_status()
             
             data = response.json()
+            print(f"📊 getArtists response status: {response.status_code}")
             
             # Handle Subsonic API response format
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
-                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+                error_message = error.get('message', 'Unknown error')
+                error_code = error.get('code', 0)
+                
+                print(f"❌ Subsonic API error: {error_message} (code: {error_code})")
+                
+                # MULTIPLE LIBRARIES FIX - START
+                # Handle "Library not found" error
+                if "Library not found" in error_message or "empty" in error_message.lower():
+                    print("⚠️ Library not found error detected - attempting retry without library filter")
+                    
+                    # Retry without library filter
+                    retry_params = self._get_subsonic_params()
+                    # Remove any library-specific parameters
+                    retry_params.pop("musicFolderId", None)
+                    
+                    print(f"🔄 Retry getArtists request: GET {self.base_url}/rest/getArtists.view with params: {retry_params}")
+                    
+                    retry_response = await self.client.get(
+                        f"{self.base_url}/rest/getArtists.view",
+                        params=retry_params
+                    )
+                    retry_response.raise_for_status()
+                    
+                    retry_data = retry_response.json()
+                    retry_subsonic = retry_data.get("subsonic-response", {})
+                    
+                    print(f"📊 Retry getArtists response status: {retry_response.status_code}")
+                    
+                    if retry_subsonic.get("status") == "ok":
+                        print("✅ Retry successful - multiple libraries detected, using all available libraries")
+                        data = retry_data
+                        subsonic_response = retry_subsonic
+                    else:
+                        retry_error = retry_subsonic.get("error", {})
+                        raise Exception(f"Multiple libraries error: {retry_error.get('message', 'Unknown error')}")
+                # MULTIPLE LIBRARIES FIX - END
+                else:
+                    raise Exception(f"Subsonic API error: {error_message}")
             
             artists_data = subsonic_response.get("artists", {})
             artists_list = []
@@ -109,13 +160,17 @@ class NavidromeClient:
                         "name": artist.get("name")
                     })
             
+            print(f"✅ Successfully fetched {len(artists_list)} artists from Navidrome")
             return artists_list
                 
         except httpx.RequestError as e:
+            print(f"🌐 Network error in getArtists: {e}")
             raise Exception(f"Network error connecting to Navidrome: {e}")
         except httpx.HTTPStatusError as e:
+            print(f"🚨 HTTP error in getArtists: {e.response.status_code} - {e.response.text}")
             raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
         except Exception as e:
+            print(f"💥 Unexpected error in getArtists: {e}")
             raise Exception(f"Unexpected error fetching artists: {e}")
     
     async def get_tracks_by_artist(self, artist_id: str) -> List[Dict[str, Any]]:

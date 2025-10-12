@@ -97,6 +97,19 @@ magiclists-navidrome/
 
 **That's it!** The application will be running in a Docker container with all dependencies included.
 
+## System Check
+
+MagicLists automatically validates your configuration on startup. If any issues are detected, you'll be redirected to a system check page that shows:
+
+- **Environment Variables**: Checks that required variables are set
+- **Navidrome URL**: Verifies your server is reachable  
+- **Navidrome Authentication**: Tests your credentials
+- **Navidrome Artists API**: Confirms API access is working
+- **OpenRouter API Key**: Checks if AI features are configured (optional)
+- **Library Configuration**: Shows multiple library setup status
+
+If checks fail, detailed suggestions are provided to help resolve issues. You can also access the system check at any time via `/system-check`.
+
 ### Option 2: Local Development (Advanced)
 
 1. **Install dependencies:**
@@ -162,15 +175,18 @@ AI_MODEL=openai/gpt-3.5-turbo
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NAVIDROME_URL` | Navidrome server URL | Yes |
-| `NAVIDROME_USERNAME` | Navidrome username | Yes |
-| `NAVIDROME_PASSWORD` | Navidrome password | Yes |
-| `NAVIDROME_API_KEY` | Navidrome API key (future feature) | No |
-| `AI_API_KEY` | OpenRouter API key for AI curation | No |
-| `AI_MODEL` | AI model name (default: openai/gpt-3.5-turbo) | No |
-| `DATABASE_PATH` | SQLite database file path | No |
+| Variable | Description | Required | Settings UI |
+|----------|-------------|----------|-------------|
+| `NAVIDROME_URL` | Navidrome server URL | Yes | ✅ |
+| `NAVIDROME_USERNAME` | Navidrome username | Yes | ✅ |
+| `NAVIDROME_PASSWORD` | Navidrome password | Yes | ❌ |
+| `NAVIDROME_LIBRARY_ID` | Specific library ID for multiple libraries | No | ✅ |
+| `NAVIDROME_API_KEY` | Navidrome API key (future feature) | No | ❌ |
+| `AI_API_KEY` | OpenRouter API key for AI curation | No | ❌ |
+| `AI_MODEL` | AI model name (default: openai/gpt-3.5-turbo) | No | ✅ |
+| `DATABASE_PATH` | SQLite database file path | No | ❌ |
+
+**Note**: Variables marked with ✅ can be updated via the Settings page (`/settings`). Others require editing the `.env` file and restarting the application.
 
 ### Navidrome Setup
 
@@ -203,16 +219,62 @@ AI_MODEL=openai/gpt-3.5-turbo
 
 1. **Navidrome connection failed**
    - Check `NAVIDROME_URL` is correct
-   - Verify Navidrome is running
-   - Confirm username/password are valid
+   - Verify Navidrome is running and accessible
+   - Confirm username/password are valid in your `.env` file
 
-2. **No artists found**
+2. **Docker Networking Issues**
+   
+   When running in Docker, connection issues are often related to networking:
+   
+   **Use container names instead of localhost:**
+   ```bash
+   # ❌ Won't work in Docker
+   NAVIDROME_URL=http://localhost:4533
+   
+   # ✅ Use container name
+   NAVIDROME_URL=http://navidrome:4533
+   ```
+   
+   **Check if containers are on the same network:**
+   ```bash
+   # List Docker networks
+   docker network ls
+   
+   # Inspect your network
+   docker network inspect your_network_name
+   
+   # Verify both containers are on the same network
+   docker ps --format "table {{.Names}}\t{{.Networks}}"
+   ```
+   
+   **Alternative solutions:**
+   - Use the Docker host IP: `NAVIDROME_URL=http://172.17.0.1:4533`
+   - Use host networking mode (less secure)
+   - Ensure both containers use the same Docker Compose network
+   
+   📖 **Learn more**: [Docker Networking Documentation](https://docs.docker.com/network/)
+
+3. **Multiple Navidrome Libraries**
+   
+   If you have multiple music libraries in Navidrome:
+   
+   - **Automatic**: MagicLists will detect and work with all libraries by default
+   - **Specific Library**: Set `NAVIDROME_LIBRARY_ID` to target a specific library:
+     ```bash
+     NAVIDROME_LIBRARY_ID=your-library-id-here
+     ```
+   - **Find Library IDs**: Check your Navidrome admin interface or API documentation
+   - **System Check**: The health check will show library configuration status
+
+4. **No artists found**
    - Ensure your music library is scanned in Navidrome
    - Check Navidrome logs for scanning issues
+   - If using multiple libraries, verify the library ID is correct
 
-3. **Database errors**
+5. **Database errors**
    - Ensure write permissions for database directory
    - Check disk space
+   - Restart the application if database appears corrupted
 
 ## License
 

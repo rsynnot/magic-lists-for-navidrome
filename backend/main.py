@@ -47,19 +47,53 @@ from .database import DatabaseManager, get_db
 from .schemas import CreatePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
 from .recipe_manager import recipe_manager
 from .rediscover import RediscoverWeekly
+# SYSTEM CHECK FEATURE - START
+from .services.health_check_service import HealthCheckService
+# SYSTEM CHECK FEATURE - END
 
 app = FastAPI(title="MagicLists Navidrome MVP")
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize scheduler on app startup"""
-    global scheduler
+    global scheduler, system_check_passed, system_check_results
     scheduler = AsyncIOScheduler()
     scheduler.start()
     scheduler_logger.info("✅ Scheduler started successfully")
     # Auto-start the cron job
     await start_scheduler_job()
     scheduler_logger.info("✅ Cron job auto-started on application startup")
+    
+    # SYSTEM CHECK FEATURE - START
+    # Run system checks on startup
+    try:
+        health_service = HealthCheckService()
+        system_check_results = await health_service.run_checks()
+        system_check_passed = system_check_results.get("all_passed", False)
+        
+        if system_check_passed:
+            scheduler_logger.info("✅ System health checks passed on startup")
+        else:
+            scheduler_logger.warning("⚠️ System health checks failed on startup - user will be redirected to system check page")
+            
+        # Log individual check results
+        for check in system_check_results.get("checks", []):
+            status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "❌"
+            scheduler_logger.info(f"{status_emoji} {check['name']}: {check['status']}")
+            
+    except Exception as e:
+        scheduler_logger.error(f"❌ Failed to run system checks on startup: {e}")
+        system_check_passed = False
+        system_check_results = {
+            "all_passed": False,
+            "checks": [{
+                "name": "System Check Service",
+                "status": "error", 
+                "message": f"Failed to run health checks: {str(e)}",
+                "suggestion": "Check application logs and restart the service"
+            }]
+        }
+    # SYSTEM CHECK FEATURE - END
 
 @app.on_event("shutdown") 
 async def shutdown_event():
@@ -82,6 +116,12 @@ ai_client = None
 # Initialize scheduler (will be started on app startup)
 scheduler = None
 
+# SYSTEM CHECK FEATURE - START
+# App state to track system check results
+system_check_passed = False
+system_check_results = None
+# SYSTEM CHECK FEATURE - END
+
 def get_navidrome_client():
     global navidrome_client
     if navidrome_client is None:
@@ -97,6 +137,25 @@ def get_ai_client():
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Serve the main HTML page"""
+    # SYSTEM CHECK FEATURE - START
+    # Redirect to system check if checks haven't passed
+    if not system_check_passed:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/system-check", status_code=302)
+    # SYSTEM CHECK FEATURE - END
+    
+    return templates.TemplateResponse("index.html", {"request": request})
+
+# SYSTEM CHECK FEATURE - START
+@app.get("/system-check", response_class=HTMLResponse)
+async def system_check_page(request: Request):
+    """Serve the system check page"""
+    return templates.TemplateResponse("index.html", {"request": request})
+# SYSTEM CHECK FEATURE - END
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """Serve the settings page"""
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/api/artists")
@@ -115,6 +174,110 @@ async def get_artists():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
+
+# SYSTEM CHECK FEATURE - START
+@app.get("/api/health-check")
+async def get_health_check():
+    """Get system health check results"""
+    global system_check_passed, system_check_results
+    
+    try:
+        # Run fresh health checks
+        health_service = HealthCheckService()
+        fresh_results = await health_service.run_checks()
+        
+        # Update app state with fresh results
+        system_check_passed = fresh_results.get("all_passed", False)
+        system_check_results = fresh_results
+        
+        # Log the result
+        if system_check_passed:
+            scheduler_logger.info("✅ System health checks passed via API")
+        else:
+            scheduler_logger.warning("⚠️ System health checks failed via API")
+        
+        return fresh_results
+        
+    except Exception as e:
+        scheduler_logger.error(f"❌ Failed to run health checks via API: {e}")
+        error_results = {
+            "all_passed": False,
+            "checks": [{
+                "name": "System Check Service",
+                "status": "error",
+                "message": f"Failed to run health checks: {str(e)}",
+                "suggestion": "Check application logs and restart the service"
+            }]
+        }
+        return error_results
+# SYSTEM CHECK FEATURE - END
+
+@app.get("/api/settings/current")
+async def get_current_settings():
+    """Get current settings from environment variables"""
+    try:
+        settings = {
+            "navidrome_url": os.getenv("NAVIDROME_URL", ""),
+            "navidrome_username": os.getenv("NAVIDROME_USERNAME", ""),
+            "default_model": os.getenv("AI_MODEL", "openai/gpt-3.5-turbo"),
+            "navidrome_library_id": os.getenv("NAVIDROME_LIBRARY_ID", "")
+        }
+        return settings
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load settings: {str(e)}")
+
+@app.post("/api/settings/update")
+async def update_settings(settings: dict):
+    """Update settings in .env file (non-secret values only)"""
+    try:
+        # Validate input
+        allowed_keys = {"navidrome_url", "navidrome_username", "default_model", "navidrome_library_id"}
+        if not all(key in allowed_keys for key in settings.keys()):
+            raise HTTPException(status_code=400, detail="Invalid setting keys")
+        
+        # Map to .env variable names
+        env_mapping = {
+            "navidrome_url": "NAVIDROME_URL",
+            "navidrome_username": "NAVIDROME_USERNAME", 
+            "default_model": "AI_MODEL",
+            "navidrome_library_id": "NAVIDROME_LIBRARY_ID"
+        }
+        
+        # Read current .env file
+        env_file_path = ".env"
+        env_lines = []
+        
+        if os.path.exists(env_file_path):
+            with open(env_file_path, 'r') as f:
+                env_lines = f.readlines()
+        
+        # Update or add the specified variables
+        updated_vars = set()
+        for i, line in enumerate(env_lines):
+            line_stripped = line.strip()
+            if line_stripped and not line_stripped.startswith('#'):
+                var_name = line_stripped.split('=')[0]
+                for setting_key, env_var in env_mapping.items():
+                    if var_name == env_var and setting_key in settings:
+                        env_lines[i] = f"{env_var}={settings[setting_key]}\n"
+                        updated_vars.add(env_var)
+                        break
+        
+        # Add any new variables that weren't found
+        for setting_key, env_var in env_mapping.items():
+            if setting_key in settings and env_var not in updated_vars:
+                env_lines.append(f"{env_var}={settings[setting_key]}\n")
+        
+        # Write back to .env file
+        with open(env_file_path, 'w') as f:
+            f.writelines(env_lines)
+        
+        scheduler_logger.info(f"✅ Settings updated: {list(settings.keys())}")
+        return {"success": True, "message": "Settings updated successfully"}
+        
+    except Exception as e:
+        scheduler_logger.error(f"❌ Failed to update settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update settings: {str(e)}")
 
 @app.post("/api/create_playlist", response_model=Playlist)
 async def create_playlist(
