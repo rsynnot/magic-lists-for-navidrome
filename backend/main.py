@@ -47,19 +47,53 @@ from .database import DatabaseManager, get_db
 from .schemas import CreatePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
 from .recipe_manager import recipe_manager
 from .rediscover import RediscoverWeekly
+# SYSTEM CHECK FEATURE - START
+from .services.health_check_service import HealthCheckService
+# SYSTEM CHECK FEATURE - END
 
 app = FastAPI(title="MagicLists Navidrome MVP")
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize scheduler on app startup"""
-    global scheduler
+    global scheduler, system_check_passed, system_check_results
     scheduler = AsyncIOScheduler()
     scheduler.start()
     scheduler_logger.info("✅ Scheduler started successfully")
     # Auto-start the cron job
     await start_scheduler_job()
     scheduler_logger.info("✅ Cron job auto-started on application startup")
+    
+    # SYSTEM CHECK FEATURE - START
+    # Run system checks on startup
+    try:
+        health_service = HealthCheckService()
+        system_check_results = await health_service.run_checks()
+        system_check_passed = system_check_results.get("all_passed", False)
+        
+        if system_check_passed:
+            scheduler_logger.info("✅ System health checks passed on startup")
+        else:
+            scheduler_logger.warning("⚠️ System health checks failed on startup - user will be redirected to system check page")
+            
+        # Log individual check results
+        for check in system_check_results.get("checks", []):
+            status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "❌"
+            scheduler_logger.info(f"{status_emoji} {check['name']}: {check['status']}")
+            
+    except Exception as e:
+        scheduler_logger.error(f"❌ Failed to run system checks on startup: {e}")
+        system_check_passed = False
+        system_check_results = {
+            "all_passed": False,
+            "checks": [{
+                "name": "System Check Service",
+                "status": "error", 
+                "message": f"Failed to run health checks: {str(e)}",
+                "suggestion": "Check application logs and restart the service"
+            }]
+        }
+    # SYSTEM CHECK FEATURE - END
 
 @app.on_event("shutdown") 
 async def shutdown_event():
@@ -82,6 +116,12 @@ ai_client = None
 # Initialize scheduler (will be started on app startup)
 scheduler = None
 
+# SYSTEM CHECK FEATURE - START
+# App state to track system check results
+system_check_passed = False
+system_check_results = None
+# SYSTEM CHECK FEATURE - END
+
 def get_navidrome_client():
     global navidrome_client
     if navidrome_client is None:
@@ -97,7 +137,22 @@ def get_ai_client():
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Serve the main HTML page"""
+    # SYSTEM CHECK FEATURE - START
+    # Redirect to system check if checks haven't passed
+    if not system_check_passed:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/system-check", status_code=302)
+    # SYSTEM CHECK FEATURE - END
+    
     return templates.TemplateResponse("index.html", {"request": request})
+
+# SYSTEM CHECK FEATURE - START
+@app.get("/system-check", response_class=HTMLResponse)
+async def system_check_page(request: Request):
+    """Serve the system check page"""
+    return templates.TemplateResponse("index.html", {"request": request})
+# SYSTEM CHECK FEATURE - END
+
 
 @app.get("/api/artists")
 async def get_artists():
@@ -115,6 +170,44 @@ async def get_artists():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
+
+# SYSTEM CHECK FEATURE - START
+@app.get("/api/health-check")
+async def get_health_check():
+    """Get system health check results"""
+    global system_check_passed, system_check_results
+    
+    try:
+        # Run fresh health checks
+        health_service = HealthCheckService()
+        fresh_results = await health_service.run_checks()
+        
+        # Update app state with fresh results
+        system_check_passed = fresh_results.get("all_passed", False)
+        system_check_results = fresh_results
+        
+        # Log the result
+        if system_check_passed:
+            scheduler_logger.info("✅ System health checks passed via API")
+        else:
+            scheduler_logger.warning("⚠️ System health checks failed via API")
+        
+        return fresh_results
+        
+    except Exception as e:
+        scheduler_logger.error(f"❌ Failed to run health checks via API: {e}")
+        error_results = {
+            "all_passed": False,
+            "checks": [{
+                "name": "System Check Service",
+                "status": "error",
+                "message": f"Failed to run health checks: {str(e)}",
+                "suggestion": "Check application logs and restart the service"
+            }]
+        }
+        return error_results
+# SYSTEM CHECK FEATURE - END
+
 
 @app.post("/api/create_playlist", response_model=Playlist)
 async def create_playlist(
