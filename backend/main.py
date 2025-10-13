@@ -153,10 +153,6 @@ async def system_check_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 # SYSTEM CHECK FEATURE - END
 
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    """Serve the settings page"""
-    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/api/artists")
 async def get_artists():
@@ -212,72 +208,6 @@ async def get_health_check():
         return error_results
 # SYSTEM CHECK FEATURE - END
 
-@app.get("/api/settings/current")
-async def get_current_settings():
-    """Get current settings from environment variables"""
-    try:
-        settings = {
-            "navidrome_url": os.getenv("NAVIDROME_URL", ""),
-            "navidrome_username": os.getenv("NAVIDROME_USERNAME", ""),
-            "default_model": os.getenv("AI_MODEL", "openai/gpt-3.5-turbo"),
-            "navidrome_library_id": os.getenv("NAVIDROME_LIBRARY_ID", "")
-        }
-        return settings
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load settings: {str(e)}")
-
-@app.post("/api/settings/update")
-async def update_settings(settings: dict):
-    """Update settings in .env file (non-secret values only)"""
-    try:
-        # Validate input
-        allowed_keys = {"navidrome_url", "navidrome_username", "default_model", "navidrome_library_id"}
-        if not all(key in allowed_keys for key in settings.keys()):
-            raise HTTPException(status_code=400, detail="Invalid setting keys")
-        
-        # Map to .env variable names
-        env_mapping = {
-            "navidrome_url": "NAVIDROME_URL",
-            "navidrome_username": "NAVIDROME_USERNAME", 
-            "default_model": "AI_MODEL",
-            "navidrome_library_id": "NAVIDROME_LIBRARY_ID"
-        }
-        
-        # Read current .env file
-        env_file_path = ".env"
-        env_lines = []
-        
-        if os.path.exists(env_file_path):
-            with open(env_file_path, 'r') as f:
-                env_lines = f.readlines()
-        
-        # Update or add the specified variables
-        updated_vars = set()
-        for i, line in enumerate(env_lines):
-            line_stripped = line.strip()
-            if line_stripped and not line_stripped.startswith('#'):
-                var_name = line_stripped.split('=')[0]
-                for setting_key, env_var in env_mapping.items():
-                    if var_name == env_var and setting_key in settings:
-                        env_lines[i] = f"{env_var}={settings[setting_key]}\n"
-                        updated_vars.add(env_var)
-                        break
-        
-        # Add any new variables that weren't found
-        for setting_key, env_var in env_mapping.items():
-            if setting_key in settings and env_var not in updated_vars:
-                env_lines.append(f"{env_var}={settings[setting_key]}\n")
-        
-        # Write back to .env file
-        with open(env_file_path, 'w') as f:
-            f.writelines(env_lines)
-        
-        scheduler_logger.info(f"✅ Settings updated: {list(settings.keys())}")
-        return {"success": True, "message": "Settings updated successfully"}
-        
-    except Exception as e:
-        scheduler_logger.error(f"❌ Failed to update settings: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update settings: {str(e)}")
 
 @app.post("/api/create_playlist", response_model=Playlist)
 async def create_playlist(

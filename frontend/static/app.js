@@ -180,7 +180,7 @@ function setActiveMenuItem(page) {
 // Navigation functionality
 function showContent(contentId) {
     // Hide all content sections
-    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content', 'settings-content'];
+    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content'];
     contentSections.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -220,10 +220,6 @@ document.addEventListener('click', function(event) {
             contentId = 'system-check-content';
             // Auto-run system checks when navigating to system check page
             setTimeout(() => runSystemChecks(), 100);
-        } else if (page === 'settings') {
-            contentId = 'settings-content';
-            // Load current settings when navigating to settings page
-            setTimeout(() => loadCurrentSettings(), 100);
         }
         
         setActiveMenuItem(page);
@@ -797,71 +793,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.location.pathname === '/system-check') {
         showContent('system-check-content');
         setTimeout(() => runSystemChecks(), 100);
-    } else if (window.location.pathname === '/settings') {
-        showContent('settings-content');
-        setTimeout(() => loadCurrentSettings(), 100);
     }
 });
 
-// Settings functionality
-async function loadCurrentSettings() {
-    try {
-        const response = await fetch('/api/settings/current');
-        if (response.ok) {
-            const settings = await response.json();
-            
-            // Pre-fill form with current values
-            document.getElementById('navidrome-url').value = settings.navidrome_url || '';
-            document.getElementById('navidrome-username').value = settings.navidrome_username || '';
-            document.getElementById('default-model').value = settings.default_model || 'openai/gpt-3.5-turbo';
-            document.getElementById('navidrome-library-id').value = settings.navidrome_library_id || '';
-        } else {
-            console.warn('Could not load current settings');
-        }
-    } catch (error) {
-        console.error('Error loading settings:', error);
-    }
-}
-
-// Handle settings form submission
-document.getElementById('settings-form').addEventListener('submit', async function(event) {
-    event.preventDefault();
-    
-    const button = document.getElementById('save-settings-btn');
-    const originalText = button.textContent;
-    
-    button.disabled = true;
-    button.textContent = 'Saving...';
-    
-    try {
-        const formData = new FormData(event.target);
-        const settings = {
-            navidrome_url: formData.get('navidrome_url'),
-            navidrome_username: formData.get('navidrome_username'),
-            default_model: formData.get('default_model'),
-            navidrome_library_id: formData.get('navidrome_library_id')
-        };
-        
-        const response = await fetch('/api/settings/update', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(settings)
-        });
-        
-        if (response.ok) {
-            showToast('success', 'Settings updated successfully. Restart the application for changes to take effect.');
-        } else {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || 'Failed to update settings');
-        }
-        
-    } catch (error) {
-        console.error('Error updating settings:', error);
-        showToast('error', error.message);
-    } finally {
-        button.disabled = false;
-        button.textContent = originalText;
-    }
-});
