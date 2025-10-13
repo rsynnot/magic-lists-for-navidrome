@@ -1,22 +1,22 @@
-## MagicLists for Navidrome
+# MagicLists for Navidrome
 
-AI-assisted playlists for your own music library.
+**AI-assisted playlists for your own music library.**
 
 MagicLists adds the kind of curated, evolving playlists you’d expect from Spotify or Apple Music—except it works entirely on your self-hosted Navidrome server. No subscriptions, no renting your music back. Just smart mixes generated from the library you already own.
 
-# What it does
+## What it does
 - 🎵 **This Is (Artist)** — Builds a definitive playlist for any artist in your library, combining hits, deep cuts, and featured appearances without duplicates.
 - 🔄 **Re-Discover** — Rotates tracks you haven’t played in a while, helping you fall back in love with your collection.
 - ⏰ **Auto-Refresh** — Keep playlists fresh with daily, weekly, or monthly updates.
 - 🐳 **Quick Setup** — Simple Docker install; get started in minutes.
 
-# Why it matters
+## Why it matters
 Navidrome users already own their music. MagicLists brings modern curation tools into that world—so your playlists feel alive, not static, and your collection keeps surprising you.
 
-# Who’s behind it
+## Who’s behind it
 I’m Ricky, a product designer with 20+ years in tech. I’m building MagicLists feature by feature, from UI and CSS to playlist logic, because I’m passionate about open-source, privacy-friendly music tools. This isn’t vaporware or a throwaway experiment—it’s genuine, ongoing research into how AI can enrich personal music libraries.
 
-# What’s next
+## What’s next
 Upcoming experiments include:
 - Multi-artist “radio” blends
 - Decade and discovery-focused lists
@@ -27,77 +27,155 @@ MagicLists is just getting started, and I’d love your feedback as it grows.
 ## Screenshots
 ![Artist Radio UI](assets/images/artist-playlist.png)
 
-_Caption: Creating a 'This is (Artist)' playlist _ 
+_Caption: Creating a 'This is (Artist)' playlist_ 
 
-## Project Structure
+
+## Installation
+
+### Recommended: Add to Your Existing Docker Compose
+
+**Why this method?** Your MagicLists container will be on the same network as Navidrome, making connection simple and reliable. This also enables future features like audio analysis that require local file access.
+
+1. **Add MagicLists to your existing `docker-compose.yml`** (the one that runs Navidrome):
+```yaml
+   services:
+     navidrome:
+       # ... your existing Navidrome config ...
+     
+     magiclists:
+       image: rickysynnot/magic-lists-for-navidrome:latest
+       container_name: magiclists
+       ports:
+         - "4545:8000"
+       environment:
+         - NAVIDROME_URL=http://navidrome:4533
+         - NAVIDROME_USERNAME=your_username
+         - NAVIDROME_PASSWORD=your_password
+         - AI_API_KEY=your_openrouter_api_key  # Optional, for AI features
+         - AI_MODEL=openai/gpt-3.5-turbo       # Optional
+       volumes:
+         - ./magiclists-data:/app/data          # Persist configuration
+       restart: unless-stopped
 ```
-magiclists-navidrome/
-├── backend/
-│   ├── main.py              # FastAPI entrypoint
-│   ├── navidrome_client.py  # Navidrome API client
-│   ├── ai_client.py         # AI integration
-│   ├── database.py          # SQLite database manager
-│   ├── recipe_manager.py    # Playlist recipe system
-│   ├── rediscover.py        # Re-discover logic
-│   └── schemas.py           # Pydantic models
-├── frontend/
-│   ├── templates/
-│   │   └── index.html       # Main web interface
-│   └── static/
-│       └── assets/
-│           └── ml-logo.svg  # Magic Lists logo
-├── recipes/
-│   ├── registry.json        # Recipe registry
-│   ├── this_is_v1_002.json  # This Is recipe v1.2
-│   └── re_discover_v1_004.json # Re-Discover recipe v1.4
-├── assets/
-│   └── images/
-│       └── artist-radio.png # Screenshot
-├── requirements.txt         # Python dependencies
-├── Dockerfile               # Container configuration
-├── docker-compose.yml       # Docker Compose setup
-└── README.md               # This file
+2. Update the environment variables with your Navidrome credentials
+3. Start the stack:
+```bash
+   docker-compose up -d
+```
+4. Access MagicLists at http://localhost:4545
+
+Note: The NAVIDROME_URL uses the container name (navidrome) as the hostname. If your Navidrome service has a different name in your compose file, update this accordingly.
+
+### Alternative: Standalone Docker Container
+Use this if you can't or don't want to modify your existing Docker Compose setup.
+
+**If Navidrome is publicly accessible:**
+Use your public Navidrome URL (e.g., https://music.yourdomain.com):
+```bash
+   docker run -d \
+      --name magiclists \
+      -p 4545:8000 \
+      -e NAVIDROME_URL=https://music.yourdomain.com \
+      -e NAVIDROME_USERNAME=your_username \
+      -e NAVIDROME_PASSWORD=your_password \
+      -e AI_API_KEY=your_openrouter_api_key \
+      -v ./magiclists-data:/app/data \
+      rickysynnot/magic-lists-for-navidrome:latest
 ```
 
-## Quick Start
+**If Navidrome is on the same host machine:**
+Use host.docker.internal to reach services on your host:
+```bash
+   docker run -d \
+      --name magiclists \
+      -p 4545:8000 \
+      -e NAVIDROME_URL=http://host.docker.internal:4533 \
+      -e NAVIDROME_USERNAME=your_username \
+      -e NAVIDROME_PASSWORD=your_password \
+      -e AI_API_KEY=your_openrouter_api_key \
+      -v ./magiclists-data:/app/data \
+      rickysynnot/magic-lists-for-navidrome:latest
+```
+**If Navidrome is on your local network:**
+Use the local IP address of the machine running Navidrome:
+```bash
+   docker run -d \
+      --name magiclists \
+      -p 4545:8000 \
+      -e NAVIDROME_URL=http://192.168.1.100:4533 \
+      -e NAVIDROME_USERNAME=your_username \
+      -e NAVIDROME_PASSWORD=your_password \
+      -e AI_API_KEY=your_openrouter_api_key \
+      -v ./magiclists-data:/app/data \
+      rickysynnot/magic-lists-for-navidrome:latest
+```
+Access MagicLists at http://localhost:4545
 
-### Option 1: Running with Docker (Recommended)
+## Running Without Docker
+Use this method if you prefer to run Python directly or want to contribute to development.
 
-1. **Clone the repository:**
-   ```bash
+1. Clone the repository:
+```bash
    git clone https://github.com/rsynnot/magic-lists-for-navidrome.git
-   cd magiclists-navidrome-mvp
-   ```
-
-2. **Create your environment file:**
-   ```bash
+   cd magic-lists-for-navidrome
+```
+2. Install dependencies:
+```bash
+   pip install -r requirements.txt
+```
+3. Create your environment file:
+```bash
    cp .env.example .env
-   ```
-
-3. **Configure your `.env` file with your Navidrome details:**
-   ```bash
-   # Required - Your Navidrome server details
-   NAVIDROME_URL=https://your-navidrome-server.com
+```
+4. Edit `.env` with your Navidrome details:
+```bash
+   NAVIDROME_URL=http://localhost:4533
    NAVIDROME_USERNAME=your_username
    NAVIDROME_PASSWORD=your_password
-   
-   # Optional - AI features (see AI Configuration section below)
-   AI_API_KEY=your_api_key_here
-   AI_MODEL=openai/gpt-3.5-turbo
-   ```
+   AI_API_KEY=your_openrouter_api_key  # Optional
+   AI_MODEL=openai/gpt-3.5-turbo       # Optional
+```
+5. Run the application:
+```bash
+    python -m uvicorn app.main:app --host 0.0.0.0 --port 4545
+```
+6. Access the application at http://localhost:4545
+To update: Simply `git pull` and restart the application.
 
-4. **Start the application:**
-   ```bash
-   docker-compose up --build
-   ```
+## Troubleshooting Connection Issues
 
-5. **Access the application:**
-   - Open http://localhost:4545 in your browser
-   - The app will connect to your Navidrome server using the credentials in `.env`
+Can't connect to Navidrome? The most common issue is an incorrect `NAVIDROME_URL`. Here's how to determine the right value:
+- Same Docker network: Use the container name (e.g., http://navidrome:4533)
+- Same host machine: Use http://host.docker.internal:4533 (Docker Desktop) or http://172.17.0.1:4533 (Linux)
+- Different machine on LAN: Use the local IP (e.g., http://192.168.1.100:4533)
+- Public internet: Use your domain (e.g., https://music.yourdomain.com)
 
-**That's it!** The application will be running in a Docker container with all dependencies included.
+**Check if containers are on the same network:**
+```bash
+   # List Docker networks
+   docker network ls
 
-## System Check
+   # Inspect your network
+   docker network inspect your_network_name
+
+   # Verify both containers are on the same network
+   docker ps --format "table {{.Names}}\t{{.Networks}}"
+```
+
+**No artists found**
+   - Ensure your music library is scanned in Navidrome
+   - Check Navidrome logs for scanning issues
+   - If using multiple libraries, verify the library ID is correct
+
+**Database errors**
+   - Ensure write permissions for database directory
+   - Check disk space
+   - Restart the application if database appears corrupted
+
+**Still having issues?** Check the System Check page in the app after startup - it will test your connection and provide specific guidance.
+
+
+## System Check Page 
 
 MagicLists automatically validates your configuration on startup. If any issues are detected, you'll be redirected to a system check page that shows:
 
@@ -109,27 +187,6 @@ MagicLists automatically validates your configuration on startup. If any issues 
 - **Library Configuration**: Shows multiple library setup status
 
 If checks fail, detailed suggestions are provided to help resolve issues. You can also access the system check at any time via `/system-check`.
-
-### Option 2: Local Development (Advanced)
-
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Set environment variables:**
-   ```bash
-   export NAVIDROME_URL=http://localhost:4533
-   export NAVIDROME_TOKEN=your_navidrome_api_token
-   export AI_API_KEY=your_openai_api_key  # Optional
-   export AI_MODEL=gpt-3.5-turbo  # Optional
-   ```
-
-3. **Run the application:**
-   ```bash
-   cd magiclists-navidrome-mvp
-   python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-   ```
 
 ## API Endpoints
 
@@ -147,9 +204,8 @@ If checks fail, detailed suggestions are provided to help resolve issues. You ca
 - `POST /api/scheduler/trigger` - Manually trigger scheduled refreshes
 - `POST /api/scheduler/start` - Start the auto-refresh scheduler
 
-## Configuration
 
-### AI Configuration (Optional)
+## AI Configuration (Optional)
 
 The AI features enhance playlist curation with intelligent track selection. You can choose from free, low-cost, or premium models:
 
@@ -162,119 +218,24 @@ The AI features enhance playlist curation with intelligent track selection. You 
 
 **Example `.env` setup:**
 ```bash
-# For OpenRouter (free tier available)
-AI_API_KEY=sk-or-v1-your-key-here
-AI_MODEL=deepseek/deepseek-chat
-
-# For OpenAI direct
-AI_API_KEY=sk-your-openai-key
-AI_MODEL=openai/gpt-3.5-turbo
+   # OpenRouter (free tier available)
+   AI_API_KEY=sk-or-v1-your-key-here
+   AI_MODEL=deepseek/deepseek-chat
 ```
-
 **Note:** Without AI configuration, the app falls back to play-count based playlist generation.
 
-### Environment Variables
 
-| Variable | Description | Required | Settings UI |
-|----------|-------------|----------|-------------|
-| `NAVIDROME_URL` | Navidrome server URL | Yes | ✅ |
-| `NAVIDROME_USERNAME` | Navidrome username | Yes | ✅ |
-| `NAVIDROME_PASSWORD` | Navidrome password | Yes | ❌ |
-| `NAVIDROME_LIBRARY_ID` | Specific library ID for multiple libraries | No | ✅ |
-| `NAVIDROME_API_KEY` | Navidrome API key (future feature) | No | ❌ |
-| `AI_API_KEY` | OpenRouter API key for AI curation | No | ❌ |
-| `AI_MODEL` | AI model name (default: openai/gpt-3.5-turbo) | No | ✅ |
-| `DATABASE_PATH` | SQLite database file path | No | ❌ |
-
-**Note**: Variables marked with ✅ can be updated via the Settings page (`/settings`). Others require editing the `.env` file and restarting the application.
-
-### Navidrome Setup
-
-1. Install and configure Navidrome on your system
-2. Point Navidrome to your music library
-3. Create a user account
-4. Use these credentials in the MagicLists configuration
-
-## Development
-
-### Project Dependencies
-
-- **FastAPI**: Web framework and API
-- **httpx**: HTTP client for Navidrome API
-- **aiosqlite**: Async SQLite database
-- **Pydantic**: Data validation and schemas
-- **Jinja2**: HTML templating
-- **uvicorn**: ASGI server
-
-### Adding Features
-
-1. **New API endpoints**: Add to `backend/main.py`
-2. **Database changes**: Modify `backend/database.py`
-3. **Frontend updates**: Edit `frontend/templates/index.html`
-4. **Styling**: Styles are handled with Tailwind CSS in the HTML template
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Navidrome connection failed**
-   - Check `NAVIDROME_URL` is correct
-   - Verify Navidrome is running and accessible
-   - Confirm username/password are valid in your `.env` file
-
-2. **Docker Networking Issues**
+## Multiple Navidrome Libraries
    
-   When running in Docker, connection issues are often related to networking:
-   
-   **Use container names instead of localhost:**
+If you have multiple music libraries in Navidrome:
+
+- **Automatic**: MagicLists will detect and work with all libraries by default
+- **Specific Library**: Set `NAVIDROME_LIBRARY_ID` to target a specific library:
    ```bash
-   # ❌ Won't work in Docker
-   NAVIDROME_URL=http://localhost:4533
-   
-   # ✅ Use container name
-   NAVIDROME_URL=http://navidrome:4533
+   NAVIDROME_LIBRARY_ID=your-library-id-here
    ```
-   
-   **Check if containers are on the same network:**
-   ```bash
-   # List Docker networks
-   docker network ls
-   
-   # Inspect your network
-   docker network inspect your_network_name
-   
-   # Verify both containers are on the same network
-   docker ps --format "table {{.Names}}\t{{.Networks}}"
-   ```
-   
-   **Alternative solutions:**
-   - Use the Docker host IP: `NAVIDROME_URL=http://172.17.0.1:4533`
-   - Use host networking mode (less secure)
-   - Ensure both containers use the same Docker Compose network
-   
-   📖 **Learn more**: [Docker Networking Documentation](https://docs.docker.com/network/)
-
-3. **Multiple Navidrome Libraries**
-   
-   If you have multiple music libraries in Navidrome:
-   
-   - **Automatic**: MagicLists will detect and work with all libraries by default
-   - **Specific Library**: Set `NAVIDROME_LIBRARY_ID` to target a specific library:
-     ```bash
-     NAVIDROME_LIBRARY_ID=your-library-id-here
-     ```
-   - **Find Library IDs**: Check your Navidrome admin interface or API documentation
-   - **System Check**: The health check will show library configuration status
-
-4. **No artists found**
-   - Ensure your music library is scanned in Navidrome
-   - Check Navidrome logs for scanning issues
-   - If using multiple libraries, verify the library ID is correct
-
-5. **Database errors**
-   - Ensure write permissions for database directory
-   - Check disk space
-   - Restart the application if database appears corrupted
+- **Find Library IDs**: Check your Navidrome admin interface or API documentation
+- **System Check**: The health check will show library configuration status
 
 ## License
 
@@ -303,6 +264,4 @@ For issues and questions:
 
 ---
 
-© 2025 Synnot Studio — Licensed under the MIT License.
-
-Made with ❤️ by [Synnot Studio](https://synnotstudio.com).
+© 2025 [Synnot Studio](https://synnotstudio.com) — Licensed under the MIT License.

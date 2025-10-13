@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: magiclists
     ports:
       - "4545:8000"
     env_file:
