@@ -84,6 +84,17 @@ class RecipeManager:
             if "num_tracks" in inputs:
                 replacements["{{DESIRED_TRACK_COUNT}}"] = str(inputs["num_tracks"])
             
+            # Log placeholder replacement
+            print(f"🔄 PLACEHOLDER REPLACEMENTS:")
+            for placeholder, value in replacements.items():
+                print(f"   {placeholder} -> {value}")
+            
+            # Log original recipe size
+            original_recipe_json = json.dumps(recipe, indent=2)
+            original_size = len(original_recipe_json)
+            print(f"📏 RECIPE SIZE ANALYSIS:")
+            print(f"   Original recipe JSON: {original_size} chars")
+            
             # Map re-discover specific inputs
             if "candidate_tracks_json" in inputs:
                 replacements["{{CANDIDATE_TRACKS_JSON}}"] = str(inputs["candidate_tracks_json"])
@@ -93,6 +104,20 @@ class RecipeManager:
             
             # Apply recursive replacement to the entire recipe
             final_recipe = self._recursive_replace(recipe, replacements)
+            
+            # Log final recipe size after replacement
+            final_recipe_json = json.dumps(final_recipe, indent=2)
+            final_size = len(final_recipe_json)
+            print(f"   Final recipe JSON: {final_size} chars")
+            print(f"   Recipe expansion: {final_size - original_size:+d} chars")
+            
+            # Verify critical replacements occurred
+            model_instructions = final_recipe.get("model_instructions", "")
+            if "{{TARGET_ARTIST}}" in model_instructions or "{{DESIRED_TRACK_COUNT}}" in model_instructions:
+                print(f"⚠️  WARNING: Placeholder replacement may have failed!")
+                print(f"   Remaining placeholders in model_instructions detected")
+            else:
+                print(f"✅ Placeholder replacement successful")
             
             # Add tracks data to the final recipe for AI processing
             if "tracks_data" in inputs:

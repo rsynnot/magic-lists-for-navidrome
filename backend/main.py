@@ -262,6 +262,17 @@ async def create_playlist(
             curated_track_ids = curation_result
             reasoning = ""
 
+        # Check for validation failures or empty results
+        if not curated_track_ids:
+            if reasoning and "Playlist generation failed" in reasoning:
+                # This is a validation failure - don't create playlist
+                scheduler_logger.error(f"❌ Playlist creation aborted: {reasoning}")
+                raise HTTPException(status_code=400, detail=f"Playlist generation failed: {reasoning}")
+            else:
+                # This is an empty result without explanation
+                scheduler_logger.error(f"❌ AI curation returned no tracks for {', '.join(artist_names)}")
+                raise HTTPException(status_code=500, detail="AI curation failed to return any tracks")
+
         # Log the AI reasoning for debugging (truncated)
         if reasoning:
             reasoning_preview = reasoning[:200] + "..." if len(reasoning) > 200 else reasoning

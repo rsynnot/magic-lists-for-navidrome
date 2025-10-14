@@ -67,16 +67,42 @@ class AIClient:
             shuffled_tracks = tracks_json.copy()  # Don't modify the original list
             random.shuffle(shuffled_tracks)
             
-            # Prepare the tracks data for the AI prompt
-            tracks_data = json.dumps(shuffled_tracks, indent=2)
+            # Note: We now pass shuffled_tracks directly as clean JSON array to the AI
+            # No more string conversion and text blob parsing!
+            
+            # Log track data completeness
+            original_track_count = len(tracks_json)
+            shuffled_track_count = len(shuffled_tracks)
+            
+            print(f"📊 TRACK DATA ANALYSIS (STRUCTURED APPROACH):")
+            print(f"   Original tracks: {original_track_count}")
+            print(f"   Shuffled tracks: {shuffled_track_count}")
+            print(f"   Format: ✅ CLEAN JSON ARRAY (no string conversion)")
+            print(f"   Data integrity: {'✅ COMPLETE' if original_track_count == shuffled_track_count else '❌ TRUNCATED'}")
+            
+            # Verify track data includes essential fields
+            if shuffled_tracks:
+                sample_track = shuffled_tracks[0]
+                essential_fields = ['id', 'title', 'artist', 'album']
+                missing_fields = [field for field in essential_fields if field not in sample_track]
+                if missing_fields:
+                    print(f"⚠️  Missing essential fields in tracks: {missing_fields}")
+                else:
+                    print(f"✅ All essential track fields present: {list(sample_track.keys())}")
+            else:
+                print(f"❌ ERROR: No tracks available for curation!")
             
             # Use recipe system to generate prompt and get LLM parameters
             recipe_inputs = {
                 "artists": artist_name,
-                "tracks_data": tracks_data,
                 "num_tracks": num_tracks,
                 "variety_context": variety_context or ""
             }
+            
+            print(f"🍳 RECIPE INPUTS PREPARED:")
+            print(f"   Artist: {artist_name}")
+            print(f"   Track count requested: {num_tracks}")
+            print(f"   Variety context: {variety_context or 'None'}")
             
             final_recipe = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
             
@@ -91,11 +117,58 @@ class AIClient:
                 temperature = llm_config.get("temperature", 0.7)
                 max_tokens = llm_config.get("max_output_tokens", 1000)
                 
+                print(f"🍳 RECIPE PROCESSING COMPLETE:")
+                print(f"   Recipe has llm_config: True")
+                print(f"   Model: {model}")
+                print(f"   Temperature: {temperature}")
+                print(f"   Max tokens: {max_tokens}")
+                print(f"   Model instructions length: {len(model_instructions)} chars")
+                
+                # Serialize the complete recipe (excluding tracks_data to avoid duplication)
+                recipe_without_tracks = {k: v for k, v in final_recipe.items() if k != "tracks_data"}
+                complete_recipe_json = json.dumps(recipe_without_tracks, indent=2)
+                recipe_char_count = len(complete_recipe_json)
+                
+                print(f"📋 COMPLETE RECIPE PAYLOAD:")
+                print(f"   Recipe JSON length: {recipe_char_count} chars")
                 
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 }
+                
+                # Build structured JSON payload within user message
+                # Rename "title" to "track_name" to avoid AI confusion with track IDs
+                renamed_tracks = []
+                for track in shuffled_tracks:
+                    renamed_track = track.copy()
+                    if "title" in renamed_track:
+                        renamed_track["track_name"] = renamed_track.pop("title")
+                    renamed_tracks.append(renamed_track)
+                
+                structured_payload = {
+                    "recipe": recipe_without_tracks,
+                    "available_tracks": renamed_tracks,  # Clean JSON array with track_name field
+                    "request": {
+                        "artist_name": artist_name,
+                        "desired_track_count": num_tracks,
+                        "playlist_type": "this_is"
+                    }
+                }
+                
+                user_content = f"""STRUCTURED PLAYLIST REQUEST:
+
+{json.dumps(structured_payload, indent=2, ensure_ascii=False)}
+
+CRITICAL INSTRUCTIONS:
+- Analyze the recipe configuration (processing steps, filters, curation rules)
+- Select tracks from the available_tracks array
+- **IMPORTANT**: USE THE 'id' FIELD ONLY - never use the track_name, artist, or any other field
+- Your track_ids array must contain ONLY the exact 'id' values from the available_tracks
+- Create a playlist of {num_tracks} tracks for {artist_name}
+- Respond with valid JSON: {{"track_ids": ["id1", "id2", ...], "reasoning": "explanation"}}
+
+EXAMPLE: If track has "id": "ABC123", return "ABC123" in track_ids array, NOT the track_name."""
                 
                 payload = {
                     "model": model,
@@ -106,12 +179,40 @@ class AIClient:
                         },
                         {
                             "role": "user", 
-                            "content": f"Here are the available tracks to choose from:\n{tracks_data}\n\nPlease create the playlist according to the instructions and respond with valid JSON containing track_ids array and reasoning string."
+                            "content": user_content
                         }
                     ],
                     "max_tokens": max_tokens,
                     "temperature": temperature
                 }
+                
+                print(f"💬 STRUCTURED PAYLOAD COMPONENTS:")
+                print(f"   System message length: {len(model_instructions)} chars")
+                print(f"   User message length: {len(user_content)} chars")
+                print(f"   📊 STRUCTURED DATA:")
+                print(f"      Recipe fields: {len(structured_payload['recipe'])} components")
+                print(f"      Available tracks: {len(structured_payload['available_tracks'])} (clean JSON array with track_name field)")
+                print(f"      Request params: {structured_payload['request']}")
+                print(f"      Track field mapping: title → track_name (to avoid AI confusion with IDs)")
+                print(f"   Total payload character count: {len(json.dumps(payload))}")
+                
+                # DEBUG: Dump payload to file for "This Is" playlist inspection
+                DEBUG_DUMP_THIS_IS_PAYLOADS = True  # Enable payload dumping for This Is playlists
+                
+                if DEBUG_DUMP_THIS_IS_PAYLOADS:
+                    import time
+                    
+                    timestamp = int(time.time())
+                    dump_filename = f"debug_payloads/this_is_payload_{artist_name.replace(' ', '_')}_{timestamp}.json"
+                    dump_path = os.path.join(os.getcwd(), dump_filename)
+                    
+                    try:
+                        os.makedirs(os.path.dirname(dump_path), exist_ok=True)
+                        with open(dump_path, 'w', encoding='utf-8') as f:
+                            json.dump(payload, f, indent=2, ensure_ascii=False, separators=(',', ': '))
+                        print(f"✅ DEBUG: This Is payload dumped to: {dump_filename}")
+                    except Exception as e:
+                        print(f"❌ DEBUG: Failed to dump This Is payload: {e}")
             else:
                 # Legacy recipe format
                 prompt = final_recipe["prompt"]
@@ -187,7 +288,7 @@ class AIClient:
             
             print(f"🤖 RAW AI RESPONSE for {artist_name}: {track_preview}")
 
-            # Parse the JSON response
+            # Parse the JSON response with comprehensive validation
             try:
                 # Clean up the response - remove markdown code fences and comments
                 cleaned_content = content.strip()
@@ -226,35 +327,125 @@ class AIClient:
                 
                 cleaned_content = '\n'.join(cleaned_lines)
                 
-                
                 # Try to parse as JSON object (new recipe format)
                 response_data = json.loads(cleaned_content)
 
+                # STEP 2: RESPONSE STRUCTURE VALIDATION
+                source_track_count = len(shuffled_tracks)
+                
+                print(f"🔍 RESPONSE VALIDATION STARTING:")
+                print(f"   Source tracks available: {source_track_count}")
+                
+                # Validate response structure
                 if isinstance(response_data, dict) and "track_ids" in response_data:
-                    # New format with reasoning
+                    # New format with reasoning - validate structure
                     track_ids = response_data.get("track_ids", [])
                     reasoning = response_data.get("reasoning", "")
+                    
+                    # Structure checks
+                    if not isinstance(track_ids, list):
+                        print(f"❌ Response validation: FAILED - track_ids is not a list")
+                        raise ValueError("Response structure invalid: track_ids must be a list")
+                    
+                    if not isinstance(reasoning, str):
+                        print(f"❌ Response validation: FAILED - reasoning is not a string")
+                        raise ValueError("Response structure invalid: reasoning must be a string")
+                    
+                    if not reasoning.strip():
+                        print(f"⚠️  Response validation: WARNING - reasoning is empty")
+                    
+                    print(f"✅ Response validation: structure OK")
+                    
+                    # Validate all track IDs are strings
+                    if not all(isinstance(tid, str) for tid in track_ids):
+                        print(f"❌ Response validation: FAILED - not all track_ids are strings")
+                        raise ValueError("Invalid track_ids format: all IDs must be strings")
+                    
+                    returned_track_count = len(track_ids)
+                    
+                    # SANITY CHECKS
+                    print(f"🧠 SANITY CHECKS:")
+                    print(f"   Returned tracks: {returned_track_count}")
+                    
+                    # Check 1: Large source, tiny return
+                    if source_track_count >= 100 and returned_track_count <= 10:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: Too few tracks returned from large source set. {error_msg}")
+                    
+                    # Check 2: Less than 20% returned
+                    min_expected = max(1, int(source_track_count * 0.2))  # At least 20% or 1 track
+                    if returned_track_count < min_expected:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: Returned tracks less than 20% of source. {error_msg}")
+                    
+                    # Check 3: More returned than source
+                    if returned_track_count > source_track_count:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
+                    
+                    print(f"✅ Response validation passed: received {returned_track_count} tracks from {source_track_count} source tracks")
 
-                    # Validate track IDs
-                    if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
-                        valid_ids = {track["id"] for track in shuffled_tracks}
-                        filtered_ids = [tid for tid in track_ids if tid in valid_ids]
-                        final_selection = filtered_ids[:num_tracks]
+                    # DEBUG: Log what AI actually returned vs what we sent
+                    valid_ids = {track["id"] for track in shuffled_tracks}
+                    print(f"🔍 TRACK ID VALIDATION DEBUG:")
+                    print(f"   AI returned IDs: {track_ids[:5]}...")  # First 5 IDs
+                    print(f"   Valid source IDs: {list(valid_ids)[:5]}...")  # First 5 valid IDs
+                    
+                    # Find which IDs don't match
+                    invalid_ids = [tid for tid in track_ids if tid not in valid_ids]
+                    if invalid_ids:
+                        print(f"   ❌ INVALID IDs returned by AI: {invalid_ids[:10]}...")
+                        print(f"   ❌ AI returned {len(invalid_ids)} invalid IDs out of {len(track_ids)}")
+                    
+                    filtered_ids = [tid for tid in track_ids if tid in valid_ids]
+                    print(f"   ✅ Valid IDs after filtering: {len(filtered_ids)} out of {len(track_ids)}")
+                    
+                    final_selection = filtered_ids[:num_tracks]
 
-                        # AI curation successful (logging moved to scheduler_logger)
-                        if reasoning:
-                            # AI reasoning available (logged in main.py scheduler_logger)
-                            pass
+                    # AI curation successful (logging moved to scheduler_logger)
+                    if reasoning:
+                        # AI reasoning available (logged in main.py scheduler_logger)
+                        pass
 
-                        if include_reasoning:
-                            return final_selection, reasoning
-                        else:
-                            return final_selection
+                    if include_reasoning:
+                        return final_selection, reasoning
                     else:
-                        raise ValueError("Invalid track_ids format in response")
+                        return final_selection
 
                 # Handle simple array format (legacy)
                 elif isinstance(response_data, list) and all(isinstance(tid, str) for tid in response_data):
+                    print(f"✅ Response validation: structure OK (legacy array format)")
+                    
+                    returned_track_count = len(response_data)
+                    
+                    # SANITY CHECKS for legacy format
+                    print(f"🧠 SANITY CHECKS:")
+                    print(f"   Returned tracks: {returned_track_count}")
+                    
+                    # Check 1: Large source, tiny return
+                    if source_track_count >= 100 and returned_track_count <= 10:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: Too few tracks returned from large source set. {error_msg}")
+                    
+                    # Check 2: Less than 20% returned
+                    min_expected = max(1, int(source_track_count * 0.2))
+                    if returned_track_count < min_expected:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: Returned tracks less than 20% of source. {error_msg}")
+                    
+                    # Check 3: More returned than source
+                    if returned_track_count > source_track_count:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
+                    
+                    print(f"✅ Response validation passed: received {returned_track_count} tracks from {source_track_count} source tracks")
+
                     valid_ids = {track["id"] for track in shuffled_tracks}
                     filtered_ids = [tid for tid in response_data if tid in valid_ids]
                     final_selection = filtered_ids[:num_tracks]
@@ -266,13 +457,28 @@ class AIClient:
                     else:
                         return final_selection
                 else:
+                    print(f"❌ Response validation: FAILED - invalid response format")
                     raise ValueError("Invalid response format: expected dict with track_ids or array of track IDs")
 
             except (json.JSONDecodeError, ValueError) as e:
-                print(f"Failed to parse AI response: {e}")
-                print(f"Response content: {content}")
-                # Fall back to simple selection
-                return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
+                error_msg = str(e)
+                print(f"❌ AI RESPONSE VALIDATION FAILED: {error_msg}")
+                print(f"Response content preview: {content[:200]}...")
+                
+                # Check if this is a validation error vs parsing error
+                if "PAYLOAD ERROR:" in error_msg or "Sanity check failed:" in error_msg:
+                    print(f"🚨 CRITICAL VALIDATION FAILURE - STOPPING SUBMISSION PROCESS")
+                    print(f"💡 User-friendly message: Playlist generation failed: unexpected response from AI. Please try again.")
+                    
+                    # Return error state to prevent partial processing
+                    if include_reasoning:
+                        return [], f"Playlist generation failed: {error_msg}. Please try again."
+                    else:
+                        return []
+                else:
+                    print(f"🔄 JSON parsing failed, falling back to simple selection")
+                    # Fall back to simple selection for parsing errors only
+                    return self._fallback_selection(tracks_json, num_tracks, include_reasoning)
                 
         except httpx.RequestError as e:
             print(f"🌐 Network error calling AI API: {e}")
@@ -415,8 +621,8 @@ class AIClient:
                     "temperature": temperature
                 }
             
-            # DEBUG: Dump payload to file for inspection (disabled by default)
-            DEBUG_DUMP_PAYLOADS = False  # Set to True to enable payload dumping for development
+            # DEBUG: Dump payload to file for inspection (enabled for testing)
+            DEBUG_DUMP_PAYLOADS = True  # Enable payload dumping for Rediscover testing
             
             if DEBUG_DUMP_PAYLOADS:
                 import time
@@ -427,8 +633,8 @@ class AIClient:
                 
                 try:
                     os.makedirs(os.path.dirname(dump_path), exist_ok=True)
-                    with open(dump_path, 'w') as f:
-                        json.dump(payload, f, indent=2)
+                    with open(dump_path, 'w', encoding='utf-8') as f:
+                        json.dump(payload, f, indent=2, ensure_ascii=False, separators=(',', ': '))
                     print(f"✅ DEBUG: Re-Discover payload dumped to: {dump_filename}")
                 except Exception as e:
                     print(f"❌ DEBUG: Failed to dump Re-Discover payload: {e}")
