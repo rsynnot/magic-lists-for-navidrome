@@ -137,24 +137,40 @@ class AIClient:
                     "Content-Type": "application/json"
                 }
                 
-                # Build structured JSON payload within user message
-                # Rename "title" to "track_name" to avoid AI confusion with track IDs
-                renamed_tracks = []
-                for track in shuffled_tracks:
-                    renamed_track = track.copy()
-                    if "title" in renamed_track:
-                        renamed_track["track_name"] = renamed_track.pop("title")
-                    renamed_tracks.append(renamed_track)
+                # Build structured JSON payload with INDEX-BASED approach
+                # Create indexed tracks (remove complex IDs, use simple indices)
+                indexed_tracks = []
+                track_id_map = []  # Keep mapping of index → actual track ID
+                
+                for index, track in enumerate(shuffled_tracks):
+                    # Store the actual track ID in our mapping
+                    track_id_map.append(track["id"])
+                    
+                    # Create indexed track (no complex ID, just index + music data)
+                    indexed_track = {
+                        "index": index,
+                        "track_name": track.get("title", "Unknown"),
+                        "artist": track.get("artist", "Unknown"),
+                        "album": track.get("album", "Unknown"),
+                        "year": track.get("year", 0),
+                        "play_count": track.get("play_count", 0)
+                    }
+                    indexed_tracks.append(indexed_track)
                 
                 structured_payload = {
                     "recipe": recipe_without_tracks,
-                    "available_tracks": renamed_tracks,  # Clean JSON array with track_name field
+                    "available_tracks": indexed_tracks,  # INDEX-BASED tracks (no complex IDs)
                     "request": {
                         "artist_name": artist_name,
                         "desired_track_count": num_tracks,
                         "playlist_type": "this_is"
                     }
                 }
+                
+                print(f"🔢 INDEX-BASED APPROACH:")
+                print(f"   Track ID mapping created: {len(track_id_map)} entries")
+                print(f"   Index range: 0 to {len(track_id_map)-1}")
+                print(f"   Sample mapping: index 0 → {track_id_map[0] if track_id_map else 'N/A'}")
                 
                 user_content = f"""STRUCTURED PLAYLIST REQUEST:
 
@@ -163,12 +179,12 @@ class AIClient:
 CRITICAL INSTRUCTIONS:
 - Analyze the recipe configuration (processing steps, filters, curation rules)
 - Select tracks from the available_tracks array
-- **IMPORTANT**: USE THE 'id' FIELD ONLY - never use the track_name, artist, or any other field
-- Your track_ids array must contain ONLY the exact 'id' values from the available_tracks
+- **IMPORTANT**: USE THE 'index' FIELD ONLY - never use the track_name, artist, or any other field
+- Your track_ids array must contain ONLY the exact 'index' values (as integers) from the available_tracks
 - Create a playlist of {num_tracks} tracks for {artist_name}
-- Respond with valid JSON: {{"track_ids": ["id1", "id2", ...], "reasoning": "explanation"}}
+- Respond with valid JSON: {{"track_ids": [0, 5, 12, 3, ...], "reasoning": "explanation"}}
 
-EXAMPLE: If track has "id": "ABC123", return "ABC123" in track_ids array, NOT the track_name."""
+EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "index": 12, return 12."""
                 
                 payload = {
                     "model": model,
@@ -356,10 +372,10 @@ EXAMPLE: If track has "id": "ABC123", return "ABC123" in track_ids array, NOT th
                     
                     print(f"✅ Response validation: structure OK")
                     
-                    # Validate all track IDs are strings
-                    if not all(isinstance(tid, str) for tid in track_ids):
-                        print(f"❌ Response validation: FAILED - not all track_ids are strings")
-                        raise ValueError("Invalid track_ids format: all IDs must be strings")
+                    # INDEX-BASED: Validate all track IDs are integers (indices)
+                    if not all(isinstance(tid, int) for tid in track_ids):
+                        print(f"❌ Response validation: FAILED - not all track_ids are integers")
+                        raise ValueError("Invalid track_ids format: all IDs must be integers (indices)")
                     
                     returned_track_count = len(track_ids)
                     
@@ -388,22 +404,25 @@ EXAMPLE: If track has "id": "ABC123", return "ABC123" in track_ids array, NOT th
                     
                     print(f"✅ Response validation passed: received {returned_track_count} tracks from {source_track_count} source tracks")
 
-                    # DEBUG: Log what AI actually returned vs what we sent
-                    valid_ids = {track["id"] for track in shuffled_tracks}
-                    print(f"🔍 TRACK ID VALIDATION DEBUG:")
-                    print(f"   AI returned IDs: {track_ids[:5]}...")  # First 5 IDs
-                    print(f"   Valid source IDs: {list(valid_ids)[:5]}...")  # First 5 valid IDs
+                    # INDEX-BASED: Map indices back to actual track IDs
+                    print(f"🔍 INDEX-TO-ID MAPPING:")
+                    print(f"   AI returned indices: {track_ids[:5]}...")  # First 5 indices
+                    print(f"   Index range valid: 0 to {len(track_id_map)-1}")
                     
-                    # Find which IDs don't match
-                    invalid_ids = [tid for tid in track_ids if tid not in valid_ids]
-                    if invalid_ids:
-                        print(f"   ❌ INVALID IDs returned by AI: {invalid_ids[:10]}...")
-                        print(f"   ❌ AI returned {len(invalid_ids)} invalid IDs out of {len(track_ids)}")
+                    # Find which indices are invalid (out of range)
+                    invalid_indices = [idx for idx in track_ids if idx < 0 or idx >= len(track_id_map)]
+                    if invalid_indices:
+                        print(f"   ❌ INVALID indices returned by AI: {invalid_indices[:10]}...")
+                        print(f"   ❌ AI returned {len(invalid_indices)} invalid indices out of {len(track_ids)}")
                     
-                    filtered_ids = [tid for tid in track_ids if tid in valid_ids]
-                    print(f"   ✅ Valid IDs after filtering: {len(filtered_ids)} out of {len(track_ids)}")
+                    # Map valid indices to actual track IDs
+                    valid_indices = [idx for idx in track_ids if 0 <= idx < len(track_id_map)]
+                    mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
+                    print(f"   ✅ Valid indices mapped to IDs: {len(mapped_track_ids)} out of {len(track_ids)}")
+                    print(f"   📋 Sample mapping: index {valid_indices[0] if valid_indices else 'N/A'} → {mapped_track_ids[0] if mapped_track_ids else 'N/A'}")
                     
-                    final_selection = filtered_ids[:num_tracks]
+                    # Final selection (limit to requested count)
+                    final_selection = mapped_track_ids[:num_tracks]
 
                     # AI curation successful (logging moved to scheduler_logger)
                     if reasoning:
