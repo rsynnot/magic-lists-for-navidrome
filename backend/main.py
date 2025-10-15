@@ -154,6 +154,7 @@ async def system_check_page(request: Request):
 # SYSTEM CHECK FEATURE - END
 
 
+
 @app.get("/api/artists")
 async def get_artists():
     """Get list of artists from Navidrome"""
@@ -170,6 +171,24 @@ async def get_artists():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
+
+@app.get("/api/config/check")
+async def config_check(db: DatabaseManager = Depends(get_db)):
+    """Check app configuration"""
+    try:
+        status = await db.get_config("disclaimer_accepted")
+        return {"disclaimer_accepted": status == "true"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Config check failed: {str(e)}")
+
+@app.post("/api/config/accept")
+async def config_accept(db: DatabaseManager = Depends(get_db)):
+    """Accept disclaimer"""
+    try:
+        await db.set_config("disclaimer_accepted", "true")
+        return {"success": True, "disclaimer_accepted": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Config update failed: {str(e)}")
 
 # SYSTEM CHECK FEATURE - START
 @app.get("/api/health-check")

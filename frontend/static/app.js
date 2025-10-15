@@ -3,6 +3,68 @@ let selectedArtistId = null;
 let allArtists = [];
 let currentToast = null;
 
+// Disclaimer modal handling
+async function checkDisclaimerStatus() {
+    try {
+        const response = await fetch('/api/config/check');
+        const data = await response.json();
+        
+        if (!data.disclaimer_accepted) {
+            showDisclaimerModal();
+        }
+    } catch (error) {
+        console.error('Failed to check config:', error);
+        // Show modal on error to ensure user sees disclaimer
+        showDisclaimerModal();
+    }
+}
+
+function showDisclaimerModal() {
+    // Use Preline overlay method to show modal
+    const modal = document.getElementById('hs-disclaimer-modal');
+    if (modal && window.HSOverlay) {
+        window.HSOverlay.open(modal);
+    } else {
+        console.error('HSOverlay not available or modal not found');
+    }
+}
+
+async function acceptDisclaimer() {
+    try {
+        const response = await fetch('/api/config/accept', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            // Close modal using Preline method
+            const modal = document.getElementById('hs-disclaimer-modal');
+            if (modal && window.HSOverlay) {
+                window.HSOverlay.close(modal);
+            }
+            showToast('Welcome to MagicLists!', 'success');
+        } else {
+            throw new Error('Failed to save acceptance');
+        }
+    } catch (error) {
+        console.error('Failed to accept:', error);
+        showToast('Failed to save acceptance', 'error');
+    }
+}
+
+function navigateToTerms() {
+    // Close modal first using Preline method
+    const modal = document.getElementById('hs-disclaimer-modal');
+    if (modal && window.HSOverlay) {
+        window.HSOverlay.close(modal);
+    }
+    
+    // Show terms content section
+    showContent('terms');
+}
+
 // Helper function to format dates in friendly format (e.g., "5 Oct 2025 10:12am")
 function formatFriendlyDate(dateString) {
     if (!dateString) return 'Never';
@@ -180,7 +242,7 @@ function setActiveMenuItem(page) {
 // Navigation functionality
 function showContent(contentId) {
     // Hide all content sections
-    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content'];
+    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
     contentSections.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -220,6 +282,8 @@ document.addEventListener('click', function(event) {
             contentId = 'system-check-content';
             // Auto-run system checks when navigating to system check page
             setTimeout(() => runSystemChecks(), 100);
+        } else if (page === 'terms') {
+            contentId = 'terms-content';
         }
         
         setActiveMenuItem(page);
@@ -241,6 +305,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Preline initialized');
     } else {
         console.error('Preline not loaded');
+    }
+    
+    // Check disclaimer status and show modal if needed
+    checkDisclaimerStatus();
+    
+    // Add event listeners for disclaimer modal
+    const acceptButton = document.getElementById('accept-disclaimer');
+    const termsLink = document.getElementById('terms-link');
+    
+    if (acceptButton) {
+        acceptButton.addEventListener('click', acceptDisclaimer);
+    }
+    
+    if (termsLink) {
+        termsLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            navigateToTerms();
+        });
     }
     
     // Set home as active by default

@@ -16,9 +16,13 @@
 
     <!-- Tailwind CSS (required for Preline) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Preline Overlay Variants (after Tailwind) -->
+    <link href="https://cdn.jsdelivr.net/npm/@preline/overlay@3.2.3/variants.min.css" rel="stylesheet">
 
     <!-- Preline UI -->
     <script src="https://cdn.jsdelivr.net/npm/preline@latest/dist/preline.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@preline/overlay@3.2.3/index.min.js"></script>
 
     <style>
         body {
@@ -518,6 +522,66 @@
                     </div>
                 </div>
 
+                <!-- Terms Content -->
+                <div id="terms-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-6">Terms & Disclaimer</h1>
+                    
+                    <!-- Section 1: About This Project -->
+                    <section class="mb-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">About This Project</h2>
+                        <p class="text-gray-700 leading-relaxed">
+                            This is an open-source research project born from years of frustration with music library management tools. We're exploring whether AI can match or exceed the playlist curation quality of major streaming platforms. This is experimental software built by music lovers, for music lovers.
+                        </p>
+                    </section>
+
+                    <!-- Section 2: Legal Disclaimer -->
+                    <section class="mb-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Legal Disclaimer</h2>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">NO WARRANTY</h3>
+                                <p class="text-gray-700 leading-relaxed">
+                                    This software is provided "as is" without warranty of any kind, express or implied.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">USER RESPONSIBILITY</h3>
+                                <p class="text-gray-700 leading-relaxed mb-2">You are solely responsible for:</p>
+                                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                                    <li>Ensuring you have proper rights to any music content processed through this application</li>
+                                    <li>Any data transmitted to third-party AI services</li>
+                                    <li>Backup of your music library before use</li>
+                                    <li>Any modifications made to your playlists or library</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">LIMITATION OF LIABILITY</h3>
+                                <p class="text-gray-700 leading-relaxed">
+                                    The developers shall not be liable for any damages including but not limited to data loss, corruption of music libraries, or any other direct or indirect damages arising from use of this software.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">THIRD-PARTY SERVICES</h3>
+                                <p class="text-gray-700 leading-relaxed">
+                                    This application integrates with external AI services. Your use of these services is subject to their respective terms of service.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 3: Acceptance -->
+                    <section class="mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Acceptance</h2>
+                        <p class="text-gray-700 leading-relaxed">
+                            By using this software, you acknowledge and accept these terms.
+                        </p>
+                    </section>
+                </div>
+
 
             </main>
         </div>
@@ -526,7 +590,7 @@
         <footer class="py-5 px-4 mt-auto">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="block w-full text-gray-500 text-center text-sm mb-2 md:mb-0">
-                    Made by <a href="https://synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">Synnot Studio</a> – Open Source (MIT)
+                    Made by <a href="https://synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">Synnot Studio</a> - <a href="#" data-page="terms" class="ttext-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200">Terms</a> – Open Source (MIT)
                 </div>
             </div>
         </footer>
@@ -534,6 +598,67 @@
 
      <div id="toast-container" class="absolute top-2 right-2 w-full max-w-sm z-50 space-y-3 pointer-events-none">
         <!-- Toasts will be dynamically inserted here -->
+    </div>
+
+    <!-- First-Run Disclaimer Modal -->
+    <div id="hs-disclaimer-modal" class="hs-overlay hidden size-full fixed top-0 start-0 z-[100] overflow-x-hidden overflow-y-auto pointer-events-none" role="dialog" tabindex="-1" aria-labelledby="hs-disclaimer-modal-label">
+        <div class="hs-overlay-open:opacity-100 hs-overlay-open:duration-500 transition-all sm:max-w-lg sm:w-full m-3 sm:mx-auto min-h-[calc(100%-56px)] flex items-center">
+            <div class="w-full flex flex-col bg-white border border-gray-200 shadow-2xs rounded-xl pointer-events-auto relative z-[110]">
+                <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200">
+                    <h3 id="hs-disclaimer-modal-label" class="font-bold text-gray-800">
+                        Welcome to MagicLists
+                    </h3>
+                    <button type="button" class="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none" aria-label="Close" data-hs-overlay="#hs-disclaimer-modal">
+                        <span class="sr-only">Close</span>
+                        <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 overflow-y-auto">
+                    <p class="text-gray-800 mb-4">
+                        This is an open-source research project exploring AI-powered playlist curation. The mission: Can we match (or beat!) the big streaming platforms at AI playlist generation?
+                    </p>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-start">
+                            <span class="text-gray-600 mr-2">•</span>
+                            <p class="text-gray-800">
+                                <strong>Backup your library first.</strong> Before using any music tool, back up your data.
+                            </p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-gray-600 mr-2">•</span>
+                            <p class="text-gray-800">
+                                <strong>You're responsible.</strong> You own your music and are responsible for ensuring you have rights to content you process.
+                            </p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-gray-600 mr-2">•</span>
+                            <p class="text-gray-800">
+                                <strong>No guarantees.</strong> This software is provided "as is" without warranty.
+                            </p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-gray-600 mr-2">•</span>
+                            <p class="text-gray-800">
+                                <strong>Third-party AI services.</strong> Track metadata is sent to external AI services for curation.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <p class="text-gray-800">
+                        By clicking "I Accept," you acknowledge these points and agree to use MagicLists responsibly. For full details, see our <a href="#" id="terms-link" class="text-blue-600 hover:text-blue-700 underline">Terms & Disclaimer</a>.
+                    </p>
+                </div>
+                <div class="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200">
+                    <button type="button" id="accept-disclaimer" class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none">
+                        I Accept
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/app.js?v=1.0.0"></script>

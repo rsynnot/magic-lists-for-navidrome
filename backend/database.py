@@ -79,6 +79,15 @@ class DatabaseManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            
+            # Create the app_config table for storing application configuration
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS app_config (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            """)
+            
             await db.commit()
     
     async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None, playlist_length: Optional[int] = None) -> Playlist:
@@ -404,6 +413,28 @@ class DatabaseManager:
             
             await db.commit()
             return cursor.rowcount > 0
+    
+    async def get_config(self, key: str) -> Optional[str]:
+        """Get a configuration value by key"""
+        await self.init_db()
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("""
+                SELECT value FROM app_config WHERE key = ?
+            """, (key,)) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+    
+    async def set_config(self, key: str, value: str) -> bool:
+        """Set a configuration value"""
+        await self.init_db()
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)
+            """, (key, value))
+            await db.commit()
+            return True
 
 # Dependency for FastAPI
 async def get_db() -> DatabaseManager:
