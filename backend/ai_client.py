@@ -152,6 +152,7 @@ class AIClient:
                         "track_name": track.get("title", "Unknown"),
                         "artist": track.get("artist", "Unknown"),
                         "album": track.get("album", "Unknown"),
+                        "genre": track.get("genre", "Unknown"),
                         "year": track.get("year", 0),
                         "play_count": track.get("play_count", 0)
                     }
