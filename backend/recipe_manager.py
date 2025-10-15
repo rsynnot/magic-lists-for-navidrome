@@ -49,6 +49,55 @@ class RecipeManager:
         recipe_filename = registry[playlist_type]
         return self._load_recipe(recipe_filename)
     
+    def _evaluate_math_expressions(self, obj: Any, inputs: Dict[str, Any]) -> Any:
+        """First pass: Evaluate {{MATH:...}} expressions before regular replacements."""
+        import re
+        import math
+        
+        if isinstance(obj, str):
+            # Find all {{MATH:...}} patterns
+            math_pattern = r'\{\{MATH:([^}]+)\}\}'
+            
+            def evaluate_math(match):
+                expression = match.group(1)
+                
+                # Replace DESIRED_TRACK_COUNT with actual value inside math expression
+                if "DESIRED_TRACK_COUNT" in expression:
+                    expression = expression.replace("DESIRED_TRACK_COUNT", str(inputs.get("num_tracks", 25)))
+                
+                try:
+                    # Evaluate the math expression safely
+                    # Allow basic math operations and functions
+                    allowed_names = {
+                        "__builtins__": {},
+                        "abs": abs, "round": round, "min": min, "max": max,
+                        "ceil": math.ceil, "floor": math.floor,
+                        "pow": pow, "sqrt": math.sqrt
+                    }
+                    
+                    result = eval(expression, allowed_names, {})
+                    
+                    # Convert to integer if it's a whole number
+                    if isinstance(result, float) and result.is_integer():
+                        result = int(result)
+                    
+                    print(f"🧮 MATH: {{{{MATH:{match.group(1)}}}}} → {result}")
+                    return str(result)
+                    
+                except Exception as e:
+                    print(f"❌ MATH ERROR in expression '{expression}': {e}")
+                    return match.group(0)  # Return original if evaluation fails
+            
+            # Replace all math expressions
+            return re.sub(math_pattern, evaluate_math, obj)
+            
+        elif isinstance(obj, dict):
+            return {key: self._evaluate_math_expressions(value, inputs) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._evaluate_math_expressions(item, inputs) for item in obj]
+        else:
+            return obj
+
     def _recursive_replace(self, obj: Any, replacements: Dict[str, str]) -> Any:
         """Recursively traverse and replace placeholders in strings within nested structures"""
         if isinstance(obj, dict):
@@ -102,8 +151,11 @@ class RecipeManager:
                 replacements["{{ANALYSIS_SUMMARY}}"] = str(inputs["analysis_summary"])
             
             
-            # Apply recursive replacement to the entire recipe
-            final_recipe = self._recursive_replace(recipe, replacements)
+            # Pass 1: Evaluate math expressions first
+            math_evaluated_recipe = self._evaluate_math_expressions(recipe, inputs)
+            
+            # Pass 2: Apply recursive replacement to the entire recipe
+            final_recipe = self._recursive_replace(math_evaluated_recipe, replacements)
             
             # Log final recipe size after replacement
             final_recipe_json = json.dumps(final_recipe, indent=2)
