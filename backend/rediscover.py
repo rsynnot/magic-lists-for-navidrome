@@ -238,9 +238,7 @@ class RediscoverWeekly:
         current_year = datetime.now().year
         cutoff_year = current_year - 15  # Dynamic cutoff year
         
-        print(f"🔍 Analyzing {len(track_stats)} tracks from listening history...")
-        
-        # Debug counters
+        # Debug counters (silent)
         debug_stats = {
             "total_tracks": len(track_stats),
             "filtered_days": 0,
@@ -287,11 +285,7 @@ class RediscoverWeekly:
             except Exception as e:
                 continue  # Skip problematic tracks
         
-        print(f"📊 Filter results:")
-        print(f"   Total tracks analyzed: {debug_stats['total_tracks']}")
-        print(f"   Filtered by days (7-120): {debug_stats['filtered_days']}")
-        print(f"   Filtered by play count (<1): {debug_stats['filtered_play_count']}")
-        print(f"   Passed all filters: {debug_stats['passed_filters']}")
+        # Filter results logged silently
         
         # Sort by rediscovery_score descending and take more candidates for AI selection
         scored_tracks.sort(key=lambda x: x[1], reverse=True)
@@ -331,10 +325,7 @@ class RediscoverWeekly:
             track_stats = await self.analyze_listening_patterns(history)
             analysis_summary = self._generate_analysis_summary(track_stats, history)
             
-            print(f"📊 Listening history analysis:")
-            print(f"   Raw history entries: {len(history)}")
-            print(f"   Unique tracks analyzed: {len(track_stats)}")
-            print(f"   Analysis summary: {analysis_summary}")
+            # Analysis summary logged silently
             
             # Initial recipe inputs (will be updated with candidates later)
             recipe_inputs = {
@@ -354,7 +345,7 @@ class RediscoverWeekly:
             
             # Step 4: Apply artist diversity filtering before AI selection
             filtered_tracks = self.filter_artist_diversity(scored_tracks, max_per_artist=scaled_max_per_artist)
-            print(f"🎨 Applied artist diversity filtering: {len(filtered_tracks)} candidates ready")
+            # Artist diversity filtering applied silently
             
             # Step 5: Prepare candidate tracks for AI (filtered and sorted by rediscovery_score)
             candidate_tracks = filtered_tracks
@@ -400,12 +391,7 @@ class RediscoverWeekly:
                 # Apply recipe with all placeholders resolved
                 final_recipe = recipe_manager.apply_recipe("re_discover", recipe_inputs, include_reasoning=True)
                 
-                print(f"🍳 Re-Discover recipe applied: {final_recipe.get('recipe_id', 'N/A')}")
-                print(f"🏷️ Recipe name: {final_recipe.get('name', 'N/A')}")
-                if "llm_config" in final_recipe:
-                    print(f"🤖 Model: {final_recipe.get('llm_config', {}).get('model_name', 'N/A')}")
-                    print(f"🌡️ Temperature: {final_recipe.get('llm_config', {}).get('temperature', 'N/A')}")
-                    print(f"🔢 Max tokens: {final_recipe.get('llm_config', {}).get('max_output_tokens', 'N/A')}")
+                # Recipe configuration applied silently
                 
                 # Use new recipe format for AI curation
                 if "llm_config" in final_recipe:

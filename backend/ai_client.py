@@ -519,7 +519,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 return track_ids
         
         try:
-            print(f"🎵 Preparing {len(candidate_tracks)} candidates for AI curation")
+            # Preparing candidates for AI curation
             
             # Build structured JSON payload with INDEX-BASED approach
             # Create indexed tracks (remove complex IDs, use simple indices)
@@ -543,7 +543,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 }
                 indexed_tracks.append(indexed_track)
             
-            print(f"🔢 Using index-based approach for {len(track_id_map)} tracks")
+            # Using index-based approach
             
             # Use recipe system with proper placeholder replacement
             recipe_inputs = {
@@ -564,7 +564,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 temperature = llm_config.get("temperature", 0.7)
                 max_tokens = llm_config.get("max_output_tokens", 1500)
                 
-                print(f"🤖 Using AI model: {model}")
+                # Using AI model
                 
                 # Serialize the complete recipe (excluding tracks for structured payload)
                 recipe_without_tracks = {k: v for k, v in final_recipe.items() if k not in ["candidate_tracks", "tracks_data"]}
@@ -615,7 +615,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     "temperature": temperature
                 }
                 
-                print(f"💬 Sending structured payload to AI")
+                # Sending structured payload to AI
             else:
                 # Legacy recipe format fallback
                 prompt = final_recipe.get("prompt", "")
@@ -778,7 +778,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                         print(f"❌ {error_msg}")
                         raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
                     
-                    print(f"✅ AI returned {returned_track_count} tracks, validation passed")
+                    # AI validation passed
 
                     # INDEX-BASED: Map indices back to actual track IDs
                     # Find which indices are invalid (out of range)
@@ -789,12 +789,15 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     # Map valid indices to actual track IDs
                     valid_indices = [idx for idx in track_ids if 0 <= idx < len(track_id_map)]
                     mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
-                    print(f"🔄 Mapped {len(mapped_track_ids)} valid indices to track IDs")
+                    # Mapped indices to track IDs
                     
                     # AI curation successful for Re-Discover Weekly (logging moved to scheduler_logger)
                     if reasoning:
                         # AI reasoning available (logged in main.py scheduler_logger)
                         pass
+
+                    # Final selection (limit to requested count)
+                    final_selection = mapped_track_ids[:num_tracks]
 
                     if include_reasoning:
                         return final_selection, reasoning

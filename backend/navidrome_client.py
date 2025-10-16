@@ -259,15 +259,10 @@ class NavidromeClient:
         try:
             await self._ensure_authenticated()
             
-            # Create the playlist using Subsonic API
+            # Create the playlist using Subsonic API (note: createPlaylist doesn't support comment)
             params = self._get_subsonic_params()
             params["name"] = name
-            if comment:
-                params["comment"] = comment
-                # Comment logging moved to main.py scheduler_logger
-            else:
-                # No comment logging needed
-                pass
+            # Note: comment will be set via updatePlaylist after creation
             
             response = await self.client.get(
                 f"{self.base_url}/rest/createPlaylist.view",
@@ -312,6 +307,27 @@ class NavidromeClient:
                     raise Exception(f"Failed to add songs to playlist: {error.get('message', 'Unknown error')}")
                 
                 print(f"🎯 Successfully added all {len(track_ids)} tracks in single API call")
+            
+            # Add comment via updatePlaylist if provided (createPlaylist doesn't support comments)
+            if comment:
+                print(f"💬 Adding comment to playlist via updatePlaylist...")
+                comment_params = self._get_subsonic_params()
+                comment_params["playlistId"] = playlist_id
+                comment_params["comment"] = comment
+                
+                comment_response = await self.client.get(
+                    f"{self.base_url}/rest/updatePlaylist.view",
+                    params=comment_params
+                )
+                comment_response.raise_for_status()
+                
+                comment_data = comment_response.json()
+                comment_subsonic = comment_data.get("subsonic-response", {})
+                if comment_subsonic.get("status") != "ok":
+                    error = comment_subsonic.get("error", {})
+                    print(f"⚠️ Warning: Failed to add comment to playlist: {error.get('message', 'Unknown error')}")
+                else:
+                    print(f"✅ Successfully added comment to playlist")
                 
             return playlist_id
                 
