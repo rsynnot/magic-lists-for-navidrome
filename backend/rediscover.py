@@ -232,7 +232,7 @@ class RediscoverWeekly:
         except Exception as e:
             return "Top Genres: Mixed. Top Artists: Various."
     
-    def _calculate_rediscovery_scores(self, track_stats: Dict[str, Any]) -> List[Tuple[str, float, Dict[str, Any]]]:
+    def _calculate_rediscovery_scores(self, track_stats: Dict[str, Any], max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
         """Calculate rediscovery scores and apply recipe filters"""
         scored_tracks = []
         current_year = datetime.now().year
@@ -344,20 +344,27 @@ class RediscoverWeekly:
             }
             
             # Step 3: Score tracks for re-discovery with new rediscovery_score calculation
-            scored_tracks = self._calculate_rediscovery_scores(track_stats)
+            # Scale max_per_artist based on playlist size (~12.5% of playlist, minimum 2)
+            scaled_max_per_artist = max(2, max_tracks // 8)
+            print(f"📊 Scaling max_per_artist to {scaled_max_per_artist} for {max_tracks}-track playlist")
+            scored_tracks = self._calculate_rediscovery_scores(track_stats, max_per_artist=scaled_max_per_artist)
             
             if not scored_tracks:
                 raise Exception("No tracks found for re-discovery")
             
-            # Step 4: Prepare candidate tracks for AI (top 150 rediscovery_score tracks)
-            candidate_tracks = scored_tracks  # Already limited to 150 and sorted by rediscovery_score
+            # Step 4: Apply artist diversity filtering before AI selection
+            filtered_tracks = self.filter_artist_diversity(scored_tracks, max_per_artist=scaled_max_per_artist)
+            print(f"🎨 Applied artist diversity filter: {len(scored_tracks)} → {len(filtered_tracks)} tracks (max {scaled_max_per_artist} per artist)")
+            
+            # Step 5: Prepare candidate tracks for AI (filtered and sorted by rediscovery_score)
+            candidate_tracks = filtered_tracks
             
             if not candidate_tracks:
                 raise Exception("No suitable tracks found for re-discovery")
             
             print(f"🔍 Found {len(candidate_tracks)} rediscovery candidates with scores ranging from {candidate_tracks[0][1]:.1f} to {candidate_tracks[-1][1]:.1f}")
             
-            # Step 5: Prepare candidate tracks JSON for recipe placeholder replacement
+            # Step 6: Prepare candidate tracks JSON for recipe placeholder replacement
             ai_candidates = []
             for song_id, score, stats in candidate_tracks:
                 # Try to get genre information if available

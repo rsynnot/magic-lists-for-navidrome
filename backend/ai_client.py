@@ -520,13 +520,34 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
         
         try:
             # Using AI to curate Re-Discover Weekly (logging moved to scheduler_logger)
+            print(f"🎵 Preparing {len(candidate_tracks)} rediscover candidates for AI curation")
             
-            # Prepare the tracks data for the AI prompt
-            tracks_data = json.dumps(candidate_tracks, indent=2)
+            # Build structured JSON payload with INDEX-BASED approach
+            # Create indexed tracks (remove complex IDs, use simple indices)
+            indexed_tracks = []
+            track_id_map = []  # Keep mapping of index → actual track ID
+            
+            for index, track in enumerate(candidate_tracks):
+                # Store the actual track ID in our mapping
+                track_id_map.append(track["id"])
+                
+                # Create indexed track (no complex ID, just index + music data)
+                indexed_track = {
+                    "index": index,
+                    "track_name": track.get("title", "Unknown"),
+                    "artist": track.get("artist", "Unknown"),
+                    "album": track.get("album", "Unknown"),
+                    "genre": track.get("genre", "Unknown"),
+                    "year": track.get("year", 0),
+                    "play_count": track.get("play_count", 0),
+                    "rediscovery_score": track.get("rediscovery_score", 0)
+                }
+                indexed_tracks.append(indexed_track)
+            
+            print(f"🔢 Using index-based approach for {len(track_id_map)} tracks")
             
             # Use recipe system with proper placeholder replacement
             recipe_inputs = {
-                "candidate_tracks": tracks_data,
                 "analysis_summary": analysis_summary,
                 "num_tracks": num_tracks
             }
@@ -544,6 +565,36 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 temperature = llm_config.get("temperature", 0.7)
                 max_tokens = llm_config.get("max_output_tokens", 1500)
                 
+                print(f"🤖 Using AI model: {model}")
+                
+                # Serialize the complete recipe (excluding tracks for structured payload)
+                recipe_without_tracks = {k: v for k, v in final_recipe.items() if k not in ["candidate_tracks", "tracks_data"]}
+                
+                structured_payload = {
+                    "recipe": recipe_without_tracks,
+                    "available_tracks": indexed_tracks,  # INDEX-BASED tracks (no complex IDs)
+                    "analysis_summary": analysis_summary,
+                    "request": {
+                        "desired_track_count": num_tracks,
+                        "playlist_type": "rediscover",
+                        "variety_context": variety_context or ""
+                    }
+                }
+                
+                user_content = f"""STRUCTURED REDISCOVER REQUEST:
+
+{json.dumps(structured_payload, indent=2, ensure_ascii=False)}
+
+CRITICAL INSTRUCTIONS:
+- Analyze the recipe configuration (processing steps, filters, curation rules)
+- Select tracks from the available_tracks array using rediscovery_score and other metadata
+- **IMPORTANT**: USE THE 'index' FIELD ONLY - return the index numbers, NOT track_name, artist, or any other field
+- Your track_ids array must contain ONLY the exact 'index' values (as integers) from the available_tracks
+- Create a rediscover playlist of {num_tracks} tracks
+- Respond with valid JSON: {{"track_ids": [0, 5, 12, 3, ...], "reasoning": "explanation"}}
+
+EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "index": 12, return 12."""
+                
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
@@ -558,12 +609,14 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                         },
                         {
                             "role": "user", 
-                            "content": f"Here are the candidate tracks to choose from:\n{tracks_data}\n\n" + (f"REFRESH CONTEXT: {variety_context}\n\n" if variety_context else "") + "Please analyze these candidate tracks and create the playlist according to the instructions. Respond with valid JSON containing track_ids array and reasoning string."
+                            "content": user_content
                         }
                     ],
                     "max_tokens": max_tokens,
                     "temperature": temperature
                 }
+                
+                print(f"💬 Sending structured payload to AI")
             else:
                 # Legacy recipe format fallback
                 prompt = final_recipe.get("prompt", "")
@@ -690,28 +743,72 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 # Try to parse as JSON object
                 response_data = json.loads(cleaned_content)
 
+                # Validate response structure with index-based approach
+                source_track_count = len(candidate_tracks)
+                
                 if isinstance(response_data, dict) and "track_ids" in response_data:
-                    # New format with reasoning
+                    # New format with reasoning - validate structure
                     track_ids = response_data.get("track_ids", [])
                     reasoning = response_data.get("reasoning", "")
+                    
+                    # Structure checks
+                    if not isinstance(track_ids, list):
+                        print(f"❌ Response validation failed: track_ids is not a list")
+                        raise ValueError("Response structure invalid: track_ids must be a list")
+                    
+                    if not isinstance(reasoning, str):
+                        print(f"❌ Response validation failed: reasoning is not a string")
+                        raise ValueError("Response structure invalid: reasoning must be a string")
 
-                    # Validate track IDs
-                    if isinstance(track_ids, list) and all(isinstance(tid, str) for tid in track_ids):
-                        valid_ids = {track["id"] for track in candidate_tracks}
-                        filtered_ids = [tid for tid in track_ids if tid in valid_ids]
-                        final_selection = filtered_ids[:num_tracks]
+                    # INDEX-BASED: Validate all track IDs are integers (indices)
+                    if not all(isinstance(tid, int) for tid in track_ids):
+                        print(f"❌ Response validation failed: not all track_ids are integers")
+                        raise ValueError("Invalid track_ids format: all IDs must be integers (indices)")
+                    
+                    returned_track_count = len(track_ids)
+                    
+                    # Sanity checks
+                    # Check 1: Large source, tiny return
+                    if source_track_count >= 100 and returned_track_count <= 10:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: Too few tracks returned from large source set. {error_msg}")
+                    
+                    # Check 2: Less than 20% returned
+                    min_expected = max(1, int(source_track_count * 0.2))  # At least 20% or 1 track
+                    if returned_track_count < min_expected:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: Returned tracks less than 20% of source. {error_msg}")
+                    
+                    # Check 3: More returned than source
+                    if returned_track_count > source_track_count:
+                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
+                        print(f"❌ {error_msg}")
+                        raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
+                    
+                    print(f"✅ AI returned {returned_track_count} tracks, validation passed")
 
-                        # AI curation successful for Re-Discover Weekly (logging moved to scheduler_logger)
-                        if reasoning:
-                            # AI reasoning available (logged in main.py scheduler_logger)
-                            pass
+                    # INDEX-BASED: Map indices back to actual track IDs
+                    # Find which indices are invalid (out of range)
+                    invalid_indices = [idx for idx in track_ids if idx < 0 or idx >= len(track_id_map)]
+                    if invalid_indices:
+                        print(f"❌ AI returned {len(invalid_indices)} invalid indices out of {len(track_ids)}")
+                    
+                    # Map valid indices to actual track IDs
+                    valid_indices = [idx for idx in track_ids if 0 <= idx < len(track_id_map)]
+                    mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
+                    print(f"🔄 Mapped {len(mapped_track_ids)} valid indices to track IDs")
+                    
+                    # AI curation successful for Re-Discover Weekly (logging moved to scheduler_logger)
+                    if reasoning:
+                        # AI reasoning available (logged in main.py scheduler_logger)
+                        pass
 
-                        if include_reasoning:
-                            return final_selection, reasoning
-                        else:
-                            return final_selection
+                    if include_reasoning:
+                        return final_selection, reasoning
                     else:
-                        raise ValueError("Invalid track_ids format in response")
+                        return final_selection
 
                 # Handle simple array format (legacy)
                 elif isinstance(response_data, list) and all(isinstance(tid, str) for tid in response_data):

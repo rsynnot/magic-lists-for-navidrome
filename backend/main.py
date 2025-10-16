@@ -494,7 +494,8 @@ async def create_rediscover_playlist(
         frequency_names = {
             "daily": "Re-Discover Daily ✨",
             "weekly": "Re-Discover Weekly ✨", 
-            "monthly": "Re-Discover Monthly ✨"
+            "monthly": "Re-Discover Monthly ✨",
+            "never": "Re-Discover ✨"
         }
         playlist_name = frequency_names.get(request.refresh_frequency, "Re-Discover Weekly ✨")
         

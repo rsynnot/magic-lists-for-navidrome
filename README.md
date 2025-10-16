@@ -262,6 +262,22 @@ For issues and questions:
 - Review Navidrome documentation
 - Create an issue in the repository
 
+## Legal Disclaimer
+
+**No Warranty**: This software is provided "as is" without warranty of any kind, express or implied.
+
+**User Responsibility**: You are solely responsible for:
+- Ensuring you have proper rights to any music content processed through this application
+- Any data transmitted to third-party AI services
+- Backup of your music library before use
+- Any modifications made to your playlists or library
+
+**Limitation of Liabillity**: The developers shall not be liable for any damages including but not limited to data loss, corruption of music libraries, or any other direct or indirect damages arising from use of this software.
+
+**Third-party Services**: This application integrates with external AI services. Your use of these services is subject to their respective terms of service.
+
+By using this software, you acknowledge and accept these terms. 
+
 ---
 
-© 2025 [Synnot Studio](https://synnotstudio.com) — Licensed under the MIT License.
+© 2025 Made by [Synnot Studio](https://synnotstudio.com) — Licensed under the MIT License.
