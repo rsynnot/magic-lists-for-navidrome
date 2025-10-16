@@ -519,8 +519,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 return track_ids
         
         try:
-            # Using AI to curate Re-Discover Weekly (logging moved to scheduler_logger)
-            print(f"🎵 Preparing {len(candidate_tracks)} rediscover candidates for AI curation")
+            print(f"🎵 Preparing {len(candidate_tracks)} candidates for AI curation")
             
             # Build structured JSON payload with INDEX-BASED approach
             # Create indexed tracks (remove complex IDs, use simple indices)
@@ -665,11 +664,6 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 except Exception as e:
                     print(f"❌ DEBUG: Failed to dump Re-Discover payload: {e}")
             
-            print(f"🚀 MAKING API CALL FOR RE-DISCOVER")
-            print(f"🎯 Model in payload: {payload['model']}")
-            print(f"🌡️ Temperature: {payload['temperature']}")
-            print(f"🔢 Max tokens: {payload['max_tokens']}")
-            print(f"💬 Messages: {len(payload['messages'])}")
             
             client = await self._get_client()
             response = await client.post(
@@ -681,9 +675,6 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             
             result = response.json()
             content = result["choices"][0]["message"]["content"].strip()
-
-            # Log API response details
-            print(f"📊 Re-Discover AI Response status: {response.status_code}")
             
             # Log the raw AI response for debugging (truncated preview)
             import re

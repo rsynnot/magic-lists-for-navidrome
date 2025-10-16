@@ -78,7 +78,7 @@ async def startup_event():
             
         # Log individual check results
         for check in system_check_results.get("checks", []):
-            status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "❌"
+            status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "ℹ️" if check["status"] == "info" else "❌"
             scheduler_logger.info(f"{status_emoji} {check['name']}: {check['status']}")
             
     except Exception as e:
