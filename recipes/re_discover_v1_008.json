@@ -1,0 +1,48 @@
+{
+  "recipe_id": "Re_Discover_Weekly_v1_006",
+  "name": "User Play History & Metadata Based Re-discovery Playlist",
+  "user_parameters": {
+    "desired_track_count": "{{DESIRED_TRACK_COUNT}}"
+  },
+  "llm_config": {
+    "max_output_tokens": 1500,
+    "temperature": 0.7,
+    "model_name": "anthropic/claude-haiku-4.5"
+  },
+  "model_instructions": "You are a friendly, expert music archaeologist creating a 'Re-Discover Weekly' playlist to help the user reconnect with forgotten gems from their music library. You will select exactly {{DESIRED_TRACK_COUNT}} tracks.\n\nANALYSIS SUMMARY (User's Recent Listening Patterns):\n{{ANALYSIS_SUMMARY}}\n\nCURATION RULES:\n1. **FLOW & AFFINITY MAPPING (Crucial):** Examine the genres and moods of the tracks. Identify the dominant genre/style cluster (e.g., '80s Synthpop, New Wave, Post-Punk'). **Exclude tracks that are significant outliers** (e.g., Classical, Harsh Noise) if they compromise the overall flow, prioritizing cohesion over breadth.\n2. **THE 'FORGOTTEN' METRIC:** Prioritize candidates with the best combination of **high play_count** (loved in the past) and **long days_since_last_play** (forgotten now). Use the `rediscovery_score` provided.\n3. **DIVERSITY:** Never allow more than 2 tracks from the same artist consecutively. Spread out tracks from top artists across the entire playlist.\n4. **CHRONOLOGICAL MIX:** Intentionally vary the release year throughout the playlist to create a sense of 'digging through the archives.'\n5. **START & END:** Start strong with a recognizable favorite; finish on a track with a smooth, lower energy level (if possible).\n\nRespond with JSON: {\"track_ids\": [\"id1\", \"id2\", ...], \"reasoning\": \"Brief two-sentence explanation of curation strategy, focusing on the flow and the theme of forgotten gems.\"}",
+  "global_strategy": {
+    "final_track_count": "{{DESIRED_TRACK_COUNT}}",
+    "primary_sorting_metric": "rediscovery_score",
+    "weights": {
+      "rediscovery_score": 0.8,
+      "local_library_likes": 0.2
+    },
+    "waiting": {
+      "max_tracks_consecutive_artist": 2,
+      "max_tracks_per_album": 5
+    }
+  },
+  "processing_steps": [
+    {
+      "step_id": 1,
+      "title": "Historical Candidates Filter",
+      "priority_score": 10,
+      "description": "Filters tracks to include only music that is genuinely old and forgotten, focusing on the 30-90 day play window.",
+      "filters": [
+        {"field": "days_since_last_play", "operator": "GREATER_THAN", "value": 30},
+        {"field": "days_since_last_play", "operator": "LESS_THAN", "value": 90},
+        {"field": "play_count", "operator": "GREATER_THAN", "value": 3}
+      ]
+    },
+    {
+      "step_id": 3,
+      "title": "Select Top Candidates",
+      "priority_score": 5,
+      "description": "Select the highest-scoring tracks (based on the rediscovery metric) for the AI to curate the final flow.",
+      "filters": [
+        {"field": "rediscovery_score", "operator": "SORT_DESCENDING", "value": "N/A"},
+        {"field": "limit", "operator": "TO_MAX", "value": 150} 
+      ]
+    }
+  ]
+}

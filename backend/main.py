@@ -172,23 +172,6 @@ async def get_artists():
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
 
-@app.get("/api/config/check")
-async def config_check(db: DatabaseManager = Depends(get_db)):
-    """Check app configuration"""
-    try:
-        status = await db.get_config("disclaimer_accepted")
-        return {"disclaimer_accepted": status == "true"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Config check failed: {str(e)}")
-
-@app.post("/api/config/accept")
-async def config_accept(db: DatabaseManager = Depends(get_db)):
-    """Accept disclaimer"""
-    try:
-        await db.set_config("disclaimer_accepted", "true")
-        return {"success": True, "disclaimer_accepted": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Config update failed: {str(e)}")
 
 # SYSTEM CHECK FEATURE - START
 @app.get("/api/health-check")

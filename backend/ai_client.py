@@ -74,11 +74,7 @@ class AIClient:
             original_track_count = len(tracks_json)
             shuffled_track_count = len(shuffled_tracks)
             
-            print(f"📊 TRACK DATA ANALYSIS (STRUCTURED APPROACH):")
-            print(f"   Original tracks: {original_track_count}")
-            print(f"   Shuffled tracks: {shuffled_track_count}")
-            print(f"   Format: ✅ CLEAN JSON ARRAY (no string conversion)")
-            print(f"   Data integrity: {'✅ COMPLETE' if original_track_count == shuffled_track_count else '❌ TRUNCATED'}")
+            print(f"🎵 Preparing {shuffled_track_count} tracks for AI curation")
             
             # Verify track data includes essential fields
             if shuffled_tracks:
@@ -87,8 +83,6 @@ class AIClient:
                 missing_fields = [field for field in essential_fields if field not in sample_track]
                 if missing_fields:
                     print(f"⚠️  Missing essential fields in tracks: {missing_fields}")
-                else:
-                    print(f"✅ All essential track fields present: {list(sample_track.keys())}")
             else:
                 print(f"❌ ERROR: No tracks available for curation!")
             
@@ -99,10 +93,7 @@ class AIClient:
                 "variety_context": variety_context or ""
             }
             
-            print(f"🍳 RECIPE INPUTS PREPARED:")
-            print(f"   Artist: {artist_name}")
-            print(f"   Track count requested: {num_tracks}")
-            print(f"   Variety context: {variety_context or 'None'}")
+            print(f"🍳 Applying recipe for {artist_name} ({num_tracks} tracks)")
             
             final_recipe = recipe_manager.apply_recipe("this_is", recipe_inputs, include_reasoning)
             
@@ -117,20 +108,10 @@ class AIClient:
                 temperature = llm_config.get("temperature", 0.7)
                 max_tokens = llm_config.get("max_output_tokens", 1000)
                 
-                print(f"🍳 RECIPE PROCESSING COMPLETE:")
-                print(f"   Recipe has llm_config: True")
-                print(f"   Model: {model}")
-                print(f"   Temperature: {temperature}")
-                print(f"   Max tokens: {max_tokens}")
-                print(f"   Model instructions length: {len(model_instructions)} chars")
+                print(f"🤖 Using AI model: {model}")
                 
                 # Serialize the complete recipe (excluding tracks_data to avoid duplication)
                 recipe_without_tracks = {k: v for k, v in final_recipe.items() if k != "tracks_data"}
-                complete_recipe_json = json.dumps(recipe_without_tracks, indent=2)
-                recipe_char_count = len(complete_recipe_json)
-                
-                print(f"📋 COMPLETE RECIPE PAYLOAD:")
-                print(f"   Recipe JSON length: {recipe_char_count} chars")
                 
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
@@ -168,10 +149,7 @@ class AIClient:
                     }
                 }
                 
-                print(f"🔢 INDEX-BASED APPROACH:")
-                print(f"   Track ID mapping created: {len(track_id_map)} entries")
-                print(f"   Index range: 0 to {len(track_id_map)-1}")
-                print(f"   Sample mapping: index 0 → {track_id_map[0] if track_id_map else 'N/A'}")
+                print(f"🔢 Using index-based approach for {len(track_id_map)} tracks")
                 
                 user_content = f"""STRUCTURED PLAYLIST REQUEST:
 
@@ -203,18 +181,10 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     "temperature": temperature
                 }
                 
-                print(f"💬 STRUCTURED PAYLOAD COMPONENTS:")
-                print(f"   System message length: {len(model_instructions)} chars")
-                print(f"   User message length: {len(user_content)} chars")
-                print(f"   📊 STRUCTURED DATA:")
-                print(f"      Recipe fields: {len(structured_payload['recipe'])} components")
-                print(f"      Available tracks: {len(structured_payload['available_tracks'])} (clean JSON array with track_name field)")
-                print(f"      Request params: {structured_payload['request']}")
-                print(f"      Track field mapping: title → track_name (to avoid AI confusion with IDs)")
-                print(f"   Total payload character count: {len(json.dumps(payload))}")
+                print(f"💬 Sending structured payload to AI")
                 
                 # DEBUG: Dump payload to file for "This Is" playlist inspection
-                DEBUG_DUMP_THIS_IS_PAYLOADS = True  # Enable payload dumping for This Is playlists
+                DEBUG_DUMP_THIS_IS_PAYLOADS = False  # Disabled for production
                 
                 if DEBUG_DUMP_THIS_IS_PAYLOADS:
                     import time
@@ -350,9 +320,6 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 # STEP 2: RESPONSE STRUCTURE VALIDATION
                 source_track_count = len(shuffled_tracks)
                 
-                print(f"🔍 RESPONSE VALIDATION STARTING:")
-                print(f"   Source tracks available: {source_track_count}")
-                
                 # Validate response structure
                 if isinstance(response_data, dict) and "track_ids" in response_data:
                     # New format with reasoning - validate structure
@@ -361,17 +328,12 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     
                     # Structure checks
                     if not isinstance(track_ids, list):
-                        print(f"❌ Response validation: FAILED - track_ids is not a list")
+                        print(f"❌ Response validation failed: track_ids is not a list")
                         raise ValueError("Response structure invalid: track_ids must be a list")
                     
                     if not isinstance(reasoning, str):
-                        print(f"❌ Response validation: FAILED - reasoning is not a string")
+                        print(f"❌ Response validation failed: reasoning is not a string")
                         raise ValueError("Response structure invalid: reasoning must be a string")
-                    
-                    if not reasoning.strip():
-                        print(f"⚠️  Response validation: WARNING - reasoning is empty")
-                    
-                    print(f"✅ Response validation: structure OK")
                     
                     # INDEX-BASED: Validate all track IDs are integers (indices)
                     if not all(isinstance(tid, int) for tid in track_ids):
@@ -380,10 +342,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     
                     returned_track_count = len(track_ids)
                     
-                    # SANITY CHECKS
-                    print(f"🧠 SANITY CHECKS:")
-                    print(f"   Returned tracks: {returned_track_count}")
-                    
+                    # Sanity checks
                     # Check 1: Large source, tiny return
                     if source_track_count >= 100 and returned_track_count <= 10:
                         error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
@@ -403,24 +362,18 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                         print(f"❌ {error_msg}")
                         raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
                     
-                    print(f"✅ Response validation passed: received {returned_track_count} tracks from {source_track_count} source tracks")
+                    print(f"✅ AI returned {returned_track_count} tracks, validation passed")
 
                     # INDEX-BASED: Map indices back to actual track IDs
-                    print(f"🔍 INDEX-TO-ID MAPPING:")
-                    print(f"   AI returned indices: {track_ids[:5]}...")  # First 5 indices
-                    print(f"   Index range valid: 0 to {len(track_id_map)-1}")
-                    
                     # Find which indices are invalid (out of range)
                     invalid_indices = [idx for idx in track_ids if idx < 0 or idx >= len(track_id_map)]
                     if invalid_indices:
-                        print(f"   ❌ INVALID indices returned by AI: {invalid_indices[:10]}...")
-                        print(f"   ❌ AI returned {len(invalid_indices)} invalid indices out of {len(track_ids)}")
+                        print(f"❌ AI returned {len(invalid_indices)} invalid indices out of {len(track_ids)}")
                     
                     # Map valid indices to actual track IDs
                     valid_indices = [idx for idx in track_ids if 0 <= idx < len(track_id_map)]
                     mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
-                    print(f"   ✅ Valid indices mapped to IDs: {len(mapped_track_ids)} out of {len(track_ids)}")
-                    print(f"   📋 Sample mapping: index {valid_indices[0] if valid_indices else 'N/A'} → {mapped_track_ids[0] if mapped_track_ids else 'N/A'}")
+                    print(f"🔄 Mapped {len(mapped_track_ids)} valid indices to track IDs")
                     
                     # Final selection (limit to requested count)
                     final_selection = mapped_track_ids[:num_tracks]
@@ -641,8 +594,8 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     "temperature": temperature
                 }
             
-            # DEBUG: Dump payload to file for inspection (enabled for testing)
-            DEBUG_DUMP_PAYLOADS = True  # Enable payload dumping for Rediscover testing
+            # DEBUG: Dump payload to file for inspection
+            DEBUG_DUMP_PAYLOADS = False  # Disabled for production
             
             if DEBUG_DUMP_PAYLOADS:
                 import time
