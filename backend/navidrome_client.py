@@ -6,7 +6,9 @@ class NavidromeClient:
     """Simple client for interacting with Navidrome Subsonic API"""
     
     def __init__(self):
-        self.base_url = os.getenv("NAVIDROME_URL", "https://music.itsricky.com")
+        self.base_url = os.getenv("NAVIDROME_URL")
+        if not self.base_url:
+            raise ValueError("NAVIDROME_URL environment variable is required")
         self.api_key = os.getenv("NAVIDROME_API_KEY")
         self.username = os.getenv("NAVIDROME_USERNAME")
         self.password = os.getenv("NAVIDROME_PASSWORD")

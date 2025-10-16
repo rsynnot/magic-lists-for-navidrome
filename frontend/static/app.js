@@ -3,6 +3,7 @@ let selectedArtistId = null;
 let allArtists = [];
 let currentToast = null;
 
+
 // Helper function to format dates in friendly format (e.g., "5 Oct 2025 10:12am")
 function formatFriendlyDate(dateString) {
     if (!dateString) return 'Never';
@@ -180,7 +181,7 @@ function setActiveMenuItem(page) {
 // Navigation functionality
 function showContent(contentId) {
     // Hide all content sections
-    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content'];
+    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
     contentSections.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -220,6 +221,8 @@ document.addEventListener('click', function(event) {
             contentId = 'system-check-content';
             // Auto-run system checks when navigating to system check page
             setTimeout(() => runSystemChecks(), 100);
+        } else if (page === 'terms') {
+            contentId = 'terms-content';
         }
         
         setActiveMenuItem(page);
@@ -242,6 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.error('Preline not loaded');
     }
+    
     
     // Set home as active by default
     setActiveMenuItem('home');

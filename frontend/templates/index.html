@@ -363,7 +363,7 @@
                 <!-- Re-Discover Content (hidden by default) -->
                 <div id="rediscover-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-discover Playlist</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-Discover Playlist</h1>
                         <p class="text-gray-600">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
                     </div>
 
@@ -518,6 +518,66 @@
                     </div>
                 </div>
 
+                <!-- Terms Content -->
+                <div id="terms-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-6">A Few Things to Know</h1>
+                    
+                    <!-- Section 1: About This Project -->
+                    <section class="mb-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">About This Project</h2>
+                        <p class="text-gray-700 leading-relaxed">
+                            This is an open-source research project born from years of frustration with music library management tools. We're exploring whether AI can match or exceed the playlist curation quality of major streaming platforms. This is experimental software built by music lovers, for music lovers.
+                        </p>
+                    </section>
+
+                    <!-- Section 2: Legal Disclaimer -->
+                    <section class="mb-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Legal Disclaimer</h2>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-1">No Warranty</h3>
+                                <p class="text-gray-700 leading-relaxed">
+                                    This software is provided "as is" without warranty of any kind, express or implied.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">User Responsibility</h3>
+                                <p class="text-gray-700  mb-2">You are solely responsible for:</p>
+                                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                                    <li>Ensuring you have proper rights to any music content processed through this application</li>
+                                    <li>Any data transmitted to third-party AI services</li>
+                                    <li>Backup of your music library before use</li>
+                                    <li>Any modifications made to your playlists or library</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">Limitation of Liability</h3>
+                                <p class="text-gray-700 ">
+                                    The developers shall not be liable for any damages including but not limited to data loss, corruption of music libraries, or any other direct or indirect damages arising from use of this software.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">Third-party Services</h3>
+                                <p class="text-gray-700">
+                                    This application integrates with external AI services. Your use of these services is subject to their respective terms of service.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-800 mb-2">Acceptance</h3>
+                                <p class="text-gray-700">
+                                    By using this software, you acknowledge and accept these terms.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                
+                </div>
+
 
             </main>
         </div>
@@ -526,17 +586,14 @@
         <footer class="py-5 px-4 mt-auto">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="block w-full text-gray-500 text-center text-sm mb-2 md:mb-0">
-                    Made by <a href="https://synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">Synnot Studio</a> – Open Source (MIT)
+                    &copy; 2025 Made by <a href="https://synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">Synnot Studio</a> - <a href="#" data-page="terms" class="ttext-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200">Terms</a> – Open Source (MIT)
                 </div>
             </div>
         </footer>
     </div>
-
-     <div id="toast-container" class="absolute top-2 right-2 w-full max-w-sm z-50 space-y-3 pointer-events-none">
-        <!-- Toasts will be dynamically inserted here -->
+    <div id="toast-container" class="absolute top-2 right-2 w-full max-w-sm z-50 space-y-3 pointer-events-none">
+        <!-- Toasts will be dynamically inserted here -->   
     </div>
-
     <script src="/static/app.js?v=1.0.0"></script>
-    
 </body>
 </html>

@@ -78,7 +78,7 @@ async def startup_event():
             
         # Log individual check results
         for check in system_check_results.get("checks", []):
-            status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "❌"
+            status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "ℹ️" if check["status"] == "info" else "❌"
             scheduler_logger.info(f"{status_emoji} {check['name']}: {check['status']}")
             
     except Exception as e:
@@ -154,6 +154,7 @@ async def system_check_page(request: Request):
 # SYSTEM CHECK FEATURE - END
 
 
+
 @app.get("/api/artists")
 async def get_artists():
     """Get list of artists from Navidrome"""
@@ -170,6 +171,7 @@ async def get_artists():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
+
 
 # SYSTEM CHECK FEATURE - START
 @app.get("/api/health-check")
@@ -261,6 +263,17 @@ async def create_playlist(
         else:
             curated_track_ids = curation_result
             reasoning = ""
+
+        # Check for validation failures or empty results
+        if not curated_track_ids:
+            if reasoning and "Playlist generation failed" in reasoning:
+                # This is a validation failure - don't create playlist
+                scheduler_logger.error(f"❌ Playlist creation aborted: {reasoning}")
+                raise HTTPException(status_code=400, detail=f"Playlist generation failed: {reasoning}")
+            else:
+                # This is an empty result without explanation
+                scheduler_logger.error(f"❌ AI curation returned no tracks for {', '.join(artist_names)}")
+                raise HTTPException(status_code=500, detail="AI curation failed to return any tracks")
 
         # Log the AI reasoning for debugging (truncated)
         if reasoning:
@@ -481,7 +494,8 @@ async def create_rediscover_playlist(
         frequency_names = {
             "daily": "Re-Discover Daily ✨",
             "weekly": "Re-Discover Weekly ✨", 
-            "monthly": "Re-Discover Monthly ✨"
+            "monthly": "Re-Discover Monthly ✨",
+            "never": "Re-Discover ✨"
         }
         playlist_name = frequency_names.get(request.refresh_frequency, "Re-Discover Weekly ✨")
         

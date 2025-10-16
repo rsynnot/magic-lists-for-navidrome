@@ -22,7 +22,7 @@ NAVIDROME_PASSWORD=your_navidrome_password
 
 # Optional - AI curation (without this, uses fallback algorithm)
 AI_API_KEY=your_api_key_here
-AI_MODEL=openai/gpt-3.5-turbo
+AI_MODEL=anthropic/claude-haiku-4.5
 
 # Optional - Custom database path (will be auto-created)
 DATABASE_PATH=./magiclists.db
