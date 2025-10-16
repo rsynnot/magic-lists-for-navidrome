@@ -272,7 +272,7 @@ For issues and questions:
 - Backup of your music library before use
 - Any modifications made to your playlists or library
 
-**Limitation of Liabillity**: The developers shall not be liable for any damages including but not limited to data loss, corruption of music libraries, or any other direct or indirect damages arising from use of this software.
+**Limitation of Liability**: The developers shall not be liable for any damages including but not limited to data loss, corruption of music libraries, or any other direct or indirect damages arising from use of this software.
 
 **Third-party Services**: This application integrates with external AI services. Your use of these services is subject to their respective terms of service.
 

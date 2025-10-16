@@ -168,3 +168,5 @@ tmp_rovodev_validate_docker.py
 wipe_playlists.py 
 debug_payloads
 debug_payloads/
+/recipes/archive
+/recipes/archive/*
