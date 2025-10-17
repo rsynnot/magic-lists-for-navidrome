@@ -51,8 +51,10 @@ _Caption: Creating a 'This is (Artist)' playlist_
          - NAVIDROME_URL=http://navidrome:4533
          - NAVIDROME_USERNAME=your_username
          - NAVIDROME_PASSWORD=your_password
-         - AI_API_KEY=your_openrouter_api_key  # Optional, for AI features
-         - AI_MODEL=openai/gpt-3.5-turbo       # Optional
+         - AI_PROVIDER=openrouter              # Optional: openrouter or ollama
+         - AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter
+         - AI_MODEL=openai/gpt-3.5-turbo       # Optional, for OpenRouter
+         - AI_BASE_URL=https://openrouter.ai/api/v1/chat/completions  # Optional
        volumes:
          - ./magiclists-data:/app/data          # Persist configuration
        restart: unless-stopped
@@ -78,7 +80,9 @@ Use your public Navidrome URL (e.g., https://music.yourdomain.com):
       -e NAVIDROME_URL=https://music.yourdomain.com \
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
+      -e AI_PROVIDER=openrouter \
       -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_BASE_URL=https://openrouter.ai/api/v1/chat/completions \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -92,7 +96,9 @@ Use host.docker.internal to reach services on your host:
       -e NAVIDROME_URL=http://host.docker.internal:4533 \
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
+      -e AI_PROVIDER=openrouter \
       -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_BASE_URL=https://openrouter.ai/api/v1/chat/completions \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -105,7 +111,9 @@ Use the local IP address of the machine running Navidrome:
       -e NAVIDROME_URL=http://192.168.1.100:4533 \
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
+      -e AI_PROVIDER=openrouter \
       -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_BASE_URL=https://openrouter.ai/api/v1/chat/completions \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -132,8 +140,10 @@ Use this method if you prefer to run Python directly or want to contribute to de
    NAVIDROME_URL=http://localhost:4533
    NAVIDROME_USERNAME=your_username
    NAVIDROME_PASSWORD=your_password
-   AI_API_KEY=your_openrouter_api_key  # Optional
-   AI_MODEL=openai/gpt-3.5-turbo       # Optional
+   AI_PROVIDER=openrouter              # Optional: openrouter or ollama
+   AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter
+   AI_MODEL=openai/gpt-3.5-turbo       # Optional, for OpenRouter
+   AI_BASE_URL=https://openrouter.ai/api/v1/chat/completions  # Optional
 ```
 5. Run the application:
 ```bash
@@ -207,21 +217,40 @@ If checks fail, detailed suggestions are provided to help resolve issues. You ca
 
 ## AI Configuration (Optional)
 
-The AI features enhance playlist curation with intelligent track selection. You can choose from free, low-cost, or premium models:
+MagicLists supports multiple AI providers for enhanced playlist curation:
 
-**Getting an API Key:**
-- **[OpenRouter](https://openrouter.ai)** - Provides access to many models with free tiers
+1. **Fallback-only** (Free) - Uses play count and metadata sorting
+2. **Local LLM** (Free) - Run models locally with Ollama
+3. **OpenRouter Free Models** (Free) - Access to free cloud models
+4. **OpenRouter Premium Models** (Paid) - Higher quality cloud models
 
-**Model Options:**
-- **Free/Low-cost**: `deepseek/deepseek-chat`, `google/gemini-flash-1.5`, `meta-llama/llama-3.1-8b-instruct:free`
-- **Paid**: `openai/gpt-3.5-turbo`, `openai/gpt-4o-mini`, `anthropic/claude-3-haiku`
+### Option 1: OpenRouter (Cloud Models)
+Get a free API key from [OpenRouter](https://openrouter.ai):
 
-**Example `.env` setup:**
 ```bash
-   # OpenRouter (free tier available)
-   AI_API_KEY=sk-or-v1-your-key-here
-   AI_MODEL=deepseek/deepseek-chat
+# .env configuration
+AI_PROVIDER=openrouter
+AI_API_KEY=sk-or-v1-your-key-here
+AI_MODEL=deepseek/deepseek-chat              # Free model
+AI_BASE_URL=https://openrouter.ai/api/v1/chat/completions
+# AI_MODEL=anthropic/claude-3-haiku          # Paid model
 ```
+
+### Option 2: Ollama (Local Models)
+[Install Ollama](https://ollama.com) and run models locally:
+
+```bash
+# Install and run a model
+ollama pull llama3.2
+ollama serve
+
+# .env configuration
+AI_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2
+AI_BASE_URL=http://localhost:11434/v1/chat/completions
+# For Docker: AI_BASE_URL=http://host.docker.internal:11434/v1/chat/completions
+```
+
 **Note:** Without AI configuration, the app falls back to play-count based playlist generation.
 
 

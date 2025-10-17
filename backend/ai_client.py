@@ -3,24 +3,23 @@ import os
 import json
 from typing import List, Dict, Any, Union, Tuple
 from .recipe_manager import recipe_manager
+from .services.ai_provider import get_ai_provider
 
 class AIClient:
-    """Client for AI-powered track curation using OpenRouter"""
+    """Client for AI-powered track curation using configurable providers"""
     
     def __init__(self):
-        self.api_key = os.getenv("AI_API_KEY")
-        self.model = os.getenv("AI_MODEL", "openai/gpt-3.5-turbo")
-        self.base_url = "https://openrouter.ai/api/v1"
-        self.client = httpx.AsyncClient()
+        self.provider = get_ai_provider()
+        # Backward compatibility - keep these for fallback logic
+        self.api_key = self.provider.api_key
+        self.model = self.provider.model
+        self.base_url = self.provider.base_url
 
         # Debug logging
-        print(f"🔍 AIClient initialized")
+        print(f"🔍 AIClient initialized with provider: {self.provider.provider_type}")
+        print(f"🤖 Using model: {self.model}")
+        print(f"🌐 Base URL: {self.base_url}")
         
-    async def _get_client(self):
-        """Get or recreate the HTTP client if needed"""
-        if not hasattr(self, 'client') or not self.client or (hasattr(self.client, 'is_closed') and self.client.is_closed):
-            self.client = httpx.AsyncClient()
-        return self.client
         
     async def curate_this_is(
         self, 
@@ -42,7 +41,7 @@ class AIClient:
             List of track IDs in curated order, or tuple of (track_ids, reasoning) if include_reasoning=True
         """
         
-        if not self.api_key:
+        if not self.api_key and self.provider.provider_type == "openrouter":
             print(f"❌ No AI API key configured, using fallback curation for {artist_name}")
             # Processing tracks for curation (logging moved to scheduler_logger)
             # Fallback: return first num_tracks by play count
@@ -103,12 +102,12 @@ class AIClient:
                 llm_config = final_recipe.get("llm_config", {})
                 model_instructions = final_recipe.get("model_instructions", "")
                 
-                # Use model from recipe first, then fallback to environment
-                model = llm_config.get("model_name") or self.model or "openai/gpt-3.5-turbo"
+                # Use model from environment (.env file), ignoring recipe model_name
+                model = self.model or "openai/gpt-3.5-turbo"
                 temperature = llm_config.get("temperature", 0.7)
                 max_tokens = llm_config.get("max_output_tokens", 1000)
                 
-                print(f"🤖 Using AI model: {model}")
+                print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
                 
                 # Serialize the complete recipe (excluding tracks_data to avoid duplication)
                 recipe_without_tracks = {k: v for k, v in final_recipe.items() if k != "tracks_data"}
@@ -218,41 +217,29 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 print(f"🔢 Max tokens: {max_tokens}")
                 print(f"📝 Prompt length: {len(prompt)} characters")
                 
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                
-                payload = {
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
-                        },
-                        {
-                            "role": "user", 
-                            "content": prompt
-                        }
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": temperature
-                }
+                system_prompt = "You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
             
             
-            client = await self._get_client()
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                json=payload,
-                headers=headers
-            )
-            response.raise_for_status()
-            
-            result = response.json()
-            content = result["choices"][0]["message"]["content"].strip()
+            # Use the provider to make the AI request
+            if "llm_config" in final_recipe:
+                # New recipe format - use structured payload
+                content = await self.provider.generate(
+                    system_prompt=model_instructions,
+                    user_prompt=user_content,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+            else:
+                # Legacy recipe format
+                content = await self.provider.generate(
+                    system_prompt=system_prompt,
+                    user_prompt=prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
 
             # Log API response details
-            print(f"📊 AI Response status: {response.status_code}")
+            print(f"📊 AI Response received")
             
             # Log the raw AI response for debugging (truncated preview)
             import re
@@ -506,7 +493,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             List of track IDs in curated order, or tuple of (track_ids, reasoning) if include_reasoning=True
         """
         
-        if not self.api_key:
+        if not self.api_key and self.provider.provider_type == "openrouter":
             print(f"❌ No AI API key configured, using fallback curation for Re-Discover Weekly")
             # Processing candidate tracks for curation (logging moved to scheduler_logger)
             # Fallback: return first num_tracks by score (should already be sorted by rediscover algorithm)
@@ -559,12 +546,12 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 llm_config = final_recipe.get("llm_config", {})
                 model_instructions = final_recipe.get("model_instructions", "")
                 
-                # Use model from recipe first, then fallback to environment
-                model = llm_config.get("model_name") or self.model or "openai/gpt-3.5-turbo"
+                # Use model from environment (.env file), ignoring recipe model_name
+                model = self.model or "openai/gpt-3.5-turbo"
                 temperature = llm_config.get("temperature", 0.7)
                 max_tokens = llm_config.get("max_output_tokens", 1500)
                 
-                # Using AI model
+                print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
                 
                 # Serialize the complete recipe (excluding tracks for structured payload)
                 recipe_without_tracks = {k: v for k, v in final_recipe.items() if k not in ["candidate_tracks", "tracks_data"]}
@@ -665,16 +652,23 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     print(f"❌ DEBUG: Failed to dump Re-Discover payload: {e}")
             
             
-            client = await self._get_client()
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                json=payload,
-                headers=headers
-            )
-            response.raise_for_status()
-            
-            result = response.json()
-            content = result["choices"][0]["message"]["content"].strip()
+            # Use the provider to make the AI request  
+            if "llm_config" in final_recipe:
+                # New recipe format - use structured payload
+                content = await self.provider.generate(
+                    system_prompt=model_instructions,
+                    user_prompt=user_content,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+            else:
+                # Legacy recipe format
+                content = await self.provider.generate(
+                    system_prompt="You are a professional music curator specializing in rediscovery playlists. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON.",
+                    user_prompt=prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
             
             # Log the raw AI response for debugging (truncated preview)
             import re
@@ -791,6 +785,9 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
                     # Mapped indices to track IDs
                     
+                    # Final selection (limit to requested count)
+                    final_selection = mapped_track_ids[:num_tracks]
+                    
                     # AI curation successful for Re-Discover Weekly (logging moved to scheduler_logger)
                     if reasoning:
                         # AI reasoning available (logged in main.py scheduler_logger)
@@ -855,8 +852,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
     async def close(self):
         """Close the HTTP client"""
         try:
-            if hasattr(self, 'client') and self.client:
-                if hasattr(self.client, 'is_closed') and not self.client.is_closed:
-                    await self.client.aclose()
+            if hasattr(self, 'provider') and self.provider:
+                await self.provider.close()
         except Exception as e:
-            print(f"Warning: Error closing HTTP client: {e}")
+            print(f"Warning: Error closing AI provider: {e}")
