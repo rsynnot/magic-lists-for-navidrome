@@ -40,9 +40,9 @@ class HealthCheckService:
         if artists_check["status"] == "error":
             all_passed = False
             
-        openrouter_check = await self._check_openrouter_api_key()
-        checks.append(openrouter_check)
-        if openrouter_check["status"] == "error":
+        ai_check = await self._check_ai_provider()
+        checks.append(ai_check)
+        if ai_check["status"] == "error":
             all_passed = False
             
         # MULTIPLE LIBRARIES FIX: Check for library configuration
@@ -281,23 +281,144 @@ class HealthCheckService:
                 "suggestion": "This may be a Navidrome library configuration issue. Check Navidrome logs for 'Library not found' errors."
             }
     
-    async def _check_openrouter_api_key(self) -> Dict[str, str]:
-        """Check if OpenRouter API key is present"""
-        api_key = os.getenv("AI_API_KEY")  # Following existing pattern from ai_client.py
+    async def _check_ai_provider(self) -> Dict[str, str]:
+        """Check AI provider configuration and connectivity"""
+        provider_type = os.getenv("AI_PROVIDER", "openrouter")
+        
+        if provider_type == "ollama":
+            return await self._check_ollama_provider()
+        else:
+            return await self._check_openrouter_provider()
+    
+    async def _check_openrouter_provider(self) -> Dict[str, str]:
+        """Check OpenRouter API key and connectivity"""
+        api_key = os.getenv("AI_API_KEY")
+        model = os.getenv("AI_MODEL", "openai/gpt-3.5-turbo")
+        base_url = os.getenv("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
         
         if not api_key:
             return {
-                "name": "OpenRouter API Key Present",
+                "name": "OpenRouter AI Provider",
                 "status": "warning",
                 "message": "AI_API_KEY environment variable not set - AI features will use fallback algorithms",
                 "suggestion": "Set AI_API_KEY in your .env file to enable AI-powered playlist curation"
             }
-        else:
+        
+        # Test API connectivity with a minimal request
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Minimal test payload
+                payload = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 1
+                }
+                
+                response = await client.post(base_url, json=payload, headers=headers)
+                
+                if response.status_code == 200:
+                    return {
+                        "name": "OpenRouter AI Provider",
+                        "status": "success",
+                        "message": f"API key valid and service reachable (model: {model})",
+                        "suggestion": ""
+                    }
+                elif response.status_code == 401:
+                    return {
+                        "name": "OpenRouter AI Provider",
+                        "status": "error",
+                        "message": "Invalid API key - check your AI_API_KEY in .env file",
+                        "suggestion": "Verify your OpenRouter API key is correct"
+                    }
+                else:
+                    return {
+                        "name": "OpenRouter AI Provider",
+                        "status": "warning",
+                        "message": f"API key provided but service returned status {response.status_code}",
+                        "suggestion": "API key is configured but service may have issues"
+                    }
+                    
+        except httpx.ConnectError:
             return {
-                "name": "OpenRouter API Key Present", 
-                "status": "success",
-                "message": "AI API key is configured",
-                "suggestion": ""
+                "name": "OpenRouter AI Provider",
+                "status": "warning",
+                "message": "API key provided but could not connect to OpenRouter service",
+                "suggestion": "Check your internet connection and OpenRouter service status"
+            }
+        except Exception as e:
+            return {
+                "name": "OpenRouter AI Provider",
+                "status": "warning",
+                "message": f"API key provided but connectivity test failed: {str(e)}",
+                "suggestion": "API key is configured but service connectivity could not be verified"
+            }
+    
+    async def _check_ollama_provider(self) -> Dict[str, str]:
+        """Check Ollama instance connectivity"""
+        model = os.getenv("OLLAMA_MODEL", "llama3.2")
+        base_url = os.getenv("AI_BASE_URL", "http://localhost:11434/v1/chat/completions")
+        
+        # Test Ollama connectivity with a minimal request
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:  # Longer timeout for Ollama
+                headers = {"Content-Type": "application/json"}
+                
+                # Minimal test payload
+                payload = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 1
+                }
+                
+                response = await client.post(base_url, json=payload, headers=headers)
+                
+                if response.status_code == 200:
+                    return {
+                        "name": "Ollama AI Provider",
+                        "status": "success",
+                        "message": f"Ollama instance reachable (model: {model})",
+                        "suggestion": ""
+                    }
+                elif response.status_code == 404:
+                    return {
+                        "name": "Ollama AI Provider",
+                        "status": "error",
+                        "message": f"Model '{model}' not found on Ollama instance",
+                        "suggestion": f"Run 'ollama pull {model}' to download the model"
+                    }
+                else:
+                    return {
+                        "name": "Ollama AI Provider",
+                        "status": "warning",
+                        "message": f"Ollama instance responded with status {response.status_code}",
+                        "suggestion": "Check your Ollama configuration and model availability"
+                    }
+                    
+        except httpx.ConnectError:
+            return {
+                "name": "Ollama AI Provider",
+                "status": "error",
+                "message": f"Could not connect to Ollama instance at {base_url}",
+                "suggestion": "Ensure Ollama is running and accessible at the configured URL. For Docker setups, use 'host.docker.internal:11434'"
+            }
+        except httpx.TimeoutException:
+            return {
+                "name": "Ollama AI Provider",
+                "status": "warning",
+                "message": f"Connection to Ollama instance timed out",
+                "suggestion": "Ollama may be starting up or the model is loading. This is normal for first-time model usage."
+            }
+        except Exception as e:
+            return {
+                "name": "Ollama AI Provider", 
+                "status": "error",
+                "message": f"Error connecting to Ollama: {str(e)}",
+                "suggestion": "Check your Ollama configuration in .env file"
             }
     
     async def _check_navidrome_library_config(self) -> Dict[str, str]:
@@ -336,3 +457,5 @@ class HealthCheckService:
                         print("📊 Umami event: system_check_failed_auth") 
                     elif "Artists API" in check["name"]:
                         print("📊 Umami event: system_check_failed_artists")
+                    elif "AI Provider" in check["name"]:
+                        print("📊 Umami event: system_check_failed_ai")

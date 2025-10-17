@@ -203,30 +203,11 @@ document.addEventListener('click', function(event) {
         event.preventDefault();
         const page = link.getAttribute('data-page');
         
-        // Map page to content
-        let contentId;
-        if (page === 'home') {
-            contentId = 'welcome-content';
-        } else if (page === 'this-is-artist') {
-            contentId = 'this-is-content';
-            // Load artists when navigating to This Is page
-            setTimeout(() => loadArtists(), 100);
-        } else if (page === 're-discover') {
-            contentId = 'rediscover-content';
-        } else if (page === 'playlists') {
-            contentId = 'manage-playlists-content';
-            // Load playlists when navigating to manage page
-            setTimeout(() => loadPlaylists(), 100);
-        } else if (page === 'system-check') {
-            contentId = 'system-check-content';
-            // Auto-run system checks when navigating to system check page
-            setTimeout(() => runSystemChecks(), 100);
-        } else if (page === 'terms') {
-            contentId = 'terms-content';
-        }
+        // Use the shared navigation handler
+        handlePageNavigation(page);
         
-        setActiveMenuItem(page);
-        showContent(contentId);
+        // Update URL based on page (only for click navigation, not popstate)
+        updateURL(page);
         
         // Close mobile sidebar if clicked
         if (window.innerWidth < 768) {
@@ -246,11 +227,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Preline not loaded');
     }
     
-    
-    // Set home as active by default
-    setActiveMenuItem('home');
-    showContent('welcome-content');
-    
     // Setup artist selection change handler
     const artistSelect = document.getElementById('artist-search-select');
     if (artistSelect) {
@@ -259,6 +235,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load playlist count on page load
     updatePlaylistCount();
+    
+    // Handle initial page routing
+    const currentPage = getPageFromURL(window.location.pathname);
+    handlePageNavigation(currentPage);
 });
 
 // Load artists and populate the select (from original working code)
@@ -644,6 +624,8 @@ async function runSystemChecks() {
                             umami.track('system_check_failed_auth');
                         } else if (check.name.includes('Artists API')) {
                             umami.track('system_check_failed_artists');
+                        } else if (check.name.includes('AI Provider')) {
+                            umami.track('system_check_failed_ai');
                         }
                     }
                 });
@@ -777,6 +759,40 @@ function getStatusText(status) {
     }
 }
 
+// URL management function
+function updateURL(page) {
+    let url = '/';
+    
+    // Map pages to URL paths
+    switch(page) {
+        case 'home':
+            url = '/';
+            break;
+        case 'this-is-artist':
+            url = '/this-is';
+            break;
+        case 're-discover':
+            url = '/re-discover';
+            break;
+        case 'playlists':
+            url = '/playlists';
+            break;
+        case 'system-check':
+            url = '/system-check';
+            break;
+        case 'terms':
+            url = '/terms';
+            break;
+        default:
+            url = '/';
+    }
+    
+    // Update browser URL without page reload
+    if (window.location.pathname !== url) {
+        window.history.pushState({ page: page }, '', url);
+    }
+}
+
 function navigateToHome() {
     // Navigate to home page (this will trigger a redirect to / which checks system status)
     window.location.href = '/';
@@ -791,12 +807,65 @@ function initSystemCheckPage() {
     runSystemChecks();
 }
 
-// SYSTEM CHECK FEATURE
-// Check URL on page load and show system-check page if needed
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.location.pathname === '/system-check') {
-        showContent('system-check-content');
-        setTimeout(() => runSystemChecks(), 100);
+// URL ROUTING
+// Handle browser back/forward navigation
+window.addEventListener('popstate', function(event) {
+    if (event.state && event.state.page) {
+        // Use the stored page state
+        handlePageNavigation(event.state.page);
+    } else {
+        // Determine page from URL
+        const page = getPageFromURL(window.location.pathname);
+        handlePageNavigation(page);
     }
 });
+
+// Get page from URL path
+function getPageFromURL(pathname) {
+    switch(pathname) {
+        case '/':
+            return 'home';
+        case '/this-is':
+            return 'this-is-artist';
+        case '/re-discover':
+            return 're-discover';
+        case '/playlists':
+            return 'playlists';
+        case '/system-check':
+            return 'system-check';
+        case '/terms':
+            return 'terms';
+        default:
+            return 'home';
+    }
+}
+
+// Handle page navigation (used by both click and popstate)
+function handlePageNavigation(page) {
+    // Map page to content
+    let contentId;
+    if (page === 'home') {
+        contentId = 'welcome-content';
+    } else if (page === 'this-is-artist') {
+        contentId = 'this-is-content';
+        // Load artists when navigating to This Is page
+        setTimeout(() => loadArtists(), 100);
+    } else if (page === 're-discover') {
+        contentId = 'rediscover-content';
+    } else if (page === 'playlists') {
+        contentId = 'manage-playlists-content';
+        // Load playlists when navigating to manage page
+        setTimeout(() => loadPlaylists(), 100);
+    } else if (page === 'system-check') {
+        contentId = 'system-check-content';
+        // Auto-run system checks when navigating to system check page
+        setTimeout(() => runSystemChecks(), 100);
+    } else if (page === 'terms') {
+        contentId = 'terms-content';
+    }
+    
+    setActiveMenuItem(page);
+    showContent(contentId);
+}
+
 

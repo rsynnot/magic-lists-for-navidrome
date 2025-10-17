@@ -207,6 +207,9 @@ class NavidromeClient:
             artist_data = subsonic_response.get("artist", {})
             tracks_list = []
             
+            # Get artist name for track metadata
+            artist_name = artist_data.get("name", "Unknown Artist")
+            
             # Get tracks from albums
             for album in artist_data.get("album", []):
                 album_id = album.get("id")
@@ -231,6 +234,7 @@ class NavidromeClient:
                         tracks_list.append({
                             "id": song.get("id"),
                             "title": song.get("title"),
+                            "artist": artist_name,  # Include artist name for AI processing
                             "album": album_name,
                             "year": album_year,
                             "play_count": song.get("playCount", 0)

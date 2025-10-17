@@ -76,10 +76,30 @@ async def startup_event():
         else:
             scheduler_logger.warning("⚠️ System health checks failed on startup - user will be redirected to system check page")
             
-        # Log individual check results
+        # Log individual check results with enhanced AI provider logging
         for check in system_check_results.get("checks", []):
             status_emoji = "✅" if check["status"] == "success" else "⚠️" if check["status"] == "warning" else "ℹ️" if check["status"] == "info" else "❌"
-            scheduler_logger.info(f"{status_emoji} {check['name']}: {check['status']}")
+            
+            # Enhanced logging for AI Provider checks
+            if "AI Provider" in check["name"]:
+                ai_provider = os.getenv("AI_PROVIDER", "openrouter")
+                if check["status"] == "success":
+                    # Extract model from success message (e.g., "service reachable (model: llama3.2)")
+                    if "model:" in check["message"]:
+                        model_part = check["message"].split("model: ")[1].rstrip(")")
+                        scheduler_logger.info(f"🤖 AI Provider: {ai_provider.title()} with model '{model_part}' - Ready")
+                    else:
+                        scheduler_logger.info(f"🤖 AI Provider: {ai_provider.title()} - Ready")
+                elif check["status"] == "warning":
+                    if "not set" in check["message"]:
+                        scheduler_logger.info(f"🤖 AI Provider: {ai_provider.title()} - No API key (using fallback algorithms)")
+                    else:
+                        scheduler_logger.warning(f"🤖 AI Provider: {ai_provider.title()} - {check['message']}")
+                elif check["status"] == "error":
+                    scheduler_logger.error(f"🤖 AI Provider: {ai_provider.title()} - {check['message']}")
+            else:
+                # Standard logging for other checks
+                scheduler_logger.info(f"{status_emoji} {check['name']}: {check['status']}")
             
     except Exception as e:
         scheduler_logger.error(f"❌ Failed to run system checks on startup: {e}")
