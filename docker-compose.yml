@@ -8,6 +8,8 @@ services:
       - "4545:8000"
     env_file:
       - .env
+    environment:
+      - DATABASE_PATH=/app/data/magiclists.db
     volumes:
       - magiclists_data:/app/data
     restart: unless-stopped
