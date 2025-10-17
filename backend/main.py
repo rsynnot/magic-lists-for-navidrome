@@ -629,7 +629,12 @@ async def refresh_scheduled_playlists():
         else:
             scheduler_logger.info("🔍 Checking for playlists due for refresh...")
         
-        db = DatabaseManager()
+        # Get database path from environment variable with smart defaults
+        # Docker: /app/data/magiclists.db (set in docker-compose.yml)
+        # Standalone: ./magiclists.db (current directory)
+        default_path = "/app/data/magiclists.db" if os.path.exists("/app/data") else "./magiclists.db"
+        db_path = os.getenv("DATABASE_PATH", default_path)
+        db = DatabaseManager(db_path)
         current_time = datetime.now()
         
         # Get playlists due for refresh (including 7-day catch-up window)
@@ -1036,4 +1041,26 @@ async def start_scheduler_job():
         raise HTTPException(status_code=500, detail=f"Failed to start scheduler job: {str(e)}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Custom logging config to filter out Umami heartbeat requests
+    import uvicorn.config
+    
+    class FilteredUvicornFormatter(uvicorn.formatters.DefaultFormatter):
+        def format(self, record):
+            # Filter out GET / requests (Umami heartbeats) from access logs
+            if hasattr(record, 'args') and record.args:
+                # Look for GET / HTTP patterns in the log message
+                message = str(record.args[2]) if len(record.args) > 2 else ""
+                if 'GET / HTTP' in message:
+                    return ""  # Return empty string to suppress this log
+            return super().format(record)
+    
+    # Configure uvicorn with custom formatter
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"]["()"] = FilteredUvicornFormatter
+    
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        log_config=log_config
+    )

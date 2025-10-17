@@ -1,5 +1,6 @@
 import sqlite3
 import aiosqlite
+import os
 from typing import List, Optional, Dict
 from datetime import datetime
 import json
@@ -234,7 +235,7 @@ class DatabaseManager:
                     p.reasoning,
                     p.created_at, 
                     p.updated_at,
-                    sp.navidrome_playlist_id,
+                    p.navidrome_playlist_id,
                     sp.refresh_frequency,
                     sp.next_refresh,
                     sp.playlist_type
@@ -439,4 +440,9 @@ class DatabaseManager:
 # Dependency for FastAPI
 async def get_db() -> DatabaseManager:
     """FastAPI dependency to get database manager"""
-    return DatabaseManager()
+    # Get database path from environment variable with smart defaults
+    # Docker: /app/data/magiclists.db (set in docker-compose.yml)
+    # Standalone: ./magiclists.db (current directory)
+    default_path = "/app/data/magiclists.db" if os.path.exists("/app/data") else "./magiclists.db"
+    db_path = os.getenv("DATABASE_PATH", default_path)
+    return DatabaseManager(db_path)
