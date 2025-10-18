@@ -523,16 +523,16 @@ class HealthCheckService:
         # This is just for logging the events that should be tracked
         
         if all_passed:
-            print("📊 Umami event: system_check_all_passed")
+            print("📊 Analytics event: system_check_all_passed")
         else:
             # Check for specific failures
             for check in checks:
                 if check["status"] == "error":
                     if "URL Reachable" in check["name"]:
-                        print("📊 Umami event: system_check_failed_url")
+                        print("📊 Analytics event: system_check_failed_url")
                     elif "Authentication" in check["name"]:
-                        print("📊 Umami event: system_check_failed_auth") 
+                        print("📊 Analytics event: system_check_failed_auth") 
                     elif "Artists API" in check["name"]:
-                        print("📊 Umami event: system_check_failed_artists")
+                        print("📊 Analytics event: system_check_failed_artists")
                     elif "AI Provider" in check["name"]:
-                        print("📊 Umami event: system_check_failed_ai")
+                        print("📊 Analytics event: system_check_failed_ai")

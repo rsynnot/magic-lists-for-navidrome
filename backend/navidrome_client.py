@@ -492,6 +492,45 @@ class NavidromeClient:
             print(f"💥 Unexpected error deleting playlist: {e}")
             raise Exception(f"Unexpected error deleting playlist: {e}")
     
+    async def get_total_song_count(self) -> int:
+        """Get the total number of songs in the library using startScan API
+        
+        Returns:
+            int: Total number of songs in the library
+        """
+        try:
+            await self._ensure_authenticated()
+            
+            # Use startScan API to get accurate song count
+            params = self._get_subsonic_params()
+            
+            response = await self.client.get(
+                f"{self.base_url}/rest/startScan.view",
+                params=params
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Handle Subsonic API response format
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+            
+            scan_status = subsonic_response.get("scanStatus", {})
+            count = scan_status.get("count", 0)
+            
+            print(f"📊 Total song count in library (via startScan): {count}")
+            return count
+                
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to Navidrome: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+        except Exception as e:
+            raise Exception(f"Unexpected error getting song count: {e}")
+    
     async def close(self):
         """Close the HTTP client"""
         await self.client.aclose()
