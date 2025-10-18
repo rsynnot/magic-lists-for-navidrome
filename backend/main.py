@@ -1040,6 +1040,53 @@ async def start_scheduler_job():
         scheduler_logger.error(f"❌ Error starting scheduler job: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to start scheduler job: {str(e)}")
 
+@app.get("/api/ai-model-info")
+async def get_ai_model_info():
+    """Get current AI model information for analytics"""
+    try:
+        ai_client_instance = get_ai_client()
+        return {
+            "provider": ai_client_instance.provider.provider_type,
+            "model": ai_client_instance.model or "unknown",
+            "has_api_key": bool(ai_client_instance.api_key)
+        }
+    except Exception as e:
+        return {
+            "provider": "unknown",
+            "model": "unknown", 
+            "has_api_key": False
+        }
+
+@app.post("/api/track-library-size")
+async def track_library_size(db: DatabaseManager = Depends(get_db)):
+    """Track library size for analytics (called post-launch)"""
+    try:
+        # Check if we should track (90+ days since last tracking)
+        should_track = await db.should_track_library_size()
+        if not should_track:
+            return {"message": "Library size tracking not needed yet", "tracked": False}
+        
+        # Get Navidrome client and query library size
+        nav_client = get_navidrome_client()
+        song_count = await nav_client.get_total_song_count()
+        
+        # Get or create user ID and record the data
+        user_id = await db.get_or_create_user_id()
+        await db.record_library_size(song_count)
+        
+        scheduler_logger.info(f"📊 Library size tracked: {song_count} songs for user {user_id}")
+        
+        return {
+            "message": "Library size tracked successfully",
+            "tracked": True,
+            "song_count": song_count,
+            "user_id": user_id
+        }
+        
+    except Exception as e:
+        scheduler_logger.error(f"❌ Error tracking library size: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to track library size: {str(e)}")
+
 if __name__ == "__main__":
     # Custom logging config to filter out Umami heartbeat requests
     import uvicorn.config

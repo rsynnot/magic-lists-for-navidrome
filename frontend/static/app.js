@@ -217,6 +217,61 @@ document.addEventListener('click', function(event) {
     }
 });
 
+// AI model information cache
+let aiModelInfo = null;
+
+// Get AI model information for analytics
+async function getAIModelInfo() {
+    if (aiModelInfo) {
+        return aiModelInfo;
+    }
+    
+    try {
+        const response = await fetch('/api/ai-model-info');
+        if (response.ok) {
+            aiModelInfo = await response.json();
+            return aiModelInfo;
+        }
+    } catch (error) {
+        console.error('Error fetching AI model info:', error);
+    }
+    
+    // Fallback
+    return {
+        provider: 'unknown',
+        model: 'unknown',
+        has_api_key: false
+    };
+}
+
+// Post-launch library size tracking
+async function trackLibrarySize() {
+    try {
+        const response = await fetch('/api/track-library-size', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.tracked && typeof window.rybbit !== 'undefined') {
+                // Track library size event with Rybbit
+                window.rybbit.event('Library Size Tracked', {
+                    songCount: data.song_count,
+                    userId: data.user_id
+                });
+                console.log('📊 Library size tracked for analytics');
+            }
+        }
+    } catch (error) {
+        console.error('Error tracking library size:', error);
+        // Silently fail - don't disrupt user experience
+    }
+}
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Preline components
@@ -239,6 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle initial page routing
     const currentPage = getPageFromURL(window.location.pathname);
     handlePageNavigation(currentPage);
+    
+    // Track library size post-launch (with delay to not interfere with app loading)
+    setTimeout(trackLibrarySize, 2000);
 });
 
 // Load artists and populate the select (from original working code)
@@ -337,9 +395,15 @@ async function createArtistPlaylist() {
 
         const data = await response.json();
 
-        // Track successful artist playlist creation
-        if (typeof umami !== 'undefined') {
-            umami.track('artist_playlist_created');
+        // Track successful artist playlist creation with Rybbit
+        if (typeof window.rybbit !== 'undefined') {
+            const modelInfo = await getAIModelInfo();
+            window.rybbit.event('This Is Playlist Created', {
+                trackCount: data.songs ? data.songs.length : 0,
+                refreshFrequency: refreshFrequency,
+                aiModel: modelInfo.model,
+                aiProvider: modelInfo.provider
+            });
         }
 
         // Show success toast
@@ -386,9 +450,15 @@ async function generateRediscoverWeekly() {
 
         const data = await response.json();
 
-        // Track successful Re-Discover Weekly generation
-        if (typeof umami !== 'undefined') {
-            umami.track('rediscover_weekly_generated');
+        // Track successful Re-Discover Weekly generation with Rybbit
+        if (typeof window.rybbit !== 'undefined') {
+            const modelInfo = await getAIModelInfo();
+            window.rybbit.event('Re-Discover Playlist Created', {
+                trackCount: data.tracks ? data.tracks.length : 0,
+                refreshFrequency: refreshFrequency,
+                aiModel: modelInfo.model,
+                aiProvider: modelInfo.provider
+            });
         }
 
         // Show success toast
@@ -606,27 +676,37 @@ async function runSystemChecks() {
             successBanner.classList.remove('hidden');
             continueBtn.classList.remove('hidden');
             
-            // Track Umami event
-            if (typeof umami !== 'undefined') {
-                umami.track('system_check_all_passed');
+            // Track Rybbit event
+            if (typeof window.rybbit !== 'undefined') {
+                window.rybbit.event('System Check Completed', {
+                    status: 'all_passed',
+                    checkCount: data.checks ? data.checks.length : 0
+                });
             }
         } else {
             errorBanner.classList.remove('hidden');
             updateSettingsBtn.classList.remove('hidden');
             
-            // Track specific failure events
-            if (typeof umami !== 'undefined') {
-                data.checks.forEach(check => {
-                    if (check.status === 'error') {
-                        if (check.name.includes('URL Reachable')) {
-                            umami.track('system_check_failed_url');
-                        } else if (check.name.includes('Authentication')) {
-                            umami.track('system_check_failed_auth');
-                        } else if (check.name.includes('Artists API')) {
-                            umami.track('system_check_failed_artists');
-                        } else if (check.name.includes('AI Provider')) {
-                            umami.track('system_check_failed_ai');
-                        }
+            // Track specific failure events with Rybbit
+            if (typeof window.rybbit !== 'undefined') {
+                const failedChecks = data.checks.filter(check => check.status === 'error');
+                
+                window.rybbit.event('System Check Completed', {
+                    status: 'failed',
+                    checkCount: data.checks ? data.checks.length : 0,
+                    failedCount: failedChecks.length
+                });
+                
+                // Track specific failure types
+                failedChecks.forEach(check => {
+                    if (check.name.includes('URL Reachable')) {
+                        window.rybbit.event('System Check Failed', { type: 'url_reachable' });
+                    } else if (check.name.includes('Authentication')) {
+                        window.rybbit.event('System Check Failed', { type: 'authentication' });
+                    } else if (check.name.includes('Artists API')) {
+                        window.rybbit.event('System Check Failed', { type: 'artists_api' });
+                    } else if (check.name.includes('AI Provider')) {
+                        window.rybbit.event('System Check Failed', { type: 'ai_provider' });
                     }
                 });
             }
@@ -842,6 +922,11 @@ function getPageFromURL(pathname) {
 
 // Handle page navigation (used by both click and popstate)
 function handlePageNavigation(page) {
+    // Track page view with Rybbit
+    if (typeof window.rybbit !== 'undefined') {
+        window.rybbit.pageview();
+    }
+    
     // Map page to content
     let contentId;
     if (page === 'home') {

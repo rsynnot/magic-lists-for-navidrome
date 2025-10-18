@@ -20,6 +20,10 @@ NAVIDROME_URL=http://localhost:4533
 NAVIDROME_USERNAME=your_navidrome_username
 NAVIDROME_PASSWORD=your_navidrome_password
 
+# Required - Database location (will be auto-created)
+DATABASE_PATH=./magiclists.db        # For standalone: ./magiclists.db
+                                     # For Docker: /app/data/magiclists.db
+
 # Optional - AI curation (without this, uses fallback algorithm)
 AI_PROVIDER=groq                    # Options: groq, ollama, openrouter
 AI_API_KEY=gsk_your-groq-key-here   # For Groq/OpenRouter (not needed for Ollama)
@@ -27,9 +31,6 @@ AI_MODEL=llama-3.1-8b-instant       # Optional, uses provider defaults
 
 # Optional - Ollama timeout (only for ollama provider)
 OLLAMA_TIMEOUT=180                   # Seconds, increase for slower CPUs
-
-# Optional - Custom database path (will be auto-created)
-DATABASE_PATH=./magiclists.db
 ```
 
 ### 3. For Docker Deployment
@@ -102,6 +103,13 @@ curl "http://localhost:8000/api/scheduler/status"
 - Ensure artist has tracks available in your library
 - Check that your Navidrome user account has playlist creation permissions
 - Verify network connectivity between MagicLists and Navidrome
+
+### Database Write Errors
+If you get 500 server errors when creating playlists (even though system checks pass):
+- **Check**: `DATABASE_PATH` environment variable is set
+- **Docker**: Should be `/app/data/magiclists.db` with volume mounted
+- **Standalone**: Should be `./magiclists.db` or absolute path to writable location
+- **Verify**: The directory exists and is writable by the application
 
 ### AI Curation Not Working
 - Ensure `AI_PROVIDER` and `AI_API_KEY` are set correctly (if required)

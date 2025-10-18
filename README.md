@@ -51,6 +51,7 @@ _Caption: Creating a 'This is (Artist)' playlist_
          - NAVIDROME_URL=http://navidrome:4533
          - NAVIDROME_USERNAME=your_username
          - NAVIDROME_PASSWORD=your_password
+         - DATABASE_PATH=/app/data/magiclists.db # Required: Database location
          - AI_PROVIDER=groq                    # Optional: groq, ollama, or openrouter
          - AI_API_KEY=your_groq_api_key        # Optional, for Groq/OpenRouter
          - AI_MODEL=llama-3.1-8b-instant       # Optional, for AI providers
@@ -79,6 +80,7 @@ Use your public Navidrome URL (e.g., https://music.yourdomain.com):
       -e NAVIDROME_URL=https://music.yourdomain.com \
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
+      -e DATABASE_PATH=/app/data/magiclists.db \
       -e AI_PROVIDER=groq \
       -e AI_API_KEY=your_groq_api_key \
       -v ./magiclists-data:/app/data \
@@ -94,6 +96,7 @@ Use host.docker.internal to reach services on your host:
       -e NAVIDROME_URL=http://host.docker.internal:4533 \
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
+      -e DATABASE_PATH=/app/data/magiclists.db \
       -e AI_PROVIDER=groq \
       -e AI_API_KEY=your_groq_api_key \
       -v ./magiclists-data:/app/data \
@@ -108,6 +111,7 @@ Use the local IP address of the machine running Navidrome:
       -e NAVIDROME_URL=http://192.168.1.100:4533 \
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
+      -e DATABASE_PATH=/app/data/magiclists.db \
       -e AI_PROVIDER=groq \
       -e AI_API_KEY=your_groq_api_key \
       -v ./magiclists-data:/app/data \
@@ -136,6 +140,7 @@ Use this method if you prefer to run Python directly or want to contribute to de
    NAVIDROME_URL=http://localhost:4533
    NAVIDROME_USERNAME=your_username
    NAVIDROME_PASSWORD=your_password
+   DATABASE_PATH=./magiclists.db        # Required: Database location
    AI_PROVIDER=groq                    # Optional: groq, ollama, or openrouter
    AI_API_KEY=your_groq_api_key        # Optional, for Groq/OpenRouter
    AI_MODEL=llama-3.1-8b-instant       # Optional, for AI providers
@@ -147,7 +152,18 @@ Use this method if you prefer to run Python directly or want to contribute to de
 6. Access the application at http://localhost:4545
 To update: Simply `git pull` and restart the application.
 
-## Troubleshooting Connection Issues
+## Troubleshooting
+
+### Database Write Errors (500 Server Error)
+If system checks pass but playlist creation fails with a 500 error about database write permissions:
+
+**Solution**: Ensure `DATABASE_PATH` environment variable is set:
+- **Docker**: `DATABASE_PATH=/app/data/magiclists.db` (with volume mounted to `/app/data`)
+- **Standalone**: `DATABASE_PATH=./magiclists.db` (in your project directory)
+
+This is **required** for the application to persist playlist data and user settings.
+
+### Connection Issues
 
 Can't connect to Navidrome? The most common issue is an incorrect `NAVIDROME_URL`. Here's how to determine the right value:
 - Same Docker network: Use the container name (e.g., http://navidrome:4533)
