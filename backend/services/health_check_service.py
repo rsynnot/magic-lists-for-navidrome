@@ -287,8 +287,17 @@ class HealthCheckService:
         
         if provider_type == "ollama":
             return await self._check_ollama_provider()
-        else:
+        elif provider_type == "groq":
+            return await self._check_groq_provider()
+        elif provider_type == "openrouter":
             return await self._check_openrouter_provider()
+        else:
+            return {
+                "name": f"{provider_type.title()} AI Provider",
+                "status": "error",
+                "message": f"Unknown AI provider: {provider_type}",
+                "suggestion": "Check AI_PROVIDER in .env file. Valid options: openrouter, groq, ollama"
+            }
     
     async def _check_openrouter_provider(self) -> Dict[str, str]:
         """Check OpenRouter API key and connectivity"""
@@ -419,6 +428,74 @@ class HealthCheckService:
                 "status": "error",
                 "message": f"Error connecting to Ollama: {str(e)}",
                 "suggestion": "Check your Ollama configuration in .env file"
+            }
+    
+    async def _check_groq_provider(self) -> Dict[str, str]:
+        """Check Groq API key and connectivity"""
+        api_key = os.getenv("AI_API_KEY")
+        model = os.getenv("AI_MODEL", "mixtral-8x7b-32768")  # Groq default
+        base_url = "https://api.groq.com/openai/v1/chat/completions"
+        
+        if not api_key:
+            return {
+                "name": "Groq AI Provider",
+                "status": "error",
+                "message": "AI_API_KEY environment variable not set",
+                "suggestion": "Get a FREE API key at: https://console.groq.com/ (no credit card required)"
+            }
+        
+        # Test API connectivity with a minimal request
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Minimal test payload
+                payload = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 1
+                }
+                
+                response = await client.post(base_url, json=payload, headers=headers)
+                
+                if response.status_code == 200:
+                    return {
+                        "name": "Groq AI Provider",
+                        "status": "success",
+                        "message": f"API key valid and service reachable (model: {model})",
+                        "suggestion": ""
+                    }
+                elif response.status_code == 401:
+                    return {
+                        "name": "Groq AI Provider",
+                        "status": "error",
+                        "message": "Invalid API key - check your AI_API_KEY in .env file",
+                        "suggestion": "Verify your Groq API key is correct at https://console.groq.com/"
+                    }
+                else:
+                    return {
+                        "name": "Groq AI Provider",
+                        "status": "warning",
+                        "message": f"API key provided but service returned status {response.status_code}",
+                        "suggestion": "API key is configured but Groq service may have issues"
+                    }
+                    
+        except httpx.ConnectError:
+            return {
+                "name": "Groq AI Provider",
+                "status": "warning",
+                "message": "API key provided but could not connect to Groq service",
+                "suggestion": "Check your internet connection and Groq service status"
+            }
+        except Exception as e:
+            return {
+                "name": "Groq AI Provider",
+                "status": "warning",
+                "message": f"API key provided but connectivity test failed: {str(e)}",
+                "suggestion": "API key is configured but service connectivity could not be verified"
             }
     
     async def _check_navidrome_library_config(self) -> Dict[str, str]:

@@ -21,8 +21,12 @@ NAVIDROME_USERNAME=your_navidrome_username
 NAVIDROME_PASSWORD=your_navidrome_password
 
 # Optional - AI curation (without this, uses fallback algorithm)
-AI_API_KEY=your_api_key_here
-AI_MODEL=anthropic/claude-haiku-4.5
+AI_PROVIDER=groq                    # Options: groq, ollama, openrouter
+AI_API_KEY=gsk_your-groq-key-here   # For Groq/OpenRouter (not needed for Ollama)
+AI_MODEL=llama-3.1-8b-instant       # Optional, uses provider defaults
+
+# Optional - Ollama timeout (only for ollama provider)
+OLLAMA_TIMEOUT=180                   # Seconds, increase for slower CPUs
 
 # Optional - Custom database path (will be auto-created)
 DATABASE_PATH=./magiclists.db
@@ -100,8 +104,10 @@ curl "http://localhost:8000/api/scheduler/status"
 - Verify network connectivity between MagicLists and Navidrome
 
 ### AI Curation Not Working
-- Ensure `AI_API_KEY` is set correctly
-- Check OpenAI API key has sufficient credits
+- Ensure `AI_PROVIDER` and `AI_API_KEY` are set correctly (if required)
+- For Groq: Check your API key from https://console.groq.com/
+- For OpenRouter: Check your API key has sufficient credits
+- For Ollama: Ensure Ollama server is running (`ollama serve`)
 - Application will fall back to play-count based selection
 
 ### Docker Issues
@@ -148,6 +154,51 @@ curl -X POST "http://localhost:8000/api/scheduler/start"
 # Manually trigger refresh check
 curl -X POST "http://localhost:8000/api/scheduler/trigger"
 ```
+
+### AI Configuration (Optional)
+
+For AI-powered playlist curation, choose from these providers:
+
+#### Option 1: Groq (Recommended - Fast & Free)
+1. **Get a free Groq API key** from https://console.groq.com/ (no credit card required)
+2. **Add to your `.env` file:**
+   ```bash
+   AI_PROVIDER=groq
+   AI_API_KEY=gsk_your-groq-key-here
+   AI_MODEL=llama-3.1-8b-instant
+   ```
+
+#### Option 2: Ollama (Local Models)
+1. **Install Ollama** from https://ollama.com
+2. **Pull and run a model:**
+   ```bash
+   ollama pull llama3.2
+   ollama serve
+   ```
+3. **Add to your `.env` file:**
+   ```bash
+   AI_PROVIDER=ollama
+   AI_MODEL=llama3.2
+   OLLAMA_BASE_URL=http://localhost:11434/v1/chat/completions
+   # OLLAMA_TIMEOUT=300  # Increase for slower CPUs (default: 180 seconds)
+   ```
+
+#### Option 3: OpenRouter (Cloud Models)
+1. **Get an OpenRouter API key** from https://openrouter.ai ($5 minimum)
+2. **Add to your `.env` file:**
+   ```bash
+   AI_PROVIDER=openrouter
+   AI_API_KEY=sk-or-v1-your-key-here
+   AI_MODEL=deepseek/deepseek-chat     # Free model
+   # AI_MODEL=anthropic/claude-3-haiku # Paid model
+   ```
+
+**Popular OpenRouter models:**
+- `deepseek/deepseek-chat` - Very cost-effective (free)
+- `openai/gpt-3.5-turbo` - Fast and reliable
+- `anthropic/claude-3-haiku` - Good for creative tasks
+
+Without AI configuration, playlists use fallback algorithms based on play counts.
 
 ## API Documentation
 

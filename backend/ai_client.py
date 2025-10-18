@@ -3,7 +3,7 @@ import os
 import json
 from typing import List, Dict, Any, Union, Tuple
 from .recipe_manager import recipe_manager
-from .services.ai_provider import get_ai_provider
+from .services.ai_providers import get_ai_provider
 
 class AIClient:
     """Client for AI-powered track curation using configurable providers"""
@@ -264,7 +264,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
 
             # Parse the JSON response with comprehensive validation
             try:
-                # Clean up the response - remove markdown code fences and comments
+                # Clean up the response and extract JSON
                 cleaned_content = content.strip()
                 
                 # Remove markdown code fences if present
@@ -277,9 +277,27 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 
                 cleaned_content = cleaned_content.strip()
                 
-                # Remove JavaScript-style comments (// comments) 
+                # Extract JSON from mixed text/JSON response
                 import re
-                lines = cleaned_content.split('\n')
+                
+                # Try to find JSON object first (new format): {"track_ids": [...], "reasoning": "..."}
+                json_object_match = re.search(r'\{.*?"track_ids".*?\}', cleaned_content, re.DOTALL)
+                if json_object_match:
+                    json_str = json_object_match.group(0)
+                    print(f"🔍 Extracted JSON object: {json_str[:100]}...")
+                else:
+                    # Try to find JSON array (legacy format): [1, 2, 3, ...]
+                    json_array_match = re.search(r'\[([\d\s,]+)\]', cleaned_content, re.DOTALL)
+                    if json_array_match:
+                        json_str = json_array_match.group(0)
+                        print(f"🔍 Extracted JSON array: {json_str[:100]}...")
+                    else:
+                        # No JSON found, try to parse the whole cleaned content
+                        json_str = cleaned_content
+                        print(f"🔍 Using entire cleaned content for JSON parsing")
+                
+                # Clean up the extracted JSON
+                lines = json_str.split('\n')
                 cleaned_lines = []
                 
                 for line in lines:
@@ -288,21 +306,16 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                         comment_pos = line.find('//')
                         line = line[:comment_pos].rstrip()
                     
-                    # Fix unquoted strings like: "track123",\n    Say You Will
-                    # Should be: "track123",\n    "Say You Will"
-                    line = re.sub(r'^(\s*)(Say You Will)(\s*$)', r'\1"\2"\3', line)
-                    line = re.sub(r'^(\s*)([A-Za-z][A-Za-z0-9\s\']+)(\s*$)', r'\1"\2"\3', line)
-                    
                     # Remove trailing commas before closing brackets
                     line = re.sub(r',(\s*[\]}])', r'\1', line)
                     
                     if line.strip():  # Only add non-empty lines
                         cleaned_lines.append(line)
                 
-                cleaned_content = '\n'.join(cleaned_lines)
+                final_json = '\n'.join(cleaned_lines).strip()
                 
-                # Try to parse as JSON object (new recipe format)
-                response_data = json.loads(cleaned_content)
+                # Try to parse the extracted JSON
+                response_data = json.loads(final_json)
 
                 # STEP 2: RESPONSE STRUCTURE VALIDATION
                 source_track_count = len(shuffled_tracks)
