@@ -369,8 +369,8 @@ class HealthCheckService:
     
     async def _check_ollama_provider(self) -> Dict[str, str]:
         """Check Ollama instance connectivity"""
-        model = os.getenv("OLLAMA_MODEL", "llama3.2")
-        base_url = os.getenv("AI_BASE_URL", "http://localhost:11434/v1/chat/completions")
+        model = os.getenv("AI_MODEL", "llama3.2")
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1/chat/completions")
         
         # Test Ollama connectivity with a minimal request
         try:
