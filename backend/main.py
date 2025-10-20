@@ -174,8 +174,6 @@ async def system_check_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 # SYSTEM CHECK FEATURE - END
 
-
-
 @app.get("/api/artists")
 async def get_artists():
     """Get list of artists from Navidrome"""
@@ -1107,6 +1105,24 @@ async def track_library_size(db: DatabaseManager = Depends(get_db)):
     except Exception as e:
         scheduler_logger.error(f"❌ Error tracking library size: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to track library size: {str(e)}")
+
+# SPA ROUTING - Smart catch-all for client-side routing (MUST be last route)
+@app.get("/{path:path}", response_class=HTMLResponse)
+async def spa_router(request: Request, path: str):
+    """Handle SPA routing - serve app for known paths, redirect unknown paths"""
+    # Known SPA paths - serve the app and let frontend handle routing
+    spa_paths = ["this-is", "re-discover", "playlists", "terms"]
+    
+    if path in spa_paths:
+        # Apply same system check logic as root
+        if not system_check_passed:
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/system-check", status_code=302)
+        return templates.TemplateResponse("index.html", {"request": request})
+    
+    # Unknown paths - redirect to home
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/", status_code=302)
 
 if __name__ == "__main__":
     # Custom logging config to filter out Umami heartbeat requests
