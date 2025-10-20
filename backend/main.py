@@ -47,6 +47,7 @@ from .database import DatabaseManager, get_db
 from .schemas import CreatePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
 from .recipe_manager import recipe_manager
 from .rediscover import RediscoverWeekly
+from .track_scoring import filter_tracks_for_this_is_playlist
 # SYSTEM CHECK FEATURE - START
 from .services.health_check_service import HealthCheckService
 # SYSTEM CHECK FEATURE - END
@@ -269,10 +270,29 @@ async def create_playlist(
         if not all_tracks:
             raise HTTPException(status_code=404, detail="No tracks found for the selected artists")
         
+        # NEW: Apply smart filtering for "This Is" playlists to optimize LLM payload
+        library_stats = await nav_client.get_library_stats()
+        
+        filtered_tracks, filter_metadata = filter_tracks_for_this_is_playlist(
+            source_tracks=all_tracks,
+            target_playlist_size=request.playlist_length,
+            library_stats=library_stats
+        )
+        
+        # Log filtering results for analytics/debugging
+        if filter_metadata['filtered']:
+            scheduler_logger.info(f"🎯 Smart filtering applied: {filter_metadata['source_count']} → {filter_metadata['sent_count']} tracks (multiplier: {filter_metadata['threshold_multiplier']}x)")
+            scheduler_logger.info(f"📊 Score range: {filter_metadata['score_range']['highest']:.1f} - {filter_metadata['score_range']['lowest']:.1f} (cutoff: {filter_metadata['score_range']['cutoff']:.1f})")
+        else:
+            scheduler_logger.info(f"✅ No filtering needed: {filter_metadata['source_count']} tracks below threshold")
+        
+        # Use filtered tracks for LLM processing
+        tracks_for_llm = filtered_tracks
+        
         # Use AI to curate the playlist (always include reasoning for new recipe format)
         curation_result = await ai_client_instance.curate_this_is(
             artist_name=', '.join(artist_names),
-            tracks_json=all_tracks,
+            tracks_json=tracks_for_llm,
             num_tracks=request.playlist_length,
             include_reasoning=True
         )
@@ -314,6 +334,7 @@ async def create_playlist(
         )
         
         # Get track titles for database storage - PRESERVE AI CURATION ORDER
+        # Note: Use all_tracks for mapping since AI might reference tracks from full set
         track_titles = []
         track_id_to_title = {track["id"]: track["title"] for track in all_tracks}
         for track_id in curated_track_ids:  # Iterate in AI-curated order
