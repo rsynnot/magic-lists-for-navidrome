@@ -170,3 +170,6 @@ debug_payloads
 debug_payloads/
 /recipes/archive
 /recipes/archive/*
+AGENTS.md
+/backend/chroma_db
+/backend/chroma_db/*

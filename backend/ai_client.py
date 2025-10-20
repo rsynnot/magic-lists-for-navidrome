@@ -108,10 +108,10 @@ class AIClient:
                 max_tokens = llm_config.get("max_output_tokens", 1000)
                 
                 print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
-                
+
                 # Serialize the complete recipe (excluding tracks_data to avoid duplication)
                 recipe_without_tracks = {k: v for k, v in final_recipe.items() if k != "tracks_data"}
-                
+
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
@@ -183,22 +183,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 print(f"💬 Sending structured payload to AI")
                 
                 # DEBUG: Dump payload to file for "This Is" playlist inspection
-                DEBUG_DUMP_THIS_IS_PAYLOADS = False  # Disabled for production
-                
-                if DEBUG_DUMP_THIS_IS_PAYLOADS:
-                    import time
-                    
-                    timestamp = int(time.time())
-                    dump_filename = f"debug_payloads/this_is_payload_{artist_name.replace(' ', '_')}_{timestamp}.json"
-                    dump_path = os.path.join(os.getcwd(), dump_filename)
-                    
-                    try:
-                        os.makedirs(os.path.dirname(dump_path), exist_ok=True)
-                        with open(dump_path, 'w', encoding='utf-8') as f:
-                            json.dump(payload, f, indent=2, ensure_ascii=False, separators=(',', ': '))
-                        print(f"✅ DEBUG: This Is payload dumped to: {dump_filename}")
-                    except Exception as e:
-                        print(f"❌ DEBUG: Failed to dump This Is payload: {e}")
+
             else:
                 # Legacy recipe format
                 prompt = final_recipe["prompt"]
@@ -209,13 +194,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 temperature = llm_params.get("temperature", 0.7)
                 max_tokens = llm_params.get("max_tokens", 1000)
                 
-                print(f"🤖 AI CLIENT - LEGACY RECIPE FORMAT DETECTED")
-                print(f"🎯 Environment model: {self.model}")
-                print(f"🎯 Recipe model fallback: {llm_params.get('model_fallback')}")
-                print(f"🎯 Final model to use: {model}")
-                print(f"🌡️ Temperature: {temperature}")
-                print(f"🔢 Max tokens: {max_tokens}")
-                print(f"📝 Prompt length: {len(prompt)} characters")
+
                 
                 system_prompt = "You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
             
@@ -238,29 +217,8 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     temperature=temperature
                 )
 
-            # Log API response details
-            print(f"📊 AI Response received")
-            
-            # Log the raw AI response for debugging (truncated preview)
-            import re
-            
-            # Extract first 3 track IDs for preview
-            track_preview = ""
-            try:
-                # Look for track_ids array in the content
-                track_ids_match = re.search(r'"track_ids":\s*\[(.*?)\]', content, re.DOTALL)
-                if track_ids_match:
-                    track_ids_content = track_ids_match.group(1)
-                    # Split by commas and take first 3
-                    track_lines = [line.strip() for line in track_ids_content.split(',')]
-                    first_three = track_lines[:3]
-                    track_preview = '[\n    ' + ',\n    '.join(first_three) + ',\n    ...\n  ]'
-                else:
-                    track_preview = content[:100] + "..."
-            except:
-                track_preview = content[:100] + "..."
-            
-            print(f"🤖 RAW AI RESPONSE for {artist_name}: {track_preview}")
+            # Log successful AI response
+            print(f"🤖 AI response received for {artist_name}")
 
             # Parse the JSON response with comprehensive validation
             try:
@@ -544,16 +502,13 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 # Store the actual track ID in our mapping
                 track_id_map.append(track["id"])
                 
-                # Create indexed track (no complex ID, just index + music data)
+                # Create indexed track (minimal metadata to reduce prompt size)
                 indexed_track = {
                     "index": index,
                     "track_name": track.get("title", "Unknown"),
                     "artist": track.get("artist", "Unknown"),
-                    "album": track.get("album", "Unknown"),
                     "genre": track.get("genre", "Unknown"),
-                    "year": track.get("year", 0),
-                    "play_count": track.get("play_count", 0),
-                    "rediscovery_score": track.get("rediscovery_score", 0)
+                    "rediscovery_score": round(track.get("rediscovery_score", 0), 1)
                 }
                 indexed_tracks.append(indexed_track)
             
@@ -661,23 +616,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 }
             
             # DEBUG: Dump payload to file for inspection
-            DEBUG_DUMP_PAYLOADS = False  # Disabled for production
-            
-            if DEBUG_DUMP_PAYLOADS:
-                import time
-                
-                timestamp = int(time.time())
-                dump_filename = f"debug_payloads/rediscover_payload_{timestamp}.json"
-                dump_path = os.path.join(os.getcwd(), dump_filename)
-                
-                try:
-                    os.makedirs(os.path.dirname(dump_path), exist_ok=True)
-                    with open(dump_path, 'w', encoding='utf-8') as f:
-                        json.dump(payload, f, indent=2, ensure_ascii=False, separators=(',', ': '))
-                    print(f"✅ DEBUG: Re-Discover payload dumped to: {dump_filename}")
-                except Exception as e:
-                    print(f"❌ DEBUG: Failed to dump Re-Discover payload: {e}")
-            
+
             
             # Use the provider to make the AI request  
             if "llm_config" in final_recipe:

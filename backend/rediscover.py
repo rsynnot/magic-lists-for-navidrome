@@ -232,7 +232,7 @@ class RediscoverWeekly:
         except Exception as e:
             return "Top Genres: Mixed. Top Artists: Various."
     
-    def _calculate_rediscovery_scores(self, track_stats: Dict[str, Any], max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
+    def _calculate_rediscovery_scores(self, track_stats: Dict[str, Any], max_tracks: int = 25, max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
         """Calculate rediscovery scores and apply recipe filters"""
         scored_tracks = []
         current_year = datetime.now().year
@@ -289,7 +289,8 @@ class RediscoverWeekly:
         
         # Sort by rediscovery_score descending and take more candidates for AI selection
         scored_tracks.sort(key=lambda x: x[1], reverse=True)
-        candidate_limit = max(150, len(scored_tracks))  # Take all if less than 150
+        # Scale candidate limit based on desired playlist size (2.5x for 25 tracks = 62.5, for 50 tracks = 125)
+        candidate_limit = min(int(max_tracks * 2.5), len(scored_tracks))
         return scored_tracks[:candidate_limit]
     
     def filter_artist_diversity(self, scored_tracks: List[Tuple[str, float, Dict[str, Any]]], max_per_artist: int = 3) -> List[Tuple[str, float, Dict[str, Any]]]:
@@ -338,7 +339,7 @@ class RediscoverWeekly:
             # Scale max_per_artist based on playlist size (~12.5% of playlist, minimum 2)
             scaled_max_per_artist = max(2, max_tracks // 8)
             print(f"🎯 Generating {max_tracks}-track rediscover playlist (max {scaled_max_per_artist} per artist)")
-            scored_tracks = self._calculate_rediscovery_scores(track_stats, max_per_artist=scaled_max_per_artist)
+            scored_tracks = self._calculate_rediscovery_scores(track_stats, max_tracks=max_tracks, max_per_artist=scaled_max_per_artist)
             
             if not scored_tracks:
                 raise Exception("No tracks found for re-discovery")

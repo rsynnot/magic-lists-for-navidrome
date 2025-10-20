@@ -25,9 +25,9 @@ DATABASE_PATH=./magiclists.db        # For standalone: ./magiclists.db
                                      # For Docker: /app/data/magiclists.db
 
 # Optional - AI curation (without this, uses fallback algorithm)
-AI_PROVIDER=groq                    # Options: groq, ollama, openrouter
-AI_API_KEY=gsk_your-groq-key-here   # For Groq/OpenRouter (not needed for Ollama)
-AI_MODEL=llama-3.1-8b-instant       # Optional, uses provider defaults
+AI_PROVIDER=openrouter              # Options: openrouter, groq, google, ollama
+AI_API_KEY=sk-or-v1-your-key-here   # For OpenRouter/Groq/Google (not needed for Ollama)
+AI_MODEL=deepseek/deepseek-chat     # Optional, uses provider defaults
 
 # Optional - Ollama timeout (only for ollama provider)
 OLLAMA_TIMEOUT=180                   # Seconds, increase for slower CPUs
@@ -167,31 +167,7 @@ curl -X POST "http://localhost:8000/api/scheduler/trigger"
 
 For AI-powered playlist curation, choose from these providers:
 
-#### Option 1: Groq (Recommended - Fast & Free)
-1. **Get a free Groq API key** from https://console.groq.com/ (no credit card required)
-2. **Add to your `.env` file:**
-   ```bash
-   AI_PROVIDER=groq
-   AI_API_KEY=gsk_your-groq-key-here
-   AI_MODEL=llama-3.1-8b-instant
-   ```
-
-#### Option 2: Ollama (Local Models)
-1. **Install Ollama** from https://ollama.com
-2. **Pull and run a model:**
-   ```bash
-   ollama pull llama3.2
-   ollama serve
-   ```
-3. **Add to your `.env` file:**
-   ```bash
-   AI_PROVIDER=ollama
-   AI_MODEL=llama3.2
-   OLLAMA_BASE_URL=http://localhost:11434/v1/chat/completions
-   # OLLAMA_TIMEOUT=300  # Increase for slower CPUs (default: 180 seconds)
-   ```
-
-#### Option 3: OpenRouter (Cloud Models)
+#### Option 1: OpenRouter (Recommended - Free & Flexible)
 1. **Get an OpenRouter API key** from https://openrouter.ai ($5 minimum)
 2. **Add to your `.env` file:**
    ```bash
@@ -205,6 +181,39 @@ For AI-powered playlist curation, choose from these providers:
 - `deepseek/deepseek-chat` - Very cost-effective (free)
 - `openai/gpt-3.5-turbo` - Fast and reliable
 - `anthropic/claude-3-haiku` - Good for creative tasks
+
+#### Option 2: Groq (Fast & Free)
+1. **Get a free Groq API key** from https://console.groq.com/ (no credit card required)
+2. **Add to your `.env` file:**
+   ```bash
+   AI_PROVIDER=groq
+   AI_API_KEY=gsk_your-groq-key-here
+   AI_MODEL=llama-3.1-8b-instant
+   ```
+
+#### Option 3: Google AI (Free & Generous Quota)
+1. **Get a free Google AI API key** from https://ai.google.dev/ (no credit card required)
+2. **Add to your `.env` file:**
+   ```bash
+   AI_PROVIDER=google
+   AI_API_KEY=AIzaSy_your-google-key-here
+   AI_MODEL=gemini-2.5-flash
+   ```
+
+#### Option 4: Ollama (Local Models)
+1. **Install Ollama** from https://ollama.com
+2. **Pull and run a model:**
+   ```bash
+   ollama pull llama3.2
+   ollama serve
+   ```
+3. **Add to your `.env` file:**
+   ```bash
+   AI_PROVIDER=ollama
+   AI_MODEL=llama3.2
+   OLLAMA_BASE_URL=http://localhost:11434/v1/chat/completions
+   # OLLAMA_TIMEOUT=300  # Increase for slower CPUs (default: 180 seconds)
+   ```
 
 Without AI configuration, playlists use fallback algorithms based on play counts.
 
