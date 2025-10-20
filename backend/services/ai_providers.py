@@ -1,7 +1,8 @@
 import os
 import httpx
 import json
-from typing import Optional, Dict, Any
+import re
+from typing import Optional, Dict, Any, Union, NoReturn
 from dataclasses import dataclass
 
 @dataclass
@@ -28,6 +29,12 @@ class AIProviderConfig:
             default_model="mixtral-8x7b-32768",
             signup_url="https://console.groq.com/"
         ),
+        "google": ProviderConfig(
+            base_url="https://generativelanguage.googleapis.com/v1beta",
+            requires_key=True,
+            default_model="gemini-2.5-flash",
+            signup_url="https://ai.google.dev/"
+        ),
         "ollama": ProviderConfig(
             base_url="http://localhost:11434/v1/chat/completions",
             requires_key=False,
@@ -48,6 +55,10 @@ class AIProvider:
     
     async def generate(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
         """Send chat completion request to configured AI provider"""
+        
+        # Handle Google AI's different API format
+        if self.provider_type == "google":
+            return await self._generate_google(system_prompt, user_prompt, max_tokens, temperature)
         
         # Build headers - only include Authorization for providers that require keys
         headers = {"Content-Type": "application/json"}
@@ -131,6 +142,105 @@ class AIProvider:
             result = response.json()
             return result["choices"][0]["message"]["content"].strip()
     
+    async def _generate_google(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:  # type: ignore
+        """Handle Google AI's specific API format with controlled generation for JSON"""
+        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+
+        print(f"🔍 Google AI Debug Info:")
+        print(f"   📍 URL: {url}")
+        print(f"   🤖 Model: {self.model}")
+        print(f"   🔑 API Key: {'***' + self.api_key[-4:] if self.api_key else 'None'}")
+
+        # Add JSON-specific instructions to the prompt
+        combined_prompt = f"""
+        {system_prompt}
+
+        Important: Your response must be formatted as a valid JSON object.
+        Do not include any explanatory text outside the JSON structure.
+        Return only the JSON object, nothing else.
+
+        {user_prompt}
+        """
+
+        generation_config = {
+            "temperature": temperature,
+            "maxOutputTokens": min(max_tokens * 2, 65000)  # Allow up to Google's 65k limit
+        }
+
+        payload = {
+            "contents": [{
+                "parts": [{
+                    "text": combined_prompt
+                }]
+            }],
+            "generationConfig": generation_config
+        }
+
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            print(f"🚀 Making request to Google AI...")
+            response = await self.client.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=60.0
+            )
+            print(f"📡 Response status: {response.status_code}")
+            response.raise_for_status()
+
+            result = response.json()
+            print(f"📄 Full response structure: {json.dumps(result, indent=2)[:500]}...")
+
+            if "candidates" in result and len(result["candidates"]) > 0:
+                candidate = result["candidates"][0]
+
+                # Check finish reason
+                finish_reason = candidate.get("finishReason", "")
+                if finish_reason in ["SAFETY", "RECITATION"]:
+                    raise Exception(f"Google AI blocked the response due to: {finish_reason}")
+
+                # Parse the actual content
+                if "content" in candidate and "parts" in candidate["content"]:
+                    parts = candidate["content"]["parts"]
+                    if len(parts) > 0 and "text" in parts[0]:
+                        text = parts[0]["text"].strip()
+                        print(f"📝 Raw response text: {text[:200]}...")
+
+                        # Try to extract JSON from the response
+                        try:
+                            # First try direct JSON parsing
+                            json_response = json.loads(text)
+                            return json.dumps(json_response, ensure_ascii=False)
+                        except json.JSONDecodeError:
+                            # Try to find JSON within the text (in case of extra content)
+                            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                            if json_match:
+                                try:
+                                    json_response = json.loads(json_match.group())
+                                    print(f"✅ Extracted JSON from response")
+                                    return json.dumps(json_response, ensure_ascii=False)
+                                except json.JSONDecodeError:
+                                    # Continue to fallback
+                                    pass
+
+                            # If all else fails, return the text as-is and let upstream handle it
+                            print(f"⚠️ Could not parse as JSON, returning raw text")
+                            return text
+
+                print(f"❌ Response structure: {json.dumps(candidate, indent=2)}")
+                raise Exception("Google AI response missing content structure")
+
+            print(f"❌ Full response: {json.dumps(result, indent=2)}")
+            raise Exception("Google AI response missing candidates array")
+
+        except Exception as e:
+            print(f"❌ Error in Google AI request: {type(e).__name__}: {str(e)}")
+            raise Exception(f"Google AI error: {str(e)}")
+
+        # This should never be reached
+        raise Exception("Unexpected end of function")
+
     async def close(self):
         """Close the HTTP client"""
         if hasattr(self, 'client') and self.client:
