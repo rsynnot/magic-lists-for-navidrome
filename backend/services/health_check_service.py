@@ -291,12 +291,14 @@ class HealthCheckService:
             return await self._check_groq_provider()
         elif provider_type == "openrouter":
             return await self._check_openrouter_provider()
+        elif provider_type == "google":
+            return await self._check_google_provider()
         else:
             return {
                 "name": f"{provider_type.title()} AI Provider",
                 "status": "error",
                 "message": f"Unknown AI provider: {provider_type}",
-                "suggestion": "Check AI_PROVIDER in .env file. Valid options: openrouter, groq, ollama"
+                "suggestion": "Check AI_PROVIDER in .env file. Valid options: openrouter, groq, google, ollama"
             }
     
     async def _check_openrouter_provider(self) -> Dict[str, str]:
@@ -493,6 +495,91 @@ class HealthCheckService:
         except Exception as e:
             return {
                 "name": "Groq AI Provider",
+                "status": "warning",
+                "message": f"API key provided but connectivity test failed: {str(e)}",
+                "suggestion": "API key is configured but service connectivity could not be verified"
+            }
+    
+    async def _check_google_provider(self) -> Dict[str, str]:
+        """Check Google AI API key and connectivity"""
+        api_key = os.getenv("AI_API_KEY")
+        model = os.getenv("AI_MODEL", "gemini-2.5-flash")
+        
+        if not api_key:
+            return {
+                "name": "Google AI Provider",
+                "status": "error",
+                "message": "AI_API_KEY environment variable not set",
+                "suggestion": "Get a FREE API key at: https://ai.google.dev/ (generous free tier available)"
+            }
+        
+        # Test API connectivity with a minimal request
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                
+                # Minimal test payload for Google AI
+                payload = {
+                    "contents": [{
+                        "parts": [{
+                            "text": "test"
+                        }]
+                    }],
+                    "generationConfig": {
+                        "maxOutputTokens": 1
+                    }
+                }
+                
+                response = await client.post(url, json=payload)
+                
+                if response.status_code == 200:
+                    return {
+                        "name": "Google AI Provider",
+                        "status": "success",
+                        "message": f"API key valid and service reachable (model: {model})",
+                        "suggestion": ""
+                    }
+                elif response.status_code == 400:
+                    error_text = response.text
+                    if "API_KEY_INVALID" in error_text:
+                        return {
+                            "name": "Google AI Provider",
+                            "status": "error",
+                            "message": "Invalid API key - check your AI_API_KEY in .env file",
+                            "suggestion": "Verify your Google AI API key is correct at https://ai.google.dev/"
+                        }
+                    elif "QUOTA_EXCEEDED" in error_text:
+                        return {
+                            "name": "Google AI Provider",
+                            "status": "warning",
+                            "message": "API key valid but quota exceeded",
+                            "suggestion": "Your Google AI free tier quota has been exceeded. Check usage at https://ai.google.dev/"
+                        }
+                    else:
+                        return {
+                            "name": "Google AI Provider",
+                            "status": "warning",
+                            "message": f"API key provided but request failed: {error_text[:100]}...",
+                            "suggestion": "Check your Google AI API key and model configuration"
+                        }
+                else:
+                    return {
+                        "name": "Google AI Provider",
+                        "status": "warning",
+                        "message": f"API key provided but service returned status {response.status_code}",
+                        "suggestion": "API key is configured but Google AI service may have issues"
+                    }
+                    
+        except httpx.ConnectError:
+            return {
+                "name": "Google AI Provider",
+                "status": "warning",
+                "message": "API key provided but could not connect to Google AI service",
+                "suggestion": "Check your internet connection and Google AI service status"
+            }
+        except Exception as e:
+            return {
+                "name": "Google AI Provider",
                 "status": "warning",
                 "message": f"API key provided but connectivity test failed: {str(e)}",
                 "suggestion": "API key is configured but service connectivity could not be verified"

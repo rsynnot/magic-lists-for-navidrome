@@ -108,10 +108,10 @@ class AIClient:
                 max_tokens = llm_config.get("max_output_tokens", 1000)
                 
                 print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
-                
+
                 # Serialize the complete recipe (excluding tracks_data to avoid duplication)
                 recipe_without_tracks = {k: v for k, v in final_recipe.items() if k != "tracks_data"}
-                
+
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
@@ -183,22 +183,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 print(f"💬 Sending structured payload to AI")
                 
                 # DEBUG: Dump payload to file for "This Is" playlist inspection
-                DEBUG_DUMP_THIS_IS_PAYLOADS = False  # Disabled for production
-                
-                if DEBUG_DUMP_THIS_IS_PAYLOADS:
-                    import time
-                    
-                    timestamp = int(time.time())
-                    dump_filename = f"debug_payloads/this_is_payload_{artist_name.replace(' ', '_')}_{timestamp}.json"
-                    dump_path = os.path.join(os.getcwd(), dump_filename)
-                    
-                    try:
-                        os.makedirs(os.path.dirname(dump_path), exist_ok=True)
-                        with open(dump_path, 'w', encoding='utf-8') as f:
-                            json.dump(payload, f, indent=2, ensure_ascii=False, separators=(',', ': '))
-                        print(f"✅ DEBUG: This Is payload dumped to: {dump_filename}")
-                    except Exception as e:
-                        print(f"❌ DEBUG: Failed to dump This Is payload: {e}")
+
             else:
                 # Legacy recipe format
                 prompt = final_recipe["prompt"]
@@ -209,13 +194,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 temperature = llm_params.get("temperature", 0.7)
                 max_tokens = llm_params.get("max_tokens", 1000)
                 
-                print(f"🤖 AI CLIENT - LEGACY RECIPE FORMAT DETECTED")
-                print(f"🎯 Environment model: {self.model}")
-                print(f"🎯 Recipe model fallback: {llm_params.get('model_fallback')}")
-                print(f"🎯 Final model to use: {model}")
-                print(f"🌡️ Temperature: {temperature}")
-                print(f"🔢 Max tokens: {max_tokens}")
-                print(f"📝 Prompt length: {len(prompt)} characters")
+
                 
                 system_prompt = "You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON."
             
@@ -238,29 +217,8 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     temperature=temperature
                 )
 
-            # Log API response details
-            print(f"📊 AI Response received")
-            
-            # Log the raw AI response for debugging (truncated preview)
-            import re
-            
-            # Extract first 3 track IDs for preview
-            track_preview = ""
-            try:
-                # Look for track_ids array in the content
-                track_ids_match = re.search(r'"track_ids":\s*\[(.*?)\]', content, re.DOTALL)
-                if track_ids_match:
-                    track_ids_content = track_ids_match.group(1)
-                    # Split by commas and take first 3
-                    track_lines = [line.strip() for line in track_ids_content.split(',')]
-                    first_three = track_lines[:3]
-                    track_preview = '[\n    ' + ',\n    '.join(first_three) + ',\n    ...\n  ]'
-                else:
-                    track_preview = content[:100] + "..."
-            except:
-                track_preview = content[:100] + "..."
-            
-            print(f"🤖 RAW AI RESPONSE for {artist_name}: {track_preview}")
+            # Log successful AI response
+            print(f"🤖 AI response received for {artist_name}")
 
             # Parse the JSON response with comprehensive validation
             try:
@@ -342,27 +300,24 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     
                     returned_track_count = len(track_ids)
                     
-                    # Sanity checks
-                    # Check 1: Large source, tiny return
-                    if source_track_count >= 100 and returned_track_count <= 10:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: Too few tracks returned from large source set. {error_msg}")
+                    # Simplified validation - focus on response quality, not payload comparison
+                    # Check 1: AI returned some tracks
+                    if returned_track_count == 0:
+                        print(f"❌ AI returned no tracks - invalid response")
+                        raise ValueError("AI response validation failed: No tracks returned")
                     
-                    # Check 2: Less than 20% returned
-                    min_expected = max(1, int(source_track_count * 0.2))  # At least 20% or 1 track
-                    if returned_track_count < min_expected:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: Returned tracks less than 20% of source. {error_msg}")
+                    # Check 2: Reasonable upper bound (AI shouldn't return way more than requested)
+                    max_reasonable = int(num_tracks * 1.5)  # Allow up to 1.5x requested for minor flexibility
+                    if returned_track_count > max_reasonable:
+                        print(f"❌ AI returned {returned_track_count} tracks, much more than requested {num_tracks}")
+                        raise ValueError(f"AI response validation failed: Too many tracks returned ({returned_track_count} vs requested {num_tracks})")
                     
-                    # Check 3: More returned than source
+                    # Check 3: Validate tracks are within source bounds
                     if returned_track_count > source_track_count:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
+                        print(f"❌ AI returned {returned_track_count} tracks but we only provided {source_track_count}")
+                        raise ValueError(f"AI response validation failed: More tracks returned than provided")
                     
-                    print(f"✅ AI returned {returned_track_count} tracks, validation passed")
+                    print(f"✅ AI returned {returned_track_count} tracks (requested: {num_tracks}), validation passed")
 
                     # INDEX-BASED: Map indices back to actual track IDs
                     # Find which indices are invalid (out of range)
@@ -394,30 +349,27 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     
                     returned_track_count = len(response_data)
                     
-                    # SANITY CHECKS for legacy format
-                    print(f"🧠 SANITY CHECKS:")
+                    # Simplified validation for legacy format
+                    print(f"🧠 VALIDATION CHECKS:")
                     print(f"   Returned tracks: {returned_track_count}")
                     
-                    # Check 1: Large source, tiny return
-                    if source_track_count >= 100 and returned_track_count <= 10:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: Too few tracks returned from large source set. {error_msg}")
+                    # Check 1: AI returned some tracks
+                    if returned_track_count == 0:
+                        print(f"❌ AI returned no tracks - invalid response")
+                        raise ValueError("AI response validation failed: No tracks returned")
                     
-                    # Check 2: Less than 20% returned
-                    min_expected = max(1, int(source_track_count * 0.2))
-                    if returned_track_count < min_expected:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: Returned tracks less than 20% of source. {error_msg}")
+                    # Check 2: Reasonable upper bound
+                    max_reasonable = int(num_tracks * 1.5)  # Allow up to 1.5x requested for minor flexibility
+                    if returned_track_count > max_reasonable:
+                        print(f"❌ AI returned {returned_track_count} tracks, much more than requested {num_tracks}")
+                        raise ValueError(f"AI response validation failed: Too many tracks returned ({returned_track_count} vs requested {num_tracks})")
                     
-                    # Check 3: More returned than source
+                    # Check 3: Validate tracks are within source bounds
                     if returned_track_count > source_track_count:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
+                        print(f"❌ AI returned {returned_track_count} tracks but we only provided {source_track_count}")
+                        raise ValueError(f"AI response validation failed: More tracks returned than provided")
                     
-                    print(f"✅ Response validation passed: received {returned_track_count} tracks from {source_track_count} source tracks")
+                    print(f"✅ Response validation passed: received {returned_track_count} tracks (requested: {num_tracks})")
 
                     valid_ids = {track["id"] for track in shuffled_tracks}
                     filtered_ids = [tid for tid in response_data if tid in valid_ids]
@@ -459,10 +411,30 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             print(f"🌐 Base URL: {self.base_url}")
             return self._fallback_selection(tracks_json, num_tracks, include_reasoning, f"Network error: {e}")
         except httpx.HTTPStatusError as e:
-            print(f"🚨 HTTP error from AI API: {e.response.status_code} - {e.response.text}")
-            print(f"🔑 API Key present: {bool(self.api_key)}")
-            print(f"🤖 Model: {self.model}")
-            return self._fallback_selection(tracks_json, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {e.response.text}")
+            response_text = e.response.text
+            
+            # Detect HTML error pages (like Cloudflare 502 errors) and truncate for logging
+            if (response_text.strip().startswith('<!DOCTYPE html') or 
+                response_text.strip().startswith('<html') or
+                len(response_text) > 500):
+                
+                # Truncate long responses for clean logging
+                truncated_text = response_text[:200] + "..." if len(response_text) > 200 else response_text
+                print(f"🚨 HTTP error from AI API: {e.response.status_code} - {truncated_text}")
+                
+                # User-friendly error for common infrastructure issues
+                if e.response.status_code in [502, 503, 504]:
+                    user_message = f"AI service temporarily unavailable (error {e.response.status_code}). Please try again in a minute."
+                else:
+                    user_message = f"AI service error (HTTP {e.response.status_code}). Please try again."
+                    
+                return self._fallback_selection(tracks_json, num_tracks, include_reasoning, user_message)
+            else:
+                # Normal error response, log as before
+                print(f"🚨 HTTP error from AI API: {e.response.status_code} - {response_text}")
+                print(f"🔑 API Key present: {bool(self.api_key)}")
+                print(f"🤖 Model: {self.model}")
+                return self._fallback_selection(tracks_json, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {response_text}")
         except Exception as e:
             print(f"💥 Unexpected error in AI curation: {e}")
             import traceback
@@ -530,16 +502,13 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 # Store the actual track ID in our mapping
                 track_id_map.append(track["id"])
                 
-                # Create indexed track (no complex ID, just index + music data)
+                # Create indexed track (minimal metadata to reduce prompt size)
                 indexed_track = {
                     "index": index,
                     "track_name": track.get("title", "Unknown"),
                     "artist": track.get("artist", "Unknown"),
-                    "album": track.get("album", "Unknown"),
                     "genre": track.get("genre", "Unknown"),
-                    "year": track.get("year", 0),
-                    "play_count": track.get("play_count", 0),
-                    "rediscovery_score": track.get("rediscovery_score", 0)
+                    "rediscovery_score": round(track.get("rediscovery_score", 0), 1)
                 }
                 indexed_tracks.append(indexed_track)
             
@@ -647,23 +616,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 }
             
             # DEBUG: Dump payload to file for inspection
-            DEBUG_DUMP_PAYLOADS = False  # Disabled for production
-            
-            if DEBUG_DUMP_PAYLOADS:
-                import time
-                
-                timestamp = int(time.time())
-                dump_filename = f"debug_payloads/rediscover_payload_{timestamp}.json"
-                dump_path = os.path.join(os.getcwd(), dump_filename)
-                
-                try:
-                    os.makedirs(os.path.dirname(dump_path), exist_ok=True)
-                    with open(dump_path, 'w', encoding='utf-8') as f:
-                        json.dump(payload, f, indent=2, ensure_ascii=False, separators=(',', ': '))
-                    print(f"✅ DEBUG: Re-Discover payload dumped to: {dump_filename}")
-                except Exception as e:
-                    print(f"❌ DEBUG: Failed to dump Re-Discover payload: {e}")
-            
+
             
             # Use the provider to make the AI request  
             if "llm_config" in final_recipe:
@@ -704,11 +657,11 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             
             print(f"🤖 RAW AI RESPONSE for Re-Discover Weekly: {track_preview}")
 
-            # Parse the JSON response
+            # Parse the JSON response with comprehensive validation
             try:
-                # Clean up the response - remove markdown code fences and comments
+                # Clean up the response and extract JSON
                 cleaned_content = content.strip()
-                
+
                 # Remove markdown code fences if present
                 if cleaned_content.startswith("```json"):
                     cleaned_content = cleaned_content[7:]  # Remove ```json
@@ -716,30 +669,48 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     cleaned_content = cleaned_content[3:]   # Remove ```
                 if cleaned_content.endswith("```"):
                     cleaned_content = cleaned_content[:-3]  # Remove trailing ```
-                
+
                 cleaned_content = cleaned_content.strip()
-                
-                # Remove JavaScript-style comments (// comments) 
+
+                # Extract JSON from mixed text/JSON response
                 import re
-                lines = cleaned_content.split('\n')
+
+                # Try to find JSON object first (new format): {"track_ids": [...], "reasoning": "..."}
+                json_object_match = re.search(r'\{.*?"track_ids".*?\}', cleaned_content, re.DOTALL)
+                if json_object_match:
+                    json_str = json_object_match.group(0)
+                    print(f"🔍 Extracted JSON object: {json_str[:100]}...")
+                else:
+                    # Try to find JSON array (legacy format): [1, 2, 3, ...]
+                    json_array_match = re.search(r'\[([\d\s,]+)\]', cleaned_content, re.DOTALL)
+                    if json_array_match:
+                        json_str = json_array_match.group(0)
+                        print(f"🔍 Extracted JSON array: {json_str[:100]}...")
+                    else:
+                        # No JSON found, try to parse the whole cleaned content
+                        json_str = cleaned_content
+                        print(f"🔍 Using entire cleaned content for JSON parsing")
+
+                # Clean up the extracted JSON
+                lines = json_str.split('\n')
                 cleaned_lines = []
-                
+
                 for line in lines:
                     # Remove // comments but preserve URLs like http://
                     if '//' in line and 'http://' not in line and 'https://' not in line:
                         comment_pos = line.find('//')
                         line = line[:comment_pos].rstrip()
-                    
+
                     # Remove trailing commas before closing brackets
                     line = re.sub(r',(\s*[\]}])', r'\1', line)
-                    
+
                     if line.strip():  # Only add non-empty lines
                         cleaned_lines.append(line)
-                
-                cleaned_content = '\n'.join(cleaned_lines)
-                
-                # Try to parse as JSON object
-                response_data = json.loads(cleaned_content)
+
+                final_json = '\n'.join(cleaned_lines).strip()
+
+                # Try to parse the extracted JSON
+                response_data = json.loads(final_json)
 
                 # Validate response structure with index-based approach
                 source_track_count = len(candidate_tracks)
@@ -765,27 +736,24 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     
                     returned_track_count = len(track_ids)
                     
-                    # Sanity checks
-                    # Check 1: Large source, tiny return
-                    if source_track_count >= 100 and returned_track_count <= 10:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: Too few tracks returned from large source set. {error_msg}")
+                    # Simplified validation - focus on response quality
+                    # Check 1: AI returned some tracks
+                    if returned_track_count == 0:
+                        print(f"❌ AI returned no tracks - invalid response")
+                        raise ValueError("AI response validation failed: No tracks returned")
                     
-                    # Check 2: Less than 20% returned
-                    min_expected = max(1, int(source_track_count * 0.2))  # At least 20% or 1 track
-                    if returned_track_count < min_expected:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: Returned tracks less than 20% of source. {error_msg}")
+                    # Check 2: Reasonable upper bound
+                    max_reasonable = int(num_tracks * 1.5)  # Allow up to 1.5x requested for minor flexibility
+                    if returned_track_count > max_reasonable:
+                        print(f"❌ AI returned {returned_track_count} tracks, much more than requested {num_tracks}")
+                        raise ValueError(f"AI response validation failed: Too many tracks returned ({returned_track_count} vs requested {num_tracks})")
                     
-                    # Check 3: More returned than source
+                    # Check 3: Validate tracks are within source bounds
                     if returned_track_count > source_track_count:
-                        error_msg = f"PAYLOAD ERROR: Received {returned_track_count} tracks but provided {source_track_count} source tracks"
-                        print(f"❌ {error_msg}")
-                        raise ValueError(f"Sanity check failed: More tracks returned than provided. {error_msg}")
+                        print(f"❌ AI returned {returned_track_count} tracks but we only provided {source_track_count}")
+                        raise ValueError(f"AI response validation failed: More tracks returned than provided")
                     
-                    # AI validation passed
+                    print(f"✅ AI returned {returned_track_count} tracks (requested: {num_tracks}), validation passed")
 
                     # INDEX-BASED: Map indices back to actual track IDs
                     # Find which indices are invalid (out of range)
@@ -841,10 +809,30 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             print(f"🌐 Base URL: {self.base_url}")
             return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"Network error: {e}")
         except httpx.HTTPStatusError as e:
-            print(f"🚨 HTTP error from AI API: {e.response.status_code} - {e.response.text}")
-            print(f"🔑 API Key present: {bool(self.api_key)}")
-            print(f"🤖 Model: {self.model}")
-            return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {e.response.text}")
+            response_text = e.response.text
+            
+            # Detect HTML error pages (like Cloudflare 502 errors) and truncate for logging
+            if (response_text.strip().startswith('<!DOCTYPE html') or 
+                response_text.strip().startswith('<html') or
+                len(response_text) > 500):
+                
+                # Truncate long responses for clean logging
+                truncated_text = response_text[:200] + "..." if len(response_text) > 200 else response_text
+                print(f"🚨 HTTP error from AI API: {e.response.status_code} - {truncated_text}")
+                
+                # User-friendly error for common infrastructure issues
+                if e.response.status_code in [502, 503, 504]:
+                    user_message = f"AI service temporarily unavailable (error {e.response.status_code}). Please try again in a minute."
+                else:
+                    user_message = f"AI service error (HTTP {e.response.status_code}). Please try again."
+                    
+                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, user_message)
+            else:
+                # Normal error response, log as before
+                print(f"🚨 HTTP error from AI API: {e.response.status_code} - {response_text}")
+                print(f"🔑 API Key present: {bool(self.api_key)}")
+                print(f"🤖 Model: {self.model}")
+                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {response_text}")
         except Exception as e:
             print(f"💥 Unexpected error in AI curation: {e}")
             import traceback

@@ -52,9 +52,9 @@ _Caption: Creating a 'This is (Artist)' playlist_
          - NAVIDROME_USERNAME=your_username
          - NAVIDROME_PASSWORD=your_password
          - DATABASE_PATH=/app/data/magiclists.db # Required: Database location
-         - AI_PROVIDER=groq                    # Optional: groq, ollama, or openrouter
-         - AI_API_KEY=your_groq_api_key        # Optional, for Groq/OpenRouter
-         - AI_MODEL=llama-3.1-8b-instant       # Optional, for AI providers
+           - AI_PROVIDER=openrouter               # Optional: openrouter, groq, google, ollama
+           - AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter/Groq/Google
+           - AI_MODEL=meta-llama/llama-3.3-70b-instruct # Optional, for AI providers
        volumes:
          - ./magiclists-data:/app/data          # Persist configuration
        restart: unless-stopped
@@ -81,8 +81,9 @@ Use your public Navidrome URL (e.g., https://music.yourdomain.com):
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
       -e DATABASE_PATH=/app/data/magiclists.db \
-      -e AI_PROVIDER=groq \
-      -e AI_API_KEY=your_groq_api_key \
+      -e AI_PROVIDER=openrouter \
+      -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_MODEL=meta-llama/llama-3.3-70b-instruct \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -97,8 +98,9 @@ Use host.docker.internal to reach services on your host:
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
       -e DATABASE_PATH=/app/data/magiclists.db \
-      -e AI_PROVIDER=groq \
-      -e AI_API_KEY=your_groq_api_key \
+      -e AI_PROVIDER=openrouter \
+      -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_MODEL=meta-llama/llama-3.3-70b-instruct \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -112,8 +114,9 @@ Use the local IP address of the machine running Navidrome:
       -e NAVIDROME_USERNAME=your_username \
       -e NAVIDROME_PASSWORD=your_password \
       -e DATABASE_PATH=/app/data/magiclists.db \
-      -e AI_PROVIDER=groq \
-      -e AI_API_KEY=your_groq_api_key \
+      -e AI_PROVIDER=openrouter \
+      -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_MODEL=meta-llama/llama-3.3-70b-instruct \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -140,10 +143,10 @@ Use this method if you prefer to run Python directly or want to contribute to de
    NAVIDROME_URL=http://localhost:4533
    NAVIDROME_USERNAME=your_username
    NAVIDROME_PASSWORD=your_password
-   DATABASE_PATH=./magiclists.db        # Required: Database location
-   AI_PROVIDER=groq                    # Optional: groq, ollama, or openrouter
-   AI_API_KEY=your_groq_api_key        # Optional, for Groq/OpenRouter
-   AI_MODEL=llama-3.1-8b-instant       # Optional, for AI providers
+    DATABASE_PATH=./magiclists.db        # Required: Database location
+    AI_PROVIDER=openrouter              # Optional: openrouter, groq, google, ollama
+    AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter/Groq/Google
+    AI_MODEL=meta-llama/llama-3.3-70b-instruct # Optional, for AI providers
 ```
 5. Run the application:
 ```bash
@@ -204,7 +207,7 @@ MagicLists automatically validates your configuration on startup. If any issues 
 - **Navidrome URL**: Verifies your server is reachable  
 - **Navidrome Authentication**: Tests your credentials
 - **Navidrome Artists API**: Confirms API access is working
-- **AI Provider**: Checks if AI features are configured (Groq, Ollama, or OpenRouter)
+- **AI Provider**: Checks if AI features are configured (OpenRouter, Groq, Google AI, or Ollama)
 - **Library Configuration**: Shows multiple library setup status
 
 If checks fail, detailed suggestions are provided to help resolve issues. You can also access the system check at any time via `/system-check`.
@@ -231,23 +234,12 @@ If checks fail, detailed suggestions are provided to help resolve issues. You ca
 MagicLists supports multiple AI providers for enhanced playlist curation:
 
 1. **Fallback-only** (Free) - Uses play count and metadata sorting
-2. **Groq** (Free) - Fast cloud models with no credit card required
-3. **Local LLM** (Free) - Run models locally with Ollama
-4. **OpenRouter Free Models** (Free) - Access to free cloud models
-5. **OpenRouter Premium Models** (Paid) - Higher quality cloud models
+2. **Local LLM** (Free) - Run models locally with Ollama
+3. **OpenRouter** (Free/Paid) - Access to various cloud models including free options
+4. **Google AI** (Free) - Google's Gemini models with generous free quota
+5. **Groq** (Free/Paid) - Fast cloud models with no credit card required
 
-### Option 1: Groq (Recommended - Fast & Free)
-Get a free API key from [Groq](https://console.groq.com/) - no credit card required:
-
-```bash
-# .env configuration
-AI_PROVIDER=groq
-AI_API_KEY=gsk_your-groq-key-here
-AI_MODEL=llama-3.1-8b-instant           # Fast default model
-# AI_MODEL=mixtral-8x7b-32768           # Alternative model
-```
-
-### Option 2: Ollama (Local Models)
+### Option 2: Local LLM (Ollama)
 [Install Ollama](https://ollama.com) and run models locally:
 
 ```bash
@@ -272,6 +264,28 @@ AI_PROVIDER=openrouter
 AI_API_KEY=sk-or-v1-your-key-here
 AI_MODEL=deepseek/deepseek-chat         # Free model
 # AI_MODEL=anthropic/claude-3-haiku     # Paid model
+```
+
+### Option 4: Google AI (Free & Generous Quota)
+Get a free API key from [Google AI Studio](https://ai.google.dev/) - no credit card required:
+
+```bash
+# .env configuration
+AI_PROVIDER=google
+AI_API_KEY=AIzaSy_your-google-key-here
+AI_MODEL=gemini-2.5-flash               # Fast and capable
+# AI_MODEL=gemini-1.5-pro               # More advanced model
+```
+
+### Option 5: Groq (Free/Paid)
+Get a free API key from [Groq](https://console.groq.com/) - no credit card required:
+
+```bash
+# .env configuration
+AI_PROVIDER=groq
+AI_API_KEY=gsk_your-groq-key-here
+AI_MODEL=llama-3.1-8b-instant           # Fast default model
+# AI_MODEL=mixtral-8x7b-32768           # Alternative model
 ```
 
 **Note:** Without AI configuration, the app falls back to play-count based playlist generation.

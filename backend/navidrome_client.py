@@ -531,6 +531,37 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error getting song count: {e}")
     
+    async def get_library_stats(self) -> dict:
+        """
+        Calculate statistics needed for track scoring normalization.
+        
+        Returns:
+            dict: Library statistics including max_play_count and max_playlist_appearances
+        """
+        try:
+            await self._ensure_authenticated()
+            
+            # For now, we'll return default stats since Navidrome doesn't provide
+            # comprehensive library-wide statistics in a single call
+            # TODO: Implement actual statistics gathering if needed
+            stats = {
+                'max_play_count': 100,  # Default reasonable max
+                'max_playlist_appearances': 10,  # Default reasonable max
+                'total_tracks': 0
+            }
+            
+            print(f"📊 Using default library stats: {stats}")
+            return stats
+                
+        except Exception as e:
+            print(f"⚠️ Error getting library stats, using defaults: {e}")
+            # Return safe defaults if we can't get stats
+            return {
+                'max_play_count': 100,
+                'max_playlist_appearances': 10,
+                'total_tracks': 0
+            }
+    
     async def close(self):
         """Close the HTTP client"""
         await self.client.aclose()
