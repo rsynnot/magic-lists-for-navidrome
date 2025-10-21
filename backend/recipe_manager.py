@@ -129,6 +129,8 @@ class RecipeManager:
             # Map common inputs to new placeholder format
             if "artists" in inputs:
                 replacements["{{TARGET_ARTIST}}"] = str(inputs["artists"])
+            if "genre" in inputs:
+                replacements["{{TARGET_GENRE}}"] = str(inputs["genre"])
             if "num_tracks" in inputs:
                 replacements["{{DESIRED_TRACK_COUNT}}"] = str(inputs["num_tracks"])
             

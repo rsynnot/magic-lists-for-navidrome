@@ -457,7 +457,331 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             return track_ids, reasoning
         else:
             return track_ids
-    
+
+    async def curate_genre_mix(
+        self,
+        genre: str,
+        tracks_json: List[Dict[str, Any]],
+        num_tracks: int = 20,
+        include_reasoning: bool = False,
+        variety_context: str = None
+    ) -> Union[List[str], Tuple[List[str], str]]:
+        """Curate a 'Genre Mix' playlist for a specific genre using AI
+
+        Args:
+            genre: Name of the genre
+            tracks_json: List of track dictionaries with id, title, album, year, play_count
+            num_tracks: Number of tracks to select (default: 20)
+            include_reasoning: Whether to return AI's reasoning along with track IDs
+
+        Returns:
+            List of track IDs in curated order, or tuple of (track_ids, reasoning) if include_reasoning=True
+        """
+
+        if not self.api_key and self.provider.provider_type == "openrouter":
+            print(f"❌ No AI API key configured, using fallback curation for {genre}")
+            # Processing tracks for curation (logging moved to scheduler_logger)
+            # Fallback: return first num_tracks by play count
+            sorted_tracks = sorted(
+                tracks_json,
+                key=lambda x: x.get("play_count", 0),
+                reverse=True
+            )
+            track_ids = [track["id"] for track in sorted_tracks[:num_tracks]]
+
+            if include_reasoning:
+                fallback_reasoning = f"Fallback curation: Selected {len(track_ids)} tracks sorted by play count (highest first). No AI API key configured."
+                return track_ids, fallback_reasoning
+            else:
+                return track_ids
+
+        try:
+            # Using AI to curate playlist (logging moved to scheduler_logger)
+
+            # SHUFFLE tracks to prevent AI from album-grouping based on input order
+            import random
+            shuffled_tracks = tracks_json.copy()  # Don't modify the original list
+            random.shuffle(shuffled_tracks)
+
+            # Note: We now pass shuffled_tracks directly as clean JSON array to the AI
+            # No more string conversion and text blob parsing!
+
+            # Log track data completeness
+            original_track_count = len(tracks_json)
+            shuffled_track_count = len(shuffled_tracks)
+
+            print(f"🎵 Preparing {shuffled_track_count} tracks for AI curation")
+
+            # Verify track data includes essential fields
+            if shuffled_tracks:
+                sample_track = shuffled_tracks[0]
+                essential_fields = ['id', 'title', 'artist', 'album']
+                missing_fields = [field for field in essential_fields if field not in sample_track]
+                if missing_fields:
+                    print(f"⚠️  Missing essential fields in tracks: {missing_fields}")
+            else:
+                print(f"❌ ERROR: No tracks available for curation!")
+
+            # Use recipe system to generate prompt and get LLM parameters
+            recipe_inputs = {
+                "genre": genre,
+                "num_tracks": num_tracks,
+                "variety_context": variety_context or ""
+            }
+
+            print(f"🍳 Applying recipe for {genre} ({num_tracks} tracks)")
+
+            final_recipe = recipe_manager.apply_recipe("genre_mix", recipe_inputs, include_reasoning)
+
+            # Check if this is new recipe format (has llm_config) or legacy format
+            if "llm_config" in final_recipe:
+                # New recipe format
+                llm_config = final_recipe.get("llm_config", {})
+                model_instructions = final_recipe.get("model_instructions", "")
+
+                # Use model from environment (.env file), ignoring recipe model_name
+                model = self.model or "openai/gpt-3.5-turbo"
+                temperature = llm_config.get("temperature", 0.7)
+                max_tokens = llm_config.get("max_output_tokens", 1000)
+
+                print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
+
+                # Serialize the complete recipe (excluding tracks_data to avoid duplication)
+                recipe_without_tracks = {k: v for k, v in final_recipe.items() if k != "tracks_data"}
+
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+
+                # Build structured JSON payload with INDEX-BASED approach
+                # Create indexed tracks (remove complex IDs, use simple indices)
+                indexed_tracks = []
+                track_id_map = []  # Keep mapping of index → actual track ID
+
+                for i, track in enumerate(shuffled_tracks):
+                    # Create clean track representation for AI
+                    indexed_track = {
+                        "index": i,
+                        "title": track.get("title", "Unknown"),
+                        "artist": track.get("artist", "Unknown"),
+                        "album": track.get("album", "Unknown"),
+                        "year": track.get("year", track.get("release_year", "Unknown")),
+                        "genre": track.get("genre", "Unknown"),
+                        "play_count": track.get("play_count", 0),
+                        "liked": track.get("local_library_likes", False),
+                        "duration": track.get("duration", 0)
+                    }
+                    indexed_tracks.append(indexed_track)
+                    track_id_map.append(track["id"])  # Map index back to original track ID
+
+                # Build the payload
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a world-class music curator. Respond only with valid JSON."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"""Available tracks (indexed for reference):
+{json.dumps(indexed_tracks, indent=2)}
+
+Recipe configuration:
+{json.dumps(recipe_without_tracks, indent=2)}
+
+Instructions: {model_instructions}
+
+Return your response as a JSON object with this exact structure:
+{{"track_ids": [0, 1, 2, ...], "reasoning": "Your curation reasoning here"}}"""
+                        }
+                    ],
+                    "temperature": temperature,
+                    "max_tokens": max_tokens
+                }
+
+                print(f"📤 Sending {len(indexed_tracks)} tracks to AI for curation")
+                print(f"🎯 Requesting {num_tracks} tracks from {genre} genre")
+
+                # Use the provider to make the AI request
+                system_prompt = "You are a world-class music curator. Respond only with valid JSON."
+                user_prompt = f"""Available tracks (indexed for reference):
+{json.dumps(indexed_tracks, indent=2)}
+
+Recipe configuration:
+{json.dumps(recipe_without_tracks, indent=2)}
+
+Instructions: {model_instructions}
+
+Return your response as a JSON object with this exact structure:
+{{"track_ids": [0, 1, 2, ...], "reasoning": "Your curation reasoning here"}}"""
+
+                response_content = await self.provider.generate(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+
+                if not response_content:
+                    raise ValueError("Empty response from AI provider")
+
+                print(f"📥 Received AI response ({len(response_content)} chars)")
+
+                # Parse AI response - try multiple formats
+                reasoning = None
+                track_ids = []
+
+                try:
+                    # First try: Direct JSON parsing
+                    response_data = json.loads(response_content.strip())
+
+                    if isinstance(response_data, dict):
+                        # Extract track_ids and reasoning
+                        track_ids = response_data.get("track_ids", [])
+                        reasoning = response_data.get("reasoning", "")
+
+                        print(f"✅ Response validation: structure OK (JSON object format)")
+
+                        returned_track_count = len(track_ids)
+
+                        # Simplified validation - focus on response quality, not payload comparison
+                        # Check 1: AI returned some tracks
+                        if returned_track_count == 0:
+                            print(f"❌ AI returned no tracks - invalid response")
+                            raise ValueError("AI response validation failed: No tracks returned")
+
+                        # Check 2: Reasonable upper bound (AI shouldn't return way more than requested)
+                        max_reasonable = int(num_tracks * 1.5)  # Allow up to 1.5x requested for minor flexibility
+                        if returned_track_count > max_reasonable:
+                            print(f"❌ AI returned {returned_track_count} tracks, much more than requested {num_tracks}")
+                            raise ValueError(f"AI response validation failed: Too many tracks returned ({returned_track_count} vs requested {num_tracks})")
+
+                        # Check 3: Validate tracks are within source bounds
+                        source_track_count = len(shuffled_tracks)
+                        if returned_track_count > source_track_count:
+                            print(f"❌ AI returned {returned_track_count} tracks but we only provided {source_track_count}")
+                            raise ValueError(f"AI response validation failed: More tracks returned than provided")
+
+                        print(f"✅ AI returned {returned_track_count} tracks (requested: {num_tracks}), validation passed")
+
+                        # INDEX-BASED: Map indices back to actual track IDs
+                        # Find which indices are invalid (out of range)
+                        invalid_indices = [idx for idx in track_ids if idx < 0 or idx >= len(track_id_map)]
+                        if invalid_indices:
+                            print(f"❌ AI returned {len(invalid_indices)} invalid indices out of {len(track_ids)}")
+
+                        # Map valid indices to track IDs
+                        valid_indices = [idx for idx in track_ids if 0 <= idx < len(track_id_map)]
+                        mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
+                        print(f"🔄 Mapped {len(mapped_track_ids)} valid indices to track IDs")
+
+                        # Final selection (limit to requested count)
+                        final_selection = mapped_track_ids[:num_tracks]
+
+                        # AI curation successful (logging moved to scheduler_logger)
+                        if reasoning:
+                            # AI reasoning available (logged in main.py scheduler_logger)
+                            pass
+
+                        if include_reasoning:
+                            return final_selection, reasoning
+                        else:
+                            return final_selection
+
+                    # Handle simple array format (legacy)
+                    elif isinstance(response_data, list) and all(isinstance(tid, str) for tid in response_data):
+                        print(f"✅ Response validation: structure OK (legacy array format)")
+
+                        returned_track_count = len(response_data)
+
+                        # Basic validation
+                        if returned_track_count == 0:
+                            raise ValueError("AI response validation failed: No tracks returned")
+
+                        # For legacy format, assume these are direct track IDs (not indices)
+                        # This is a fallback - ideally we'd use indexed approach
+                        final_selection = response_data[:num_tracks]
+
+                        if include_reasoning:
+                            return final_selection, "Legacy format response - no detailed reasoning available"
+                        else:
+                            return final_selection
+
+                    else:
+                        raise ValueError(f"Unexpected response format: {type(response_data)}")
+
+                except json.JSONDecodeError as e:
+                    print(f"❌ JSON parsing failed: {e}")
+                    print(f"Raw response: {response_content[:500]}...")
+
+                    # Try regex extraction for mixed text/JSON responses
+                    import re
+
+                    # Look for JSON block in the response
+                    json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
+                    if json_match:
+                        try:
+                            response_data = json.loads(json_match.group())
+                            if isinstance(response_data, dict):
+                                track_ids = response_data.get("track_ids", [])
+                                reasoning = response_data.get("reasoning", "")
+
+                                # Map indices to track IDs
+                                if track_ids and all(isinstance(tid, int) for tid in track_ids):
+                                    valid_indices = [idx for idx in track_ids if 0 <= idx < len(track_id_map)]
+                                    mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
+                                    final_selection = mapped_track_ids[:num_tracks]
+                                else:
+                                    # Assume direct track IDs
+                                    final_selection = track_ids[:num_tracks] if track_ids else []
+
+                                if include_reasoning:
+                                    return final_selection, reasoning or "Extracted from mixed response"
+                                else:
+                                    return final_selection
+                        except json.JSONDecodeError:
+                            pass
+
+                    # Last resort: try to extract track IDs with regex
+                    id_pattern = r'"track_ids"\s*:\s*\[([^\]]+)\]'
+                    id_match = re.search(id_pattern, response_content, re.IGNORECASE)
+                    if id_match:
+                        # Extract numbers from the array
+                        numbers = re.findall(r'\d+', id_match.group(1))
+                        indices = [int(num) for num in numbers]
+
+                        valid_indices = [idx for idx in indices if 0 <= idx < len(track_id_map)]
+                        mapped_track_ids = [track_id_map[idx] for idx in valid_indices]
+                        final_selection = mapped_track_ids[:num_tracks]
+
+                        if include_reasoning:
+                            return final_selection, "Extracted track IDs from unstructured response"
+                        else:
+                            return final_selection
+
+                    raise ValueError(f"Could not parse AI response as JSON or extract track IDs: {e}")
+
+        except Exception as e:
+            error_reason = str(e)
+            print(f"❌ AI curation failed for {genre}: {error_reason}")
+
+            # Fallback: sort by play count and year
+            sorted_tracks = sorted(
+                tracks_json,
+                key=lambda x: (x.get("play_count", 0), x.get("year", 0) or x.get("release_year", 0)),
+                reverse=True
+            )
+
+            track_ids = [track["id"] for track in sorted_tracks[:num_tracks]]
+
+            if include_reasoning:
+                reasoning = f"Fallback curation: Selected {len(track_ids)} tracks sorted by play count and year (most popular and recent first). {error_reason}"
+                return track_ids, reasoning
+            else:
+                return track_ids
+
     async def curate_rediscover_weekly(
         self, 
         candidate_tracks: List[Dict[str, Any]], 

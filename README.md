@@ -6,7 +6,8 @@ MagicLists adds the kind of curated, evolving playlists you’d expect from Spot
 
 ## What it does
 - 🎵 **This Is (Artist)** — Builds a definitive playlist for any artist in your library, combining hits, deep cuts, and featured appearances without duplicates.
-- 🔄 **Re-Discover** — Rotates tracks you haven’t played in a while, helping you fall back in love with your collection.
+- 🎸 **Genre Mix** — Creates curated playlists from your complete genre collections, using AI to craft the perfect mix of tracks.
+- 🔄 **Re-Discover** — Rotates tracks you haven't played in a while, helping you fall back in love with your collection.
 - ⏰ **Auto-Refresh** — Keep playlists fresh with daily, weekly, or monthly updates.
 - 🐳 **Quick Setup** — Simple Docker install; get started in minutes.
 
