@@ -16,6 +16,13 @@ class CreatePlaylistRequest(BaseModel):
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
 
+class CreateGenrePlaylistRequest(BaseModel):
+    """Request schema for creating a genre mix playlist"""
+    genre: str
+    playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
+    refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
+    playlist_length: int = 25  # Number of tracks to include
+
 class Playlist(BaseModel):
     """Schema for a stored playlist"""
     id: int

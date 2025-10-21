@@ -44,7 +44,7 @@ logging.getLogger('httpcore').setLevel(logging.WARNING)
 from .navidrome_client import NavidromeClient
 from .ai_client import AIClient
 from .database import DatabaseManager, get_db
-from .schemas import CreatePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
+from .schemas import CreatePlaylistRequest, CreateGenrePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
 from .recipe_manager import recipe_manager
 from .rediscover import RediscoverWeekly
 from .track_scoring import filter_tracks_for_this_is_playlist
@@ -190,6 +190,23 @@ async def get_artists():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
+
+@app.get("/api/genres")
+async def get_genres():
+    """Get list of genres from Navidrome"""
+    try:
+        client = get_navidrome_client()
+        genres = await client.get_genres()
+        return genres
+    except Exception as e:
+        error_msg = str(e)
+        # Check if it's an authentication error and return appropriate status code
+        if "Invalid username or password" in error_msg or "No authentication method available" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch genres: {error_msg}")
 
 
 # SYSTEM CHECK FEATURE - START
@@ -454,6 +471,127 @@ async def create_playlist_with_reasoning(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create playlist with reasoning: {str(e)}")
+
+@app.post("/api/create_genre_playlist", response_model=Playlist)
+async def create_genre_playlist(
+    request: CreateGenrePlaylistRequest,
+    db: DatabaseManager = Depends(get_db)
+):
+    """Create an AI-curated 'Genre Mix' playlist for a specific genre"""
+    try:
+        # Get clients
+        nav_client = get_navidrome_client()
+        ai_client_instance = get_ai_client()
+
+        # Generate playlist name if not provided
+        playlist_name = request.playlist_name or f"Genre Mix: {request.genre}"
+
+        # Get tracks for the genre
+        all_tracks = await nav_client.get_tracks_by_genre(request.genre)
+        scheduler_logger.info(f"🎵 Found {len(all_tracks)} total tracks for genre '{request.genre}'")
+
+        if not all_tracks:
+            raise HTTPException(status_code=404, detail=f"No tracks found for genre: {request.genre}")
+
+        # NEW: Apply smart filtering for "Genre Mix" playlists to optimize LLM payload
+        library_stats = await nav_client.get_library_stats()
+
+        filtered_tracks, filter_metadata = filter_tracks_for_this_is_playlist(
+            source_tracks=all_tracks,
+            target_playlist_size=request.playlist_length,
+            library_stats=library_stats
+        )
+
+        # Log filtering results for analytics/debugging
+        if filter_metadata['filtered']:
+            scheduler_logger.info(f"🎯 Smart filtering applied: {filter_metadata['source_count']} → {filter_metadata['sent_count']} tracks (multiplier: {filter_metadata['threshold_multiplier']}x)")
+            scheduler_logger.info(f"📊 Score range: {filter_metadata['score_range']['highest']:.1f} - {filter_metadata['score_range']['lowest']:.1f} (cutoff: {filter_metadata['score_range']['cutoff']:.1f})")
+        else:
+            scheduler_logger.info(f"✅ No filtering needed: {filter_metadata['source_count']} tracks below threshold")
+
+        # Use filtered tracks for LLM processing
+        tracks_for_llm = filtered_tracks
+
+        # Use AI to curate the playlist (always include reasoning for new recipe format)
+        curation_result = await ai_client_instance.curate_genre_mix(
+            genre=request.genre,
+            tracks_json=tracks_for_llm,
+            num_tracks=request.playlist_length,
+            include_reasoning=True
+        )
+
+        # Handle both old and new return formats
+        if isinstance(curation_result, tuple):
+            curated_track_ids, reasoning = curation_result
+        else:
+            curated_track_ids = curation_result
+            reasoning = ""
+
+        # Check for validation failures or empty results
+        if not curated_track_ids:
+            if reasoning and "Playlist generation failed" in reasoning:
+                # This is a validation failure - don't create playlist
+                scheduler_logger.error(f"❌ Playlist creation aborted: {reasoning}")
+                raise HTTPException(status_code=400, detail=f"Playlist generation failed: {reasoning}")
+            else:
+                # This is an empty result without explanation
+                scheduler_logger.error(f"❌ AI curation returned no tracks for {request.genre}")
+                raise HTTPException(status_code=500, detail="AI curation failed to return any tracks")
+
+        # Log the AI reasoning for debugging (truncated)
+        if reasoning:
+            reasoning_preview = reasoning[:200] + "..." if len(reasoning) > 200 else reasoning
+            scheduler_logger.info(f"🎵 AI curation applied for {request.genre} (reasoning length: {len(reasoning)} chars): {reasoning_preview}")
+        else:
+            scheduler_logger.info(f"⚠️ No AI reasoning provided for {request.genre}")
+
+        # Create playlist in Navidrome with AI reasoning as comment
+        comment_to_use = reasoning if reasoning else None
+        comment_preview = comment_to_use[:200] + "..." if comment_to_use and len(comment_to_use) > 200 else comment_to_use
+        scheduler_logger.info(f"💬 Creating playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_preview}")
+
+        navidrome_playlist_id = await nav_client.create_playlist(
+            name=playlist_name,
+            track_ids=curated_track_ids,
+            comment=comment_to_use
+        )
+
+        # Get track titles for database storage
+        track_titles = []
+        track_id_to_title = {track["id"]: track["title"] for track in all_tracks}
+        for track_id in curated_track_ids:  # Iterate in AI-curated order
+            if track_id in track_id_to_title:
+                track_titles.append(track_id_to_title[track_id])
+
+
+        # Store playlist in local database (using genre as identifier)
+        playlist = await db.create_playlist(
+            artist_id=request.genre,  # Using genre as artist_id for now
+            playlist_name=playlist_name,
+            songs=track_titles,
+            reasoning=reasoning,
+            navidrome_playlist_id=navidrome_playlist_id,
+            playlist_length=request.playlist_length
+        )
+
+        # Handle scheduling if not "none" or "never"
+        if request.refresh_frequency not in ["none", "never"]:
+            next_refresh = calculate_next_refresh(request.refresh_frequency)
+
+            # Store the scheduled playlist
+            await db.create_scheduled_playlist(
+                playlist_type="genre_mix",
+                navidrome_playlist_id=navidrome_playlist_id,
+                refresh_frequency=request.refresh_frequency,
+                next_refresh=next_refresh
+            )
+
+        return playlist
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create genre playlist: {str(e)}")
 
 @app.get("/api/rediscover-weekly", response_model=RediscoverWeeklyResponse)
 async def get_rediscover_weekly():

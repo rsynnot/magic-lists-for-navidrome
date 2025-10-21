@@ -1,6 +1,8 @@
 // Global state for artist selection
 let selectedArtistId = null;
+let selectedGenre = null;
 let allArtists = [];
+let allGenres = [];
 let currentToast = null;
 
 
@@ -342,6 +344,65 @@ async function loadArtists() {
     }
 }
 
+async function loadGenres() {
+    try {
+        const response = await fetch('/api/genres');
+        if (!response.ok) {
+            throw new Error('Failed to fetch genres');
+        }
+        allGenres = await response.json();
+
+        // Clear any previous selection
+        selectedGenre = null;
+
+        // Populate the select dropdown
+        const genreSelect = document.getElementById('genre-select');
+        if (genreSelect) {
+            // Clear existing options except the first one
+            while (genreSelect.options.length > 1) {
+                genreSelect.remove(1);
+            }
+
+            // Add genre options
+            allGenres.forEach(genre => {
+                const option = document.createElement('option');
+                option.value = genre;
+                option.textContent = genre;
+                genreSelect.appendChild(option);
+            });
+
+            // Setup genre selection change handler
+            genreSelect.addEventListener('change', handleGenreSelection);
+
+            // Reinitialize the HSSelect component
+            if (window.HSSelect) {
+                const selectInstance = window.HSSelect.getInstance(genreSelect);
+                if (selectInstance) {
+                    selectInstance.destroy();
+                }
+                window.HSSelect.autoInit();
+            }
+        }
+
+        showToast('success', `Loaded ${allGenres.length} genres from your library`);
+    } catch (error) {
+        console.error('Error loading genres:', error);
+        showToast('error', 'Failed to load genres from your library');
+    }
+}
+
+// Handle genre selection change
+function handleGenreSelection(e) {
+    selectedGenre = e.target.value;
+    const submitBtn = document.getElementById('create-genre-playlist-btn');
+
+    if (selectedGenre) {
+        submitBtn.disabled = false;
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
 // Handle artist selection change
 function handleArtistSelection(e) {
     selectedArtistId = e.target.value;
@@ -358,6 +419,12 @@ function handleArtistSelection(e) {
 document.getElementById('this-is-form').addEventListener('submit', function(e) {
     e.preventDefault();
     createArtistPlaylist();
+});
+
+// Genre Mix form submission
+document.getElementById('genre-mix-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    createGenrePlaylist();
 });
 
 async function createArtistPlaylist() {
@@ -409,6 +476,67 @@ async function createArtistPlaylist() {
         // Show success toast
         showToast('success', `Playlist created with ${data.songs ? data.songs.length : 0} tracks`);
         
+        // Update playlist count in sidebar
+        updatePlaylistCount();
+
+    } catch (error) {
+        console.error('Error creating playlist:', error);
+        showToast('error', error.message);
+    } finally {
+        submitBtn.disabled = false;
+    }
+}
+
+async function createGenrePlaylist() {
+    const submitBtn = document.getElementById('create-genre-playlist-btn');
+
+    if (!selectedGenre) {
+        showToast('error', 'Please select a genre first');
+        return;
+    }
+
+    // Show loading toast
+    showToast('loading', 'Creating your playlist...', 0);
+    submitBtn.disabled = true;
+
+    try {
+        const refreshFrequency = document.querySelector('input[name="genre-refresh-frequency"]:checked').value;
+        const playlistLength = document.querySelector('input[name="genre-playlist-length"]:checked').value;
+
+        const response = await fetch('/api/create_genre_playlist', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                genre: selectedGenre,
+                refresh_frequency: refreshFrequency,
+                playlist_length: parseInt(playlistLength)
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || 'Failed to create playlist');
+        }
+
+        const data = await response.json();
+
+        // Track successful genre playlist creation with Rybbit
+        if (typeof window.rybbit !== 'undefined') {
+            const modelInfo = await getAIModelInfo();
+            window.rybbit.event('Genre Mix Playlist Created', {
+                trackCount: data.songs ? data.songs.length : 0,
+                refreshFrequency: refreshFrequency,
+                genre: selectedGenre,
+                aiModel: modelInfo.model,
+                aiProvider: modelInfo.provider
+            });
+        }
+
+        // Show success toast
+        showToast('success', `Playlist created with ${data.songs ? data.songs.length : 0} tracks`);
+
         // Update playlist count in sidebar
         updatePlaylistCount();
 
@@ -854,6 +982,9 @@ function updateURL(page) {
         case 're-discover':
             url = '/re-discover';
             break;
+        case 'genre-mix':
+            url = '/genre-mix';
+            break;
         case 'playlists':
             url = '/playlists';
             break;
@@ -909,6 +1040,8 @@ function getPageFromURL(pathname) {
             return 'this-is-artist';
         case '/re-discover':
             return 're-discover';
+        case '/genre-mix':
+            return 'genre-mix';
         case '/playlists':
             return 'playlists';
         case '/system-check':
@@ -937,6 +1070,10 @@ function handlePageNavigation(page) {
         setTimeout(() => loadArtists(), 100);
     } else if (page === 're-discover') {
         contentId = 'rediscover-content';
+    } else if (page === 'genre-mix') {
+        contentId = 'genre-mix-content';
+        // Load genres when navigating to Genre Mix page
+        setTimeout(() => loadGenres(), 100);
     } else if (page === 'playlists') {
         contentId = 'manage-playlists-content';
         // Load playlists when navigating to manage page

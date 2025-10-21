@@ -103,15 +103,24 @@
                                 <span class="">This is <span class="text-gray-500">Artist</span></span>
                             </a>
                         
-                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="re-discover">
-                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9 18V5l12-2v13"/>
-                                    <circle cx="6" cy="18" r="3"/>
-                                    <circle cx="18" cy="16" r="3"/>
-                                </svg>
-                                <span class="">Re-Discover</span>
-                            </a>
-                        </div>
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="re-discover">
+                                 <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                     <path d="M9 18V5l12-2v13"/>
+                                     <circle cx="6" cy="18" r="3"/>
+                                     <circle cx="18" cy="16" r="3"/>
+                                 </svg>
+                                 <span class="">Re-Discover</span>
+                             </a>
+
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="genre-mix">
+                                 <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                     <path d="M9 18V5l12-2v13"/>
+                                     <circle cx="6" cy="18" r="3"/>
+                                     <circle cx="18" cy="16" r="3"/>
+                                 </svg>
+                                 <span class="">Genre Mix</span>
+                             </a>
+                         </div>
 
                         <div class="border-t border-gray-200 w-full block mt-2 pt-2">
                             <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
@@ -178,15 +187,24 @@
                                         <span class="">This is <span class="text-gray-500">Artist</span></span>
                                     </a>
                                 
-                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="re-discover">
-                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M9 18V5l12-2v13"/>
-                                            <circle cx="6" cy="18" r="3"/>
-                                            <circle cx="18" cy="16" r="3"/>
-                                        </svg>
-                                        <span class="">Re-Discover</span>
-                                    </a>
-                                </div>
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="re-discover">
+                                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                             <path d="M9 18V5l12-2v13"/>
+                                             <circle cx="6" cy="18" r="3"/>
+                                             <circle cx="18" cy="16" r="3"/>
+                                         </svg>
+                                         <span class="">Re-Discover</span>
+                                     </a>
+
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="genre-mix">
+                                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                             <path d="M9 18V5l12-2v13"/>
+                                             <circle cx="6" cy="18" r="3"/>
+                                             <circle cx="18" cy="16" r="3"/>
+                                         </svg>
+                                         <span class="">Genre Mix</span>
+                                     </a>
+                                 </div>
 
                                 <div class="border-t border-gray-200 w-full block mt-2 pt-2">
                                     <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
@@ -424,10 +442,101 @@
                                 Generate Re-Discover Playlist
                             </button>
                         </div>
-                    </div>
-                </div>
+                     </div>
+                 </div>
 
-                <!-- Manage Playlists Content (hidden by default) -->
+                 <!-- Genre Mix Content (hidden by default) -->
+                 <div id="genre-mix-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+                     <div class="mb-6">
+                         <h1 class="text-2xl font-bold text-gray-500 mb-3">Genre Mix</h1>
+                         <p class="text-gray-600">Create a curated mix playlist for a specific genre from your library. Get a diverse selection of tracks that represent the best of that genre.</p>
+                     </div>
+
+                     <form id="genre-mix-form" class="space-y-6">
+                         <!-- Genre Selection -->
+                         <div>
+                             <label for="genre-select" class="block text-sm text-gray-900 font-bold mb-2">Choose a genre from your library</label>
+                             <div class="relative">
+                                 <select
+                                     id="genre-select"
+                                     data-hs-select='{
+                                         "placeholder": "Search for a genre...",
+                                         "toggleTag": "<button type=\"button\"></button>",
+                                         "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 px-4 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
+                                         "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
+                                         "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
+                                         "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                                         "hasSearch": true,
+                                         "searchPlaceholder": "Search...",
+                                         "searchClasses": "block w-full text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1] py-2 px-3",
+                                         "searchWrapperClasses": "bg-white p-2 -mx-1 sticky top-0"
+                                     }'
+                                     class="hidden"
+                                 >
+                                     <option value="">Choose a genre</option>
+                                 </select>
+                             </div>
+                         </div>
+
+                         <!-- Options Grid -->
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <!-- Playlist Length -->
+                             <div>
+                                 <label class="block text-sm text-gray-900 font-bold mb-3">Playlist Length</label>
+                                 <div class="space-y-3">
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-length-25" name="genre-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
+                                     </div>
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-length-50" name="genre-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
+                                     </div>
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-length-100" name="genre-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
+                                     </div>
+                                 </div>
+                             </div>
+
+                             <!-- Refresh Frequency -->
+                             <div>
+                                 <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
+                                 <div class="space-y-3">
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-freq-none" name="genre-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-freq-none" class="text-sm text-gray-500  ms-2">Don't refresh</label>
+                                     </div>
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-freq-daily" name="genre-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-freq-daily" class="text-sm text-gray-500  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
+                                     </div>
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-freq-weekly" name="genre-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
+                                     </div>
+                                     <div class="flex items-center">
+                                         <input type="radio" id="genre-freq-monthly" name="genre-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                         <label for="genre-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+
+                         <!-- Submit Button -->
+                         <div class="pt-4">
+                             <button
+                                 type="submit"
+                                 id="create-genre-playlist-btn"
+                                 class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2  transition-colors"
+                             >
+                                 Create Playlist
+                             </button>
+                         </div>
+                     </form>
+                 </div>
+
+                 <!-- Manage Playlists Content (hidden by default) -->
                 <div id="manage-playlists-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>

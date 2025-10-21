@@ -1,0 +1,13 @@
+Top 10 Genres by Track Count
+==============================
+
+1. Electronic: 269 tracks
+2. Rock: 229 tracks
+3. Hip-Hop: 149 tracks
+4. Alternative: 97 tracks
+5. Pop: 91 tracks
+6. House: 81 tracks
+7. R&B: 78 tracks
+8. Indie: 71 tracks
+9. Electro: 63 tracks
+10. Opera: 62 tracks
