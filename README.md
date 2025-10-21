@@ -234,23 +234,12 @@ If checks fail, detailed suggestions are provided to help resolve issues. You ca
 MagicLists supports multiple AI providers for enhanced playlist curation:
 
 1. **Fallback-only** (Free) - Uses play count and metadata sorting
-2. **OpenRouter** (Free/Paid) - Access to various cloud models including free options
-3. **Groq** (Free) - Fast cloud models with no credit card required
+2. **Local LLM** (Free) - Run models locally with Ollama
+3. **OpenRouter** (Free/Paid) - Access to various cloud models including free options
 4. **Google AI** (Free) - Google's Gemini models with generous free quota
-5. **Local LLM** (Free) - Run models locally with Ollama
+5. **Groq** (Free/Paid) - Fast cloud models with no credit card required
 
-### Option 2: Groq (Fast & Free)
-Get a free API key from [Groq](https://console.groq.com/) - no credit card required:
-
-```bash
-# .env configuration
-AI_PROVIDER=groq
-AI_API_KEY=gsk_your-groq-key-here
-AI_MODEL=llama-3.1-8b-instant           # Fast default model
-# AI_MODEL=mixtral-8x7b-32768           # Alternative model
-```
-
-### Option 5: Ollama (Local Models)
+### Option 2: Local LLM (Ollama)
 [Install Ollama](https://ollama.com) and run models locally:
 
 ```bash
@@ -286,6 +275,17 @@ AI_PROVIDER=google
 AI_API_KEY=AIzaSy_your-google-key-here
 AI_MODEL=gemini-2.5-flash               # Fast and capable
 # AI_MODEL=gemini-1.5-pro               # More advanced model
+```
+
+### Option 5: Groq (Free/Paid)
+Get a free API key from [Groq](https://console.groq.com/) - no credit card required:
+
+```bash
+# .env configuration
+AI_PROVIDER=groq
+AI_API_KEY=gsk_your-groq-key-here
+AI_MODEL=llama-3.1-8b-instant           # Fast default model
+# AI_MODEL=mixtral-8x7b-32768           # Alternative model
 ```
 
 **Note:** Without AI configuration, the app falls back to play-count based playlist generation.
