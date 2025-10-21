@@ -27,7 +27,7 @@ DATABASE_PATH=./magiclists.db        # For standalone: ./magiclists.db
 # Optional - AI curation (without this, uses fallback algorithm)
 AI_PROVIDER=openrouter              # Options: openrouter, groq, google, ollama
 AI_API_KEY=sk-or-v1-your-key-here   # For OpenRouter/Groq/Google (not needed for Ollama)
-AI_MODEL=deepseek/deepseek-chat     # Optional, uses provider defaults
+AI_MODEL=meta-llama/llama-3.3-70b-instruct     # Optional, uses provider defaults
 
 # Optional - Ollama timeout (only for ollama provider)
 OLLAMA_TIMEOUT=180                   # Seconds, increase for slower CPUs
@@ -173,13 +173,12 @@ For AI-powered playlist curation, choose from these providers:
    ```bash
    AI_PROVIDER=openrouter
    AI_API_KEY=sk-or-v1-your-key-here
-   AI_MODEL=deepseek/deepseek-chat     # Free model
-   # AI_MODEL=anthropic/claude-3-haiku # Paid model
+   AI_MODEL=meta-llama/llama-3.3-70b-instruct # Paid model
    ```
 
 **Popular OpenRouter models:**
 - `deepseek/deepseek-chat` - Very cost-effective (free)
-- `openai/gpt-3.5-turbo` - Fast and reliable
+- `meta-llama/llama-3.3-70b-instruct` - Fast and reliable
 - `anthropic/claude-3-haiku` - Good for creative tasks
 
 #### Option 2: Groq (Fast & Free)

@@ -52,9 +52,9 @@ _Caption: Creating a 'This is (Artist)' playlist_
          - NAVIDROME_USERNAME=your_username
          - NAVIDROME_PASSWORD=your_password
          - DATABASE_PATH=/app/data/magiclists.db # Required: Database location
-          - AI_PROVIDER=openrouter               # Optional: openrouter, groq, google, ollama
-          - AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter/Groq/Google
-         - AI_MODEL=llama-3.1-8b-instant       # Optional, for AI providers
+           - AI_PROVIDER=openrouter               # Optional: openrouter, groq, google, ollama
+           - AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter/Groq/Google
+           - AI_MODEL=meta-llama/llama-3.3-70b-instruct # Optional, for AI providers
        volumes:
          - ./magiclists-data:/app/data          # Persist configuration
        restart: unless-stopped
@@ -83,6 +83,7 @@ Use your public Navidrome URL (e.g., https://music.yourdomain.com):
       -e DATABASE_PATH=/app/data/magiclists.db \
       -e AI_PROVIDER=openrouter \
       -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_MODEL=meta-llama/llama-3.3-70b-instruct \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -99,6 +100,7 @@ Use host.docker.internal to reach services on your host:
       -e DATABASE_PATH=/app/data/magiclists.db \
       -e AI_PROVIDER=openrouter \
       -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_MODEL=meta-llama/llama-3.3-70b-instruct \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -114,6 +116,7 @@ Use the local IP address of the machine running Navidrome:
       -e DATABASE_PATH=/app/data/magiclists.db \
       -e AI_PROVIDER=openrouter \
       -e AI_API_KEY=your_openrouter_api_key \
+      -e AI_MODEL=meta-llama/llama-3.3-70b-instruct \
       -v ./magiclists-data:/app/data \
       rickysynnot/magic-lists-for-navidrome:latest
 ```
@@ -143,7 +146,7 @@ Use this method if you prefer to run Python directly or want to contribute to de
     DATABASE_PATH=./magiclists.db        # Required: Database location
     AI_PROVIDER=openrouter              # Optional: openrouter, groq, google, ollama
     AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter/Groq/Google
-   AI_MODEL=llama-3.1-8b-instant       # Optional, for AI providers
+    AI_MODEL=meta-llama/llama-3.3-70b-instruct # Optional, for AI providers
 ```
 5. Run the application:
 ```bash
@@ -283,22 +286,6 @@ AI_PROVIDER=google
 AI_API_KEY=AIzaSy_your-google-key-here
 AI_MODEL=gemini-2.5-flash               # Fast and capable
 # AI_MODEL=gemini-1.5-pro               # More advanced model
-```
-
-### Option 5: Ollama (Local Models)
-[Install Ollama](https://ollama.com) and run models locally:
-
-```bash
-# Install and run a model
-ollama pull llama3.2
-ollama serve
-
-# .env configuration
-AI_PROVIDER=ollama
-AI_MODEL=llama3.2
-OLLAMA_BASE_URL=http://localhost:11434/v1/chat/completions
-# For Docker: OLLAMA_BASE_URL=http://host.docker.internal:11434/v1/chat/completions
-# OLLAMA_TIMEOUT=300  # Increase for slower CPUs (default: 180 seconds)
 ```
 
 **Note:** Without AI configuration, the app falls back to play-count based playlist generation.
