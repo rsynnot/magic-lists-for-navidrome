@@ -1,9 +1,8 @@
 import os
 import httpx
 import asyncio
+import aiosqlite
 from typing import Dict, List, Any
-
-
 class HealthCheckService:
     """Service to perform startup system checks for MagicLists application"""
     
@@ -24,7 +23,13 @@ class HealthCheckService:
         checks.append(env_check)
         if env_check["status"] == "error":
             all_passed = False
-            
+
+        # Check database configuration
+        db_check = await self._check_database_path()
+        checks.append(db_check)
+        if db_check["status"] == "error":
+            all_passed = False
+
         url_check = await self._check_navidrome_url_reachable()
         checks.append(url_check)
         if url_check["status"] == "error":
@@ -77,11 +82,39 @@ class HealthCheckService:
         else:
             return {
                 "name": "Environment Variables Present",
-                "status": "success", 
+                "status": "success",
                 "message": "All required environment variables are present",
                 "suggestion": ""
             }
-    
+
+    async def _check_database_path(self) -> Dict[str, str]:
+        """Check that DATABASE_PATH is configured and database is accessible"""
+        # Get database path using same logic as main.py
+        default_path = "/app/data/magiclists.db" if os.path.exists("/app/data") else "./magiclists.db"
+        db_path = os.getenv("DATABASE_PATH", default_path)
+
+        try:
+            # Test database connectivity
+            async with aiosqlite.connect(db_path) as db:
+                # Run a simple query to test connectivity
+                cursor = await db.execute("SELECT 1")
+                await cursor.fetchone()
+
+            return {
+                "name": "Database Configuration",
+                "status": "success",
+                "message": f"Database accessible at {db_path}",
+                "suggestion": ""
+            }
+
+        except Exception as e:
+            return {
+                "name": "Database Configuration",
+                "status": "error",
+                "message": f"Cannot access database at {db_path}: {str(e)}",
+                "suggestion": "Check DATABASE_PATH environment variable. For Docker: set DATABASE_PATH=/app/data/magiclists.db. For standalone: set DATABASE_PATH=./magiclists.db or ensure the directory exists."
+            }
+
     async def _check_navidrome_url_reachable(self) -> Dict[str, str]:
         """Check if Navidrome URL is reachable"""
         navidrome_url = os.getenv("NAVIDROME_URL")

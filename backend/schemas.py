@@ -15,6 +15,7 @@ class CreatePlaylistRequest(BaseModel):
     playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
+    library_id: Optional[str] = None  # Optional library ID to filter tracks
 
 class CreateGenrePlaylistRequest(BaseModel):
     """Request schema for creating a genre mix playlist"""
@@ -22,6 +23,7 @@ class CreateGenrePlaylistRequest(BaseModel):
     playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
+    library_id: Optional[str] = None  # Optional library ID to filter tracks
 
 class Playlist(BaseModel):
     """Schema for a stored playlist"""
@@ -68,6 +70,7 @@ class CreateRediscoverPlaylistRequest(BaseModel):
     """Request schema for creating a Re-Discover Weekly playlist"""
     refresh_frequency: str = "weekly"  # "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
+    library_id: Optional[str] = None  # Optional library ID to filter tracks
 
 class ScheduledPlaylist(BaseModel):
     """Schema for a scheduled playlist"""

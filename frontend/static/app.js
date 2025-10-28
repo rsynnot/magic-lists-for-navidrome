@@ -5,6 +5,10 @@ let allArtists = [];
 let allGenres = [];
 let currentToast = null;
 
+// Global state for library selection
+let selectedLibraryId = null;
+let allLibraries = [];
+
 
 // Helper function to format dates in friendly format (e.g., "5 Oct 2025 10:12am")
 function formatFriendlyDate(dateString) {
@@ -182,12 +186,17 @@ function setActiveMenuItem(page) {
 
 // Navigation functionality
 function showContent(contentId) {
+    console.log(`🎨 Showing content: ${contentId}`);
+
     // Hide all content sections
-    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
+    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'genre-mix-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
     contentSections.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.style.display = 'none';
+            console.log(`🎨 Hidden: ${id}`);
+        } else {
+            console.log(`🎨 Element not found: ${id}`);
         }
     });
 
@@ -195,6 +204,9 @@ function showContent(contentId) {
     const targetContent = document.getElementById(contentId);
     if (targetContent) {
         targetContent.style.display = 'block';
+        console.log(`🎨 Shown: ${contentId}`);
+    } else {
+        console.log(`🎨 Target content not found: ${contentId}`);
     }
 }
 
@@ -274,6 +286,25 @@ async function trackLibrarySize() {
     }
 }
 
+async function checkDatabaseConnectivity() {
+    const alertDiv = document.getElementById('database-error-alert');
+
+    try {
+        const response = await fetch('/api/playlists');
+        if (response.ok) {
+            // Database is accessible, hide alert
+            alertDiv.classList.add('hidden');
+        } else {
+            // Database error, show alert
+            alertDiv.classList.remove('hidden');
+        }
+    } catch (error) {
+        // Network/database error, show alert
+        alertDiv.classList.remove('hidden');
+        console.error('Database connectivity check failed:', error);
+    }
+}
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Preline components
@@ -290,21 +321,30 @@ document.addEventListener('DOMContentLoaded', function() {
         artistSelect.addEventListener('change', handleArtistSelection);
     }
     
+    // Load libraries on page load
+    loadLibraries();
+
     // Load playlist count on page load
     updatePlaylistCount();
-    
-    // Handle initial page routing
-    const currentPage = getPageFromURL(window.location.pathname);
-    handlePageNavigation(currentPage);
-    
+
+    // Handle initial page routing (with small delay to ensure DOM is ready)
+    setTimeout(() => {
+        const currentPage = getPageFromURL(window.location.pathname);
+        handlePageNavigation(currentPage);
+    }, 100);
+
     // Track library size post-launch (with delay to not interfere with app loading)
     setTimeout(trackLibrarySize, 2000);
+
+    // Check database connectivity
+    checkDatabaseConnectivity();
 });
 
 // Load artists and populate the select (from original working code)
 async function loadArtists() {
     try {
-        const response = await fetch('/api/artists');
+        const url = selectedLibraryId ? `/api/artists?library_id=${encodeURIComponent(selectedLibraryId)}` : '/api/artists';
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch artists');
         }
@@ -346,7 +386,8 @@ async function loadArtists() {
 
 async function loadGenres() {
     try {
-        const response = await fetch('/api/genres');
+        const url = selectedLibraryId ? `/api/genres?library_id=${encodeURIComponent(selectedLibraryId)}` : '/api/genres';
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch genres');
         }
@@ -403,6 +444,228 @@ function handleGenreSelection(e) {
     }
 }
 
+// Load libraries and populate the select dropdowns
+async function loadLibraries() {
+    try {
+        console.log('📚 Loading libraries from API...');
+        console.log(`📚 Current localStorage:`, localStorage.getItem('selectedLibraryId'));
+        const response = await fetch('/api/music-folders');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch libraries: ${response.status} ${response.statusText}`);
+        }
+        allLibraries = await response.json();
+        console.log(`📚 Loaded ${allLibraries.length} libraries:`, allLibraries);
+
+        // Clear any previous selection
+        selectedLibraryId = null;
+
+        // Get UI elements
+        const desktopLoading = document.getElementById('library-loading');
+        const desktopSingle = document.getElementById('library-single');
+        const desktopSingleName = document.getElementById('library-single-name');
+        const desktopSelect = document.getElementById('library-select');
+
+        const mobileLoading = document.getElementById('mobile-library-loading');
+        const mobileSingle = document.getElementById('mobile-library-single');
+        const mobileSingleName = document.getElementById('mobile-library-single-name');
+        const mobileSelect = document.getElementById('mobile-library-select');
+
+        // Hide loading states
+        if (desktopLoading) desktopLoading.classList.add('hidden');
+        if (mobileLoading) mobileLoading.classList.add('hidden');
+
+        // Hide all states initially
+        if (desktopSingle) desktopSingle.classList.add('hidden');
+        if (mobileSingle) mobileSingle.classList.add('hidden');
+        if (desktopSelect) desktopSelect.classList.add('hidden');
+        if (mobileSelect) mobileSelect.classList.add('hidden');
+
+        if (allLibraries.length === 1) {
+            // Single library - show read-only display
+            const library = allLibraries[0];
+            selectedLibraryId = library.id;
+
+            if (desktopSingle && desktopSingleName) {
+                desktopSingleName.textContent = library.name;
+                desktopSingle.classList.remove('hidden');
+            }
+            if (mobileSingle && mobileSingleName) {
+                mobileSingleName.textContent = library.name;
+                mobileSingle.classList.remove('hidden');
+            }
+
+            // Completely hide dropdowns for single library (no Preline initialization needed)
+            if (desktopSelect) {
+                desktopSelect.classList.add('hidden');
+                desktopSelect.style.display = 'none';
+                desktopSelect.disabled = true;
+                console.log('📚 Hidden desktop dropdown for single library');
+            }
+            if (mobileSelect) {
+                mobileSelect.classList.add('hidden');
+                mobileSelect.style.display = 'none';
+                mobileSelect.disabled = true;
+                console.log('📚 Hidden mobile dropdown for single library');
+            }
+
+            console.log(`📚 Single library detected: ${library.name} (ID: ${library.id}) - showing readonly display`);
+
+            // Save to localStorage
+            localStorage.setItem('selectedLibraryId', selectedLibraryId);
+            console.log(`📚 Saved to localStorage: ${selectedLibraryId}`);
+            console.log(`📚 localStorage contents:`, localStorage.getItem('selectedLibraryId'));
+
+        } else {
+            // Multiple libraries - show interactive dropdown
+            console.log(`📚 Multiple libraries detected: ${allLibraries.length} libraries - showing dropdown`);
+
+            // Clear existing options except the first one
+            [desktopSelect, mobileSelect].forEach(select => {
+                if (select) {
+                    while (select.options.length > 1) {
+                        select.remove(1);
+                    }
+                }
+            });
+
+            // Add data-hs-select attributes for Preline initialization
+            const hsSelectConfig = {
+                "placeholder": "Select library...",
+                "toggleTag": "<button type=\"button\"></button>",
+                "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-2 px-3 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
+                "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
+                "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
+                "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                "hasSearch": false
+            };
+
+            if (desktopSelect) {
+                desktopSelect.setAttribute('data-hs-select', JSON.stringify(hsSelectConfig));
+            }
+            if (mobileSelect) {
+                mobileSelect.setAttribute('data-hs-select', JSON.stringify(hsSelectConfig));
+            }
+
+            // Add library options
+            allLibraries.forEach(library => {
+                const option = document.createElement('option');
+                option.value = library.id;
+                option.textContent = library.name;
+
+                // Add to both selects
+                if (desktopSelect) desktopSelect.appendChild(option.cloneNode(true));
+                if (mobileSelect) mobileSelect.appendChild(option.cloneNode(true));
+            });
+
+            // Load saved library selection from localStorage
+            const savedLibraryId = localStorage.getItem('selectedLibraryId');
+            if (savedLibraryId && allLibraries.some(lib => lib.id === savedLibraryId)) {
+                selectedLibraryId = savedLibraryId;
+                // Set the selected value in both dropdowns
+                if (desktopSelect) desktopSelect.value = savedLibraryId;
+                if (mobileSelect) mobileSelect.value = savedLibraryId;
+                console.log(`📚 Loaded saved library selection: ${savedLibraryId}`);
+            } else {
+                console.log('📚 No saved library selection found');
+            }
+
+            // Show dropdowns
+            if (desktopSelect) {
+                desktopSelect.classList.remove('hidden');
+                desktopSelect.style.display = '';
+            }
+            if (mobileSelect) {
+                mobileSelect.classList.remove('hidden');
+                mobileSelect.style.display = '';
+            }
+
+            // Initialize the HSSelect components
+            if (window.HSSelect) {
+                window.HSSelect.autoInit();
+            }
+
+            // Add change event listeners
+            if (desktopSelect) desktopSelect.addEventListener('change', handleLibrarySelection);
+            if (mobileSelect) mobileSelect.addEventListener('change', handleLibrarySelection);
+        }
+
+    } catch (error) {
+        console.error('Error loading libraries:', error);
+        showToast('error', 'Failed to load music libraries');
+
+        // Hide loading and show error state
+        const desktopLoading = document.getElementById('library-loading');
+        const mobileLoading = document.getElementById('mobile-library-loading');
+        const desktopSingle = document.getElementById('library-single');
+        const desktopSingleName = document.getElementById('library-single-name');
+        const mobileSingle = document.getElementById('mobile-library-single');
+        const mobileSingleName = document.getElementById('mobile-library-single-name');
+        const desktopSelect = document.getElementById('library-select');
+        const mobileSelect = document.getElementById('mobile-library-select');
+
+        // Hide all states
+        if (desktopLoading) desktopLoading.classList.add('hidden');
+        if (mobileLoading) mobileLoading.classList.add('hidden');
+        if (desktopSingle) desktopSingle.classList.add('hidden');
+        if (mobileSingle) mobileSingle.classList.add('hidden');
+        if (desktopSelect) desktopSelect.classList.add('hidden');
+        if (mobileSelect) mobileSelect.classList.add('hidden');
+
+        // Show fallback single library state
+        if (desktopSingle && desktopSingleName) {
+            desktopSingleName.textContent = 'Default Library (API error)';
+            desktopSingle.classList.remove('hidden');
+        }
+        if (mobileSingle && mobileSingleName) {
+            mobileSingleName.textContent = 'Default Library (API error)';
+            mobileSingle.classList.remove('hidden');
+        }
+
+        console.log('📚 API error - showing fallback library state');
+
+        // Set a default library ID to allow the app to continue
+        selectedLibraryId = null;
+    }
+}
+
+// Handle library selection change
+function handleLibrarySelection(e) {
+    selectedLibraryId = e.target.value;
+
+    // Save to localStorage
+    if (selectedLibraryId) {
+        localStorage.setItem('selectedLibraryId', selectedLibraryId);
+    } else {
+        localStorage.removeItem('selectedLibraryId');
+    }
+
+    // Sync both dropdowns (only if they exist and are visible)
+    const desktopSelect = document.getElementById('library-select');
+    const mobileSelect = document.getElementById('mobile-library-select');
+
+    if (e.target === desktopSelect && mobileSelect && !mobileSelect.classList.contains('hidden')) {
+        mobileSelect.value = selectedLibraryId;
+        // Reinitialize HSSelect for mobile
+        if (window.HSSelect) {
+            const selectInstance = window.HSSelect.getInstance(mobileSelect);
+            if (selectInstance) {
+                selectInstance.destroy();
+                window.HSSelect.autoInit();
+            }
+        }
+    } else if (e.target === mobileSelect && desktopSelect && !desktopSelect.classList.contains('hidden')) {
+        desktopSelect.value = selectedLibraryId;
+        // Reinitialize HSSelect for desktop
+        if (window.HSSelect) {
+            const selectInstance = window.HSSelect.getInstance(desktopSelect);
+            if (selectInstance) {
+                selectInstance.destroy();
+                window.HSSelect.autoInit();
+            }
+        }
+    }
+}
+
 // Handle artist selection change
 function handleArtistSelection(e) {
     selectedArtistId = e.target.value;
@@ -451,7 +714,8 @@ async function createArtistPlaylist() {
             body: JSON.stringify({
                 artist_ids: [selectedArtistId],
                 refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength)
+                playlist_length: parseInt(playlistLength),
+                library_id: selectedLibraryId
             })
         });
 
@@ -511,7 +775,8 @@ async function createGenrePlaylist() {
             body: JSON.stringify({
                 genre: selectedGenre,
                 refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength)
+                playlist_length: parseInt(playlistLength),
+                library_id: selectedLibraryId
             })
         });
 
@@ -567,7 +832,8 @@ async function generateRediscoverWeekly() {
             },
             body: JSON.stringify({
                 refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength)
+                playlist_length: parseInt(playlistLength),
+                library_id: selectedLibraryId
             })
         });
 
@@ -1033,37 +1299,52 @@ window.addEventListener('popstate', function(event) {
 
 // Get page from URL path
 function getPageFromURL(pathname) {
+    console.log(`🔗 Getting page from URL: ${pathname}`);
+    let page;
     switch(pathname) {
         case '/':
-            return 'home';
+            page = 'home';
+            break;
         case '/this-is':
-            return 'this-is-artist';
+            page = 'this-is-artist';
+            break;
         case '/re-discover':
-            return 're-discover';
+            page = 're-discover';
+            break;
         case '/genre-mix':
-            return 'genre-mix';
+            page = 'genre-mix';
+            break;
         case '/playlists':
-            return 'playlists';
+            page = 'playlists';
+            break;
         case '/system-check':
-            return 'system-check';
+            page = 'system-check';
+            break;
         case '/terms':
-            return 'terms';
+            page = 'terms';
+            break;
         default:
-            return 'home';
+            page = 'home';
+            break;
     }
+    console.log(`📄 Resolved page: ${page}`);
+    return page;
 }
 
 // Handle page navigation (used by both click and popstate)
 function handlePageNavigation(page) {
+    console.log(`🧭 Navigating to page: ${page}`);
+
     // Track page view with Rybbit
     if (typeof window.rybbit !== 'undefined') {
         window.rybbit.pageview();
     }
-    
+
     // Map page to content
     let contentId;
     if (page === 'home') {
         contentId = 'welcome-content';
+        console.log('🏠 Home page - showing welcome content');
     } else if (page === 'this-is-artist') {
         contentId = 'this-is-content';
         // Load artists when navigating to This Is page
@@ -1085,7 +1366,8 @@ function handlePageNavigation(page) {
     } else if (page === 'terms') {
         contentId = 'terms-content';
     }
-    
+
+    console.log(`📄 Content ID: ${contentId}`);
     setActiveMenuItem(page);
     showContent(contentId);
 }
