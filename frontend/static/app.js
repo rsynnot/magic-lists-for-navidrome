@@ -664,6 +664,16 @@ function handleLibrarySelection(e) {
             }
         }
     }
+
+    // Refresh current page content based on library change
+    const currentPage = getPageFromURL(window.location.pathname);
+    if (currentPage === 'this-is-artist') {
+        // Refresh artist dropdown for the new library
+        loadArtists();
+    } else if (currentPage === 'genre-mix') {
+        // Refresh genre dropdown for the new library
+        loadGenres();
+    }
 }
 
 // Handle artist selection change
@@ -1139,7 +1149,7 @@ function displaySystemChecks(checks) {
                             </div>
                             <div class="ml-3">
                                 <h3 class="text-sm font-medium text-gray-900">${check.name}</h3>
-                                <p class="text-sm ${statusColor}">${getStatusText(check.status)}</p>
+                                ${check.status !== 'success' ? `<p class="text-sm ${statusColor}">${getStatusText(check.status)}</p>` : ''}
                             </div>
                         </div>
                         ${hasDetails ? `
