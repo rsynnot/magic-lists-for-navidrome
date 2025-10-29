@@ -1,6 +1,6 @@
 import httpx
 import os
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 
 class NavidromeClient:
     """Simple client for interacting with Navidrome Subsonic API"""
@@ -274,12 +274,12 @@ class NavidromeClient:
             print(f"💥 Error fetching music folders: {e}")
             raise Exception(f"Failed to fetch music folders: {e}")
 
-    async def get_tracks_by_artist(self, artist_id: str, library_ids: List[str] = None) -> List[Dict[str, Any]]:
+    async def get_tracks_by_artist(self, artist_id: str, library_ids: Union[List[str], None] = None) -> List[Dict[str, Any]]:
         """Fetch tracks for a specific artist using Subsonic API
 
         Args:
             artist_id: The artist ID
-            library_id: Optional library ID to filter tracks
+            library_ids: Optional list of library IDs to filter tracks
 
         Returns:
             List of tracks with format: {id, title, album, year, play_count}
@@ -290,9 +290,9 @@ class NavidromeClient:
             params = self._get_subsonic_params()
             params["id"] = artist_id
 
-            # Add library filter if specified
-            if library_id:
-                params["musicFolderId"] = library_id
+            # Add library filter if specified (use first library if multiple provided)
+            if library_ids and len(library_ids) > 0:
+                params["musicFolderId"] = library_ids[0]
             
             response = await self.client.get(
                 f"{self.base_url}/rest/getArtist.view",
@@ -353,12 +353,12 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
 
-    async def get_tracks_by_genre(self, genre: str, library_id: str = None) -> List[Dict[str, Any]]:
+    async def get_tracks_by_genre(self, genre: str, library_ids: List[str] = None) -> List[Dict[str, Any]]:
         """Fetch tracks for a specific genre using Subsonic getSongsByGenre API with pagination
 
         Args:
             genre: The genre name
-            library_id: Optional library ID to filter tracks
+            library_ids: Optional list of library IDs to filter tracks
 
         Returns:
             List of tracks with format: {id, title, album, year, play_count}
@@ -369,9 +369,9 @@ class NavidromeClient:
             all_tracks = []
             offset = 0
             batch_size = 500  # Max allowed by API
-            total_fetched = 0
 
-            print(f"🎵 Starting genre track collection for '{genre}'{' in library ' + library_id if library_id else ''}")
+            library_filter = library_ids[0] if library_ids and len(library_ids) > 0 else None
+            print(f"🎵 Starting genre track collection for '{genre}'{' in library ' + library_filter if library_filter else ''}")
 
             while True:
                 params = self._get_subsonic_params()
@@ -379,9 +379,9 @@ class NavidromeClient:
                 params["count"] = batch_size
                 params["offset"] = offset
 
-            # Add library filter if specified (use first library if multiple provided)
-            if library_ids and len(library_ids) > 0:
-                params["musicFolderId"] = library_ids[0]
+                # Add library filter if specified (use first library if multiple provided)
+                if library_ids and len(library_ids) > 0:
+                    params["musicFolderId"] = library_ids[0]
 
                 response = await self.client.get(
                     f"{self.base_url}/rest/getSongsByGenre.view",
