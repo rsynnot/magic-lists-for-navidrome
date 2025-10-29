@@ -6,7 +6,7 @@ let allGenres = [];
 let currentToast = null;
 
 // Global state for library selection
-let selectedLibraryId = null;
+let selectedLibraryIds = [];
 let allLibraries = [];
 
 
@@ -343,7 +343,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load artists and populate the select (from original working code)
 async function loadArtists() {
     try {
-        const url = selectedLibraryId ? `/api/artists?library_id=${encodeURIComponent(selectedLibraryId)}` : '/api/artists';
+        let url = '/api/artists';
+        if (selectedLibraryIds.length > 0) {
+            const libraryIdsParam = selectedLibraryIds.map(id => `library_id=${encodeURIComponent(id)}`).join('&');
+            url = `/api/artists?${libraryIdsParam}`;
+        }
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch artists');
@@ -386,7 +390,11 @@ async function loadArtists() {
 
 async function loadGenres() {
     try {
-        const url = selectedLibraryId ? `/api/genres?library_id=${encodeURIComponent(selectedLibraryId)}` : '/api/genres';
+        let url = '/api/genres';
+        if (selectedLibraryIds.length > 0) {
+            const libraryIdsParam = selectedLibraryIds.map(id => `library_id=${encodeURIComponent(id)}`).join('&');
+            url = `/api/genres?${libraryIdsParam}`;
+        }
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch genres');
@@ -444,15 +452,198 @@ function handleGenreSelection(e) {
     }
 }
 
-// Load libraries and populate the select dropdowns
+// Load libraries and populate the multi-select interface
 async function loadLibraries() {
     try {
         console.log('📚 Loading libraries from API...');
-        console.log(`📚 Current localStorage:`, localStorage.getItem('selectedLibraryId'));
+        console.log(`📚 Current localStorage:`, localStorage.getItem('selectedLibraryIds'));
         const response = await fetch('/api/music-folders');
         if (!response.ok) {
             throw new Error(`Failed to fetch libraries: ${response.status} ${response.statusText}`);
         }
+        allLibraries = await response.json();
+        console.log(`📚 Loaded ${allLibraries.length} libraries:`, allLibraries);
+
+        // Clear any previous selection
+        selectedLibraryIds = [];
+
+        // Get UI elements
+        const desktopLoading = document.getElementById('library-loading');
+        const desktopSingle = document.getElementById('library-single');
+        const desktopSingleName = document.getElementById('library-single-name');
+        const desktopMulti = document.getElementById('library-multi');
+        const desktopMultiText = document.getElementById('library-multi-text');
+        const desktopCheckboxes = document.getElementById('library-checkboxes');
+
+        const mobileLoading = document.getElementById('mobile-library-loading');
+        const mobileSingle = document.getElementById('mobile-library-single');
+        const mobileSingleName = document.getElementById('mobile-library-single-name');
+        const mobileMulti = document.getElementById('mobile-library-multi');
+        const mobileMultiText = document.getElementById('mobile-library-multi-text');
+        const mobileCheckboxes = document.getElementById('mobile-library-checkboxes');
+
+        // Hide loading states
+        if (desktopLoading) desktopLoading.classList.add('hidden');
+        if (mobileLoading) mobileLoading.classList.add('hidden');
+
+        // Hide all states initially
+        if (desktopSingle) desktopSingle.classList.add('hidden');
+        if (mobileSingle) mobileSingle.classList.add('hidden');
+        if (desktopMulti) desktopMulti.classList.add('hidden');
+        if (mobileMulti) mobileMulti.classList.add('hidden');
+
+        if (allLibraries.length === 1) {
+            // Single library - show read-only display (AC1)
+            const library = allLibraries[0];
+            selectedLibraryIds = [library.id];
+
+            if (desktopSingle && desktopSingleName) {
+                desktopSingleName.textContent = library.name;
+                desktopSingle.classList.remove('hidden');
+            }
+            if (mobileSingle && mobileSingleName) {
+                mobileSingleName.textContent = library.name;
+                mobileSingle.classList.remove('hidden');
+            }
+
+            console.log(`📚 Single library detected: ${library.name} (ID: ${library.id}) - showing readonly display`);
+
+            // Save to localStorage
+            localStorage.setItem('selectedLibraryIds', JSON.stringify(selectedLibraryIds));
+            console.log(`📚 Saved to localStorage:`, selectedLibraryIds);
+
+        } else {
+            // Multiple libraries - show multi-select interface (AC2)
+            console.log(`📚 Multiple libraries detected: ${allLibraries.length} libraries - showing multi-select`);
+
+            // Load saved library selections from localStorage
+            const savedLibraryIds = localStorage.getItem('selectedLibraryIds');
+            if (savedLibraryIds) {
+                try {
+                    const parsedIds = JSON.parse(savedLibraryIds);
+                    // Filter to only include libraries that still exist
+                    selectedLibraryIds = parsedIds.filter(id => allLibraries.some(lib => lib.id === id));
+                    console.log(`📚 Loaded saved library selections:`, selectedLibraryIds);
+                } catch (e) {
+                    console.warn('📚 Invalid saved library IDs, starting fresh');
+                    selectedLibraryIds = [];
+                }
+            } else {
+                console.log('📚 No saved library selections found');
+                selectedLibraryIds = [];
+            }
+
+            // Create checkboxes for desktop
+            if (desktopCheckboxes) {
+                desktopCheckboxes.innerHTML = '';
+                allLibraries.forEach(library => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'flex items-center px-3 py-2 hover:bg-gray-50 rounded';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox"
+                               id="desktop-lib-${library.id}"
+                               value="${library.id}"
+                               class="shrink-0 mt-0.5 border-gray-200 rounded text-blue-600 focus:ring-blue-500"
+                               ${selectedLibraryIds.includes(library.id) ? 'checked' : ''}>
+                        <label for="desktop-lib-${library.id}" class="ml-2 text-sm text-gray-800 cursor-pointer">
+                            ${library.name}
+                        </label>
+                    `;
+                    desktopCheckboxes.appendChild(checkboxDiv);
+                });
+            }
+
+            // Create checkboxes for mobile
+            if (mobileCheckboxes) {
+                mobileCheckboxes.innerHTML = '';
+                allLibraries.forEach(library => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'flex items-center px-3 py-2 hover:bg-gray-50 rounded';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox"
+                               id="mobile-lib-${library.id}"
+                               value="${library.id}"
+                               class="shrink-0 mt-0.5 border-gray-200 rounded text-blue-600 focus:ring-blue-500"
+                               ${selectedLibraryIds.includes(library.id) ? 'checked' : ''}>
+                        <label for="mobile-lib-${library.id}" class="ml-2 text-sm text-gray-800 cursor-pointer">
+                            ${library.name}
+                        </label>
+                    `;
+                    mobileCheckboxes.appendChild(checkboxDiv);
+                });
+            }
+
+            // Update display text
+            updateLibraryDisplayText();
+
+            // Show multi-select interfaces
+            if (desktopMulti) desktopMulti.classList.remove('hidden');
+            if (mobileMulti) mobileMulti.classList.remove('hidden');
+
+            // Add event listeners for dropdown toggles
+            const desktopToggle = document.getElementById('library-multi-toggle');
+            const desktopDropdown = document.getElementById('library-multi-dropdown');
+            const mobileToggle = document.getElementById('mobile-library-multi-toggle');
+            const mobileDropdown = document.getElementById('mobile-library-multi-dropdown');
+
+            if (desktopToggle && desktopDropdown) {
+                desktopToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    desktopDropdown.classList.toggle('hidden');
+                });
+            }
+            if (mobileToggle && mobileDropdown) {
+                mobileToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    mobileDropdown.classList.toggle('hidden');
+                });
+            }
+
+            // Add event listeners for checkboxes
+            allLibraries.forEach(library => {
+                const desktopCheckbox = document.getElementById(`desktop-lib-${library.id}`);
+                const mobileCheckbox = document.getElementById(`mobile-lib-${library.id}`);
+
+                if (desktopCheckbox) {
+                    desktopCheckbox.addEventListener('change', handleLibraryCheckboxChange);
+                }
+                if (mobileCheckbox) {
+                    mobileCheckbox.addEventListener('change', handleLibraryCheckboxChange);
+                }
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (desktopDropdown && !desktopMulti.contains(e.target)) {
+                    desktopDropdown.classList.add('hidden');
+                }
+                if (mobileDropdown && !mobileMulti.contains(e.target)) {
+                    mobileDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Error loading libraries:', error);
+        showToast('error', 'Failed to load music libraries');
+
+        // Hide loading and show error state
+        const desktopLoading = document.getElementById('library-loading');
+        const mobileLoading = document.getElementById('mobile-library-loading');
+        const desktopSingle = document.getElementById('library-single');
+        const mobileSingle = document.getElementById('mobile-library-single');
+        const desktopMulti = document.getElementById('library-multi');
+        const mobileMulti = document.getElementById('mobile-library-multi');
+
+        // Hide all states
+        if (desktopLoading) desktopLoading.classList.add('hidden');
+        if (mobileLoading) mobileLoading.classList.add('hidden');
+        if (desktopSingle) desktopSingle.classList.add('hidden');
+        if (mobileSingle) mobileSingle.classList.add('hidden');
+        if (desktopMulti) desktopMulti.classList.add('hidden');
+        if (mobileMulti) mobileMulti.classList.add('hidden');
+    }
+}
         allLibraries = await response.json();
         console.log(`📚 Loaded ${allLibraries.length} libraries:`, allLibraries);
 
@@ -629,58 +820,99 @@ async function loadLibraries() {
 }
 
 // Handle library selection change
-function handleLibrarySelection(e) {
-    selectedLibraryId = e.target.value;
 
-    // Save to localStorage
-    if (selectedLibraryId) {
-        localStorage.setItem('selectedLibraryId', selectedLibraryId);
+
+// Update the display text for multi-library selector
+function updateLibraryDisplayText() {
+    const desktopText = document.getElementById('library-multi-text');
+    const mobileText = document.getElementById('mobile-library-multi-text');
+
+    if (selectedLibraryIds.length === 0) {
+        if (desktopText) desktopText.textContent = 'Select Library(ies)...';
+        if (mobileText) mobileText.textContent = 'Select Library(ies)...';
+        if (desktopText) desktopText.className = 'text-gray-500';
+        if (mobileText) mobileText.className = 'text-gray-500';
+    } else if (selectedLibraryIds.length === 1) {
+        const library = allLibraries.find(lib => lib.id === selectedLibraryIds[0]);
+        const libraryName = library ? library.name : '1 library';
+        if (desktopText) desktopText.textContent = libraryName;
+        if (mobileText) mobileText.textContent = libraryName;
+        if (desktopText) desktopText.className = 'text-gray-900';
+        if (mobileText) mobileText.className = 'text-gray-900';
     } else {
-        localStorage.removeItem('selectedLibraryId');
+        if (desktopText) desktopText.textContent = `${selectedLibraryIds.length} libraries`;
+        if (mobileText) mobileText.textContent = `${selectedLibraryIds.length} libraries`;
+        if (desktopText) desktopText.className = 'text-gray-900';
+        if (mobileText) mobileText.className = 'text-gray-900';
+    }
+}
+
+// Handle library checkbox changes
+function handleLibraryCheckboxChange(e) {
+    const libraryId = e.target.value;
+    const isChecked = e.target.checked;
+
+    if (isChecked) {
+        if (!selectedLibraryIds.includes(libraryId)) {
+            selectedLibraryIds.push(libraryId);
+        }
+    } else {
+        selectedLibraryIds = selectedLibraryIds.filter(id => id !== libraryId);
     }
 
-    // Sync both dropdowns (only if they exist and are visible)
-    const desktopSelect = document.getElementById('library-select');
-    const mobileSelect = document.getElementById('mobile-library-select');
+    // Sync checkboxes between desktop and mobile
+    const desktopCheckbox = document.getElementById(`desktop-lib-${libraryId}`);
+    const mobileCheckbox = document.getElementById(`mobile-lib-${libraryId}`);
 
-    if (e.target === desktopSelect && mobileSelect && !mobileSelect.classList.contains('hidden')) {
-        mobileSelect.value = selectedLibraryId;
-        // Reinitialize HSSelect for mobile
-        if (window.HSSelect) {
-            const selectInstance = window.HSSelect.getInstance(mobileSelect);
-            if (selectInstance) {
-                selectInstance.destroy();
-                window.HSSelect.autoInit();
-            }
-        }
-    } else if (e.target === mobileSelect && desktopSelect && !desktopSelect.classList.contains('hidden')) {
-        desktopSelect.value = selectedLibraryId;
-        // Reinitialize HSSelect for desktop
-        if (window.HSSelect) {
-            const selectInstance = window.HSSelect.getInstance(desktopSelect);
-            if (selectInstance) {
-                selectInstance.destroy();
-                window.HSSelect.autoInit();
-            }
-        }
+    if (desktopCheckbox && desktopCheckbox !== e.target) {
+        desktopCheckbox.checked = isChecked;
+    }
+    if (mobileCheckbox && mobileCheckbox !== e.target) {
+        mobileCheckbox.checked = isChecked;
     }
 
-    // Refresh current page content based on library change
+    // Update localStorage
+    localStorage.setItem('selectedLibraryIds', JSON.stringify(selectedLibraryIds));
+
+    // Update display text
+    updateLibraryDisplayText();
+
+    // Refresh current page content if needed
     const currentPage = getPageFromURL(window.location.pathname);
     if (currentPage === 'this-is-artist') {
-        // Refresh artist dropdown for the new library
         loadArtists();
     } else if (currentPage === 'genre-mix') {
-        // Refresh genre dropdown for the new library
         loadGenres();
     }
+
+    console.log(`📚 Library selection updated:`, selectedLibraryIds);
+}
+
+// Check if libraries are selected and show warning if not
+function checkLibrarySelection() {
+    if (selectedLibraryIds.length === 0) {
+        showToast('warning', 'Please select a music library.');
+        // Highlight the library selector
+        const libraryMulti = document.getElementById('library-multi');
+        const mobileLibraryMulti = document.getElementById('mobile-library-multi');
+        if (libraryMulti) {
+            libraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+            setTimeout(() => libraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+        }
+        if (mobileLibraryMulti) {
+            mobileLibraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+            setTimeout(() => mobileLibraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+        }
+        return false;
+    }
+    return true;
 }
 
 // Handle artist selection change
 function handleArtistSelection(e) {
     selectedArtistId = e.target.value;
     const submitBtn = document.getElementById('create-artist-playlist-btn');
-    
+
     if (selectedArtistId) {
         submitBtn.disabled = false;
     } else {
@@ -702,9 +934,13 @@ document.getElementById('genre-mix-form').addEventListener('submit', function(e)
 
 async function createArtistPlaylist() {
     const submitBtn = document.getElementById('create-artist-playlist-btn');
-    
+
     if (!selectedArtistId) {
         showToast('error', 'Please select an artist first');
+        return;
+    }
+
+    if (!checkLibrarySelection()) {
         return;
     }
 
@@ -725,7 +961,7 @@ async function createArtistPlaylist() {
                 artist_ids: [selectedArtistId],
                 refresh_frequency: refreshFrequency,
                 playlist_length: parseInt(playlistLength),
-                library_id: selectedLibraryId
+                library_ids: selectedLibraryIds
             })
         });
 
@@ -769,6 +1005,10 @@ async function createGenrePlaylist() {
         return;
     }
 
+    if (!checkLibrarySelection()) {
+        return;
+    }
+
     // Show loading toast
     showToast('loading', 'Creating your playlist...', 0);
     submitBtn.disabled = true;
@@ -786,7 +1026,7 @@ async function createGenrePlaylist() {
                 genre: selectedGenre,
                 refresh_frequency: refreshFrequency,
                 playlist_length: parseInt(playlistLength),
-                library_id: selectedLibraryId
+                library_ids: selectedLibraryIds
             })
         });
 
@@ -827,6 +1067,10 @@ async function createGenrePlaylist() {
 async function generateRediscoverWeekly() {
     const button = document.getElementById('rediscover-btn');
 
+    if (!checkLibrarySelection()) {
+        return;
+    }
+
     // Show loading toast
     showToast('loading', 'Analyzing your listening history...', 0);
     button.disabled = true;
@@ -843,7 +1087,7 @@ async function generateRediscoverWeekly() {
             body: JSON.stringify({
                 refresh_frequency: refreshFrequency,
                 playlist_length: parseInt(playlistLength),
-                library_id: selectedLibraryId
+                library_ids: selectedLibraryIds
             })
         });
 
@@ -1357,14 +1601,18 @@ function handlePageNavigation(page) {
         console.log('🏠 Home page - showing welcome content');
     } else if (page === 'this-is-artist') {
         contentId = 'this-is-content';
-        // Load artists when navigating to This Is page
-        setTimeout(() => loadArtists(), 100);
+        // Load artists when navigating to This Is page (only if libraries selected)
+        if (selectedLibraryIds.length > 0) {
+            setTimeout(() => loadArtists(), 100);
+        }
     } else if (page === 're-discover') {
         contentId = 'rediscover-content';
     } else if (page === 'genre-mix') {
         contentId = 'genre-mix-content';
-        // Load genres when navigating to Genre Mix page
-        setTimeout(() => loadGenres(), 100);
+        // Load genres when navigating to Genre Mix page (only if libraries selected)
+        if (selectedLibraryIds.length > 0) {
+            setTimeout(() => loadGenres(), 100);
+        }
     } else if (page === 'playlists') {
         contentId = 'manage-playlists-content';
         // Load playlists when navigating to manage page

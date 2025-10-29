@@ -15,7 +15,7 @@ class CreatePlaylistRequest(BaseModel):
     playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
-    library_id: Optional[str] = None  # Optional library ID to filter tracks
+    library_ids: List[str] = []  # List of library IDs to filter tracks
 
 class CreateGenrePlaylistRequest(BaseModel):
     """Request schema for creating a genre mix playlist"""
@@ -23,7 +23,7 @@ class CreateGenrePlaylistRequest(BaseModel):
     playlist_name: Optional[str] = None  # Optional, will auto-generate if not provided
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
-    library_id: Optional[str] = None  # Optional library ID to filter tracks
+    library_ids: List[str] = []  # List of library IDs to filter tracks
 
 class Playlist(BaseModel):
     """Schema for a stored playlist"""
@@ -33,6 +33,7 @@ class Playlist(BaseModel):
     songs: List[str] = []
     reasoning: Optional[str] = None
     navidrome_playlist_id: Optional[str] = None
+    library_ids: List[str] = []
     created_at: str
     updated_at: str
 
@@ -70,7 +71,7 @@ class CreateRediscoverPlaylistRequest(BaseModel):
     """Request schema for creating a Re-Discover Weekly playlist"""
     refresh_frequency: str = "weekly"  # "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
-    library_id: Optional[str] = None  # Optional library ID to filter tracks
+    library_ids: List[str] = []  # List of library IDs to filter tracks
 
 class ScheduledPlaylist(BaseModel):
     """Schema for a scheduled playlist"""

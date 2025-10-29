@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
+from fastapi import Query
 import uvicorn
 import os
 import logging
@@ -175,7 +176,7 @@ async def system_check_page(request: Request):
 # SYSTEM CHECK FEATURE - END
 
 @app.get("/api/artists")
-async def get_artists(library_id: str = None):
+async def get_artists(library_id: List[str] = Query(None)):
     """Get list of artists from Navidrome"""
     try:
         client = get_navidrome_client()
@@ -192,7 +193,7 @@ async def get_artists(library_id: str = None):
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
 
 @app.get("/api/genres")
-async def get_genres(library_id: str = None):
+async def get_genres(library_id: List[str] = Query(None)):
     """Get list of genres from Navidrome"""
     try:
         client = get_navidrome_client()
@@ -295,7 +296,7 @@ async def create_playlist(
         
         # Get tracks for only the first artist
         all_tracks = []
-        tracks = await nav_client.get_tracks_by_artist(first_artist_id, request.library_id)
+        tracks = await nav_client.get_tracks_by_artist(first_artist_id, request.library_ids)
         if tracks:
             all_tracks.extend(tracks)
         
@@ -381,7 +382,8 @@ async def create_playlist(
             songs=track_titles,
             reasoning=reasoning,
             navidrome_playlist_id=navidrome_playlist_id,
-            playlist_length=request.playlist_length
+            playlist_length=request.playlist_length,
+            library_ids=request.library_ids
         )
         
         # Handle scheduling if not "none" or "never"

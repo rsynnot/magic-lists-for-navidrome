@@ -80,32 +80,38 @@
                  <div class="px-4 h-full overflow-y-auto">
                      <nav class="hs-accordion-group pt-1 pb-2 w-full" role="tablist">
 
-                         <!-- Library Selector -->
-                         <div class="w-full block mt-0 pt-2 pb-3">
-                             <label for="library-select" class="block text-xs text-gray-500 font-medium mb-1">Music Library</label>
-                             <div class="relative">
-                                 <!-- Loading State -->
-                                 <div id="library-loading" class="flex items-center py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
-                                     <svg class="animate-spin h-4 w-4 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                     </svg>
-                                     <span class="text-sm text-gray-500">Loading libraries...</span>
-                                 </div>
-                                 <!-- Single Library State -->
-                                 <div id="library-single" class="hidden py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
-                                     <span id="library-single-name" class="text-sm text-gray-900"></span>
-                                 </div>
-                                 <!-- Multiple Libraries State -->
-                                  <select
-                                      id="library-select"
-                                      class="hidden"
-                                      style="display: none;"
-                                  >
-                                     <option value="">Choose a library</option>
-                                  </select>
-                              </div>
-                          </div>
+                          <!-- Library Selector -->
+                          <div class="w-full block mt-0 pt-2 pb-3">
+                              <label class="block text-xs text-gray-500 font-medium mb-1">Music Library</label>
+                              <div class="relative">
+                                  <!-- Loading State -->
+                                  <div id="library-loading" class="flex items-center py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                      <svg class="animate-spin h-4 w-4 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      <span class="text-sm text-gray-500">Loading libraries...</span>
+                                  </div>
+                                  <!-- Single Library State -->
+                                  <div id="library-single" class="hidden py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                      <span id="library-single-name" class="text-sm text-gray-900"></span>
+                                  </div>
+                                  <!-- Multiple Libraries State -->
+                                  <div id="library-multi" class="hidden">
+                                      <button id="library-multi-toggle" type="button" class="relative py-2 px-3 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]">
+                                          <span id="library-multi-text" class="text-gray-500">Select Library(ies)...</span>
+                                          <svg class="absolute top-1/2 end-3 -translate-y-1/2 size-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                              <path d="m7 9 5 5 5-5"/>
+                                          </svg>
+                                      </button>
+                                      <div id="library-multi-dropdown" class="hidden absolute z-50 w-full max-h-72 p-1 mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto shadow-lg">
+                                          <div id="library-checkboxes" class="space-y-1">
+                                              <!-- Checkboxes will be dynamically inserted here -->
+                                          </div>
+                                      </div>
+                                  </div>
+                               </div>
+                           </div>
 
                          <div class="border-t border-gray-200 w-full block mt-0 pt-2">
                              <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm bg-gray-100 text-gray-900 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200 " href="#" data-page="home">
@@ -191,32 +197,38 @@
                          <nav class="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300">
                              <div class="p-2 w-full">
 
-                                 <!-- Library Selector -->
-                                 <div class="w-full block mt-0 pt-2 pb-3">
-                                     <label for="mobile-library-select" class="block text-xs text-gray-500 font-medium mb-1">Music Library</label>
-                                     <div class="relative">
-                                         <!-- Loading State -->
-                                         <div id="mobile-library-loading" class="flex items-center py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
-                                             <svg class="animate-spin h-4 w-4 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                             </svg>
-                                             <span class="text-sm text-gray-500">Loading libraries...</span>
-                                         </div>
-                                         <!-- Single Library State -->
-                                         <div id="mobile-library-single" class="hidden py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
-                                             <span id="mobile-library-single-name" class="text-sm text-gray-900"></span>
-                                         </div>
-                                         <!-- Multiple Libraries State -->
-                                          <select
-                                              id="mobile-library-select"
-                                              class="hidden"
-                                              style="display: none;"
-                                          >
-                                             <option value="">Choose a library</option>
-                                         </select>
-                                     </div>
-                                 </div>
+                                  <!-- Library Selector -->
+                                  <div class="w-full block mt-0 pt-2 pb-3">
+                                      <label class="block text-xs text-gray-500 font-medium mb-1">Music Library</label>
+                                      <div class="relative">
+                                          <!-- Loading State -->
+                                          <div id="mobile-library-loading" class="flex items-center py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                              <svg class="animate-spin h-4 w-4 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                              </svg>
+                                              <span class="text-sm text-gray-500">Loading libraries...</span>
+                                          </div>
+                                          <!-- Single Library State -->
+                                          <div id="mobile-library-single" class="hidden py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                              <span id="mobile-library-single-name" class="text-sm text-gray-900"></span>
+                                          </div>
+                                          <!-- Multiple Libraries State -->
+                                          <div id="mobile-library-multi" class="hidden">
+                                              <button id="mobile-library-multi-toggle" type="button" class="relative py-2 px-3 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]">
+                                                  <span id="mobile-library-multi-text" class="text-gray-500">Select Library(ies)...</span>
+                                                  <svg class="absolute top-1/2 end-3 -translate-y-1/2 size-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                      <path d="m7 9 5 5 5-5"/>
+                                                  </svg>
+                                              </button>
+                                              <div id="mobile-library-multi-dropdown" class="hidden absolute z-50 w-full max-h-72 p-1 mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto shadow-lg">
+                                                  <div id="mobile-library-checkboxes" class="space-y-1">
+                                                      <!-- Checkboxes will be dynamically inserted here -->
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
                                  </div>
 
                                  <div class="border-t border-gray-200 w-full block mt-0 pt-2">
