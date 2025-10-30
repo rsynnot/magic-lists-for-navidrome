@@ -506,7 +506,7 @@ async def create_genre_playlist(
         playlist_name = request.playlist_name or f"Genre Mix: {request.genre}"
 
         # Get tracks for the genre
-        all_tracks = await nav_client.get_tracks_by_genre(request.genre, request.library_id)
+        all_tracks = await nav_client.get_tracks_by_genre(request.genre, request.library_ids)
         scheduler_logger.info(f"🎵 Found {len(all_tracks)} total tracks for genre '{request.genre}'")
 
         if not all_tracks:
@@ -590,7 +590,8 @@ async def create_genre_playlist(
             songs=track_titles,
             reasoning=reasoning,
             navidrome_playlist_id=navidrome_playlist_id,
-            playlist_length=request.playlist_length
+            playlist_length=request.playlist_length,
+            library_ids=request.library_ids
         )
 
         # Handle scheduling if not "none" or "never"
@@ -659,7 +660,7 @@ async def create_rediscover_playlist(
 ):
     """Create a Re-Discover Weekly playlist in Navidrome"""
     try:
-        scheduler_logger.info(f"🎵 Starting Re-Discover playlist creation with length {request.playlist_length}, library_id: {request.library_id}")
+        scheduler_logger.info(f"🎵 Starting Re-Discover playlist creation with length {request.playlist_length}, library_ids: {request.library_ids}")
 
         # Get Navidrome client
         nav_client = get_navidrome_client()
@@ -669,7 +670,7 @@ async def create_rediscover_playlist(
 
         # Generate the playlist tracks with user-specified length and AI curation
         scheduler_logger.info("🎵 Generating rediscover tracks...")
-        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True, library_id=request.library_id)
+        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True, library_id=request.library_ids[0] if request.library_ids else "", variety_context="")
         scheduler_logger.info(f"🎵 Generated {len(tracks) if tracks else 0} tracks")
         
         if not tracks:

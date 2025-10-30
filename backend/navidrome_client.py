@@ -367,6 +367,7 @@ class NavidromeClient:
             await self._ensure_authenticated()
 
             all_tracks = []
+            total_fetched = 0
             offset = 0
             batch_size = 500  # Max allowed by API
 

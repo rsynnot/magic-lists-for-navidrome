@@ -270,7 +270,7 @@ async function trackLibrarySize() {
 
         if (response.ok) {
             const data = await response.json();
-            
+
             if (data.tracked && typeof window.rybbit !== 'undefined') {
                 // Track library size event with Rybbit
                 window.rybbit.event('Library Size Tracked', {
@@ -281,8 +281,7 @@ async function trackLibrarySize() {
             }
         }
     } catch (error) {
-        console.error('Error tracking library size:', error);
-        // Silently fail - don't disrupt user experience
+        console.error('❌ Error tracking library size:', error);
     }
 }
 
@@ -319,6 +318,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const artistSelect = document.getElementById('artist-search-select');
     if (artistSelect) {
         artistSelect.addEventListener('change', handleArtistSelection);
+        // Add validation on click - highlight library selector if no libraries selected
+        artistSelect.addEventListener('click', function() {
+            if (selectedLibraryIds.length === 0) {
+                // Apply validation styling to library selectors
+                const libraryMulti = document.getElementById('library-multi');
+                const mobileLibraryMulti = document.getElementById('mobile-library-multi');
+                if (libraryMulti) {
+                    libraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+                    setTimeout(() => libraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+                }
+                if (mobileLibraryMulti) {
+                    mobileLibraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+                    setTimeout(() => mobileLibraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+                }
+                showToast('warning', 'Please select a music library first.');
+            }
+        });
     }
     
     // Load libraries on page load
@@ -432,8 +448,6 @@ async function loadGenres() {
                 window.HSSelect.autoInit();
             }
         }
-
-        showToast('success', `Loaded ${allGenres.length} genres from your library`);
     } catch (error) {
         console.error('Error loading genres:', error);
         showToast('error', 'Failed to load genres from your library');
@@ -645,45 +659,6 @@ async function loadLibraries() {
     }
 }
 
-    } catch (error) {
-        console.error('Error loading libraries:', error);
-        showToast('error', 'Failed to load music libraries');
-
-        // Hide loading and show error state
-        const desktopLoading = document.getElementById('library-loading');
-        const mobileLoading = document.getElementById('mobile-library-loading');
-        const desktopSingle = document.getElementById('library-single');
-        const desktopSingleName = document.getElementById('library-single-name');
-        const mobileSingle = document.getElementById('mobile-library-single');
-        const mobileSingleName = document.getElementById('mobile-library-single-name');
-        const desktopSelect = document.getElementById('library-select');
-        const mobileSelect = document.getElementById('mobile-library-select');
-
-        // Hide all states
-        if (desktopLoading) desktopLoading.classList.add('hidden');
-        if (mobileLoading) mobileLoading.classList.add('hidden');
-        if (desktopSingle) desktopSingle.classList.add('hidden');
-        if (mobileSingle) mobileSingle.classList.add('hidden');
-        if (desktopSelect) desktopSelect.classList.add('hidden');
-        if (mobileSelect) mobileSelect.classList.add('hidden');
-
-        // Show fallback single library state
-        if (desktopSingle && desktopSingleName) {
-            desktopSingleName.textContent = 'Default Library (API error)';
-            desktopSingle.classList.remove('hidden');
-        }
-        if (mobileSingle && mobileSingleName) {
-            mobileSingleName.textContent = 'Default Library (API error)';
-            mobileSingle.classList.remove('hidden');
-        }
-
-        console.log('📚 API error - showing fallback library state');
-
-        // Set a default library ID to allow the app to continue
-        selectedLibraryId = null;
-    }
-}
-
 // Handle library selection change
 
 
@@ -693,22 +668,22 @@ function updateLibraryDisplayText() {
     const mobileText = document.getElementById('mobile-library-multi-text');
 
     if (selectedLibraryIds.length === 0) {
-        if (desktopText) desktopText.textContent = 'Select Library(ies)...';
-        if (mobileText) mobileText.textContent = 'Select Library(ies)...';
-        if (desktopText) desktopText.className = 'text-gray-500';
-        if (mobileText) mobileText.className = 'text-gray-500';
+        if (desktopText) desktopText.textContent = 'Select library';
+        if (mobileText) mobileText.textContent = 'Select library';
+        if (desktopText) desktopText.className = 'text-gray-500 truncate';
+        if (mobileText) mobileText.className = 'text-gray-500 truncate';
     } else if (selectedLibraryIds.length === 1) {
         const library = allLibraries.find(lib => lib.id === selectedLibraryIds[0]);
         const libraryName = library ? library.name : '1 library';
         if (desktopText) desktopText.textContent = libraryName;
         if (mobileText) mobileText.textContent = libraryName;
-        if (desktopText) desktopText.className = 'text-gray-900';
-        if (mobileText) mobileText.className = 'text-gray-900';
+        if (desktopText) desktopText.className = 'text-gray-900 truncate';
+        if (mobileText) mobileText.className = 'text-gray-900 truncate';
     } else {
         if (desktopText) desktopText.textContent = `${selectedLibraryIds.length} libraries`;
         if (mobileText) mobileText.textContent = `${selectedLibraryIds.length} libraries`;
-        if (desktopText) desktopText.className = 'text-gray-900';
-        if (mobileText) mobileText.className = 'text-gray-900';
+        if (desktopText) desktopText.className = 'text-gray-900 truncate';
+        if (mobileText) mobileText.className = 'text-gray-900 truncate';
     }
 }
 
@@ -1160,17 +1135,21 @@ async function runSystemChecks() {
     const resultsContainer = document.getElementById('system-check-results');
     const successBanner = document.getElementById('success-banner');
     const errorBanner = document.getElementById('error-banner');
-    const continueBtn = document.getElementById('continue-btn');
     const updateSettingsBtn = document.getElementById('update-settings-btn');
     const rerunBtn = document.getElementById('rerun-checks-btn');
 
     // Reset UI
     successBanner.classList.add('hidden');
     errorBanner.classList.add('hidden');
-    continueBtn.classList.add('hidden');
     updateSettingsBtn.classList.add('hidden');
     rerunBtn.disabled = true;
-    rerunBtn.textContent = 'Running Checks...';
+    rerunBtn.innerHTML = `
+        <svg class="animate-spin h-4 w-4 text-gray-400 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-gray-400">Running checks...</span>
+    `;
 
     try {
         // Call backend health check endpoint
@@ -1187,7 +1166,6 @@ async function runSystemChecks() {
         // Show appropriate banner and buttons
         if (data.all_passed) {
             successBanner.classList.remove('hidden');
-            continueBtn.classList.remove('hidden');
             
             // Track Rybbit event
             if (typeof window.rybbit !== 'undefined') {
@@ -1236,7 +1214,7 @@ async function runSystemChecks() {
         errorBanner.classList.remove('hidden');
     } finally {
         rerunBtn.disabled = false;
-        rerunBtn.textContent = 'Re-run Checks';
+        rerunBtn.innerHTML = 'Re-run Checks';
     }
 }
 
@@ -1344,7 +1322,7 @@ function getStatusText(status) {
         case 'warning':
             return 'Warning';
         case 'info':
-            return 'Info';
+            return '';
         case 'error':
             return 'Failed';
         default:
