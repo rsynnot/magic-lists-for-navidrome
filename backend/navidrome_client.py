@@ -1,6 +1,6 @@
 import httpx
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union, Optional
 
 class NavidromeClient:
     """Simple client for interacting with Navidrome Subsonic API"""
@@ -76,70 +76,118 @@ class NavidromeClient:
                 "f": "json"
             }
     
-    async def get_artists(self) -> List[Dict[str, Any]]:
+    async def get_artists(self, library_ids: Union[List[str], str, None] = None) -> List[Dict[str, Any]]:
         """Fetch all artists from Navidrome using Subsonic API
-        
+
+        Args:
+            library_ids: Optional library ID(s) to filter artists (string, list of strings, or None)
+
         Returns:
             List of artists with format: {id, name}
         """
         try:
             await self._ensure_authenticated()
-            
+
+            # Normalize library_ids to a list
+            if isinstance(library_ids, str):
+                library_ids_list = [library_ids]
+            elif isinstance(library_ids, list):
+                library_ids_list = library_ids
+            else:
+                library_ids_list = []
+
+            # If no specific libraries requested, use env var or fetch from all libraries
+            if not library_ids_list:
+                env_library_id = os.getenv("NAVIDROME_LIBRARY_ID")
+                if env_library_id:
+                    library_ids_list = [env_library_id]
+                else:
+                    # Fetch from all libraries
+                    library_ids_list = None
+
+            all_artists = []
+
+            if library_ids_list:
+                # Fetch from specific libraries
+                for lib_id in library_ids_list:
+                    print(f"🎵 Fetching artists from library ID: {lib_id}")
+                    artists = await self._get_artists_from_library(lib_id)
+                    all_artists.extend(artists)
+            else:
+                # Fetch from all libraries (no filter)
+                print("🎵 Fetching artists from all libraries")
+                artists = await self._get_artists_from_library(None)
+                all_artists.extend(artists)
+
+            # Remove duplicates based on artist ID
+            unique_artists = []
+            seen_ids = set()
+            for artist in all_artists:
+                if artist['id'] not in seen_ids:
+                    unique_artists.append(artist)
+                    seen_ids.add(artist['id'])
+
+            print(f"✅ Retrieved {len(unique_artists)} unique artists from {len(library_ids_list) if library_ids_list else 'all'} libraries")
+            return unique_artists
+
+        except Exception as e:
+            print(f"❌ Error in get_artists: {e}")
+            raise
+
+    async def _get_artists_from_library(self, library_id: Union[str, None]) -> List[Dict[str, Any]]:
+        """Fetch artists from a specific library or all libraries"""
+        try:
             params = self._get_subsonic_params()
-            
-            # MULTIPLE LIBRARIES FIX - START
-            # Add optional library ID if configured
-            library_id = os.getenv("NAVIDROME_LIBRARY_ID")
+
+            # Add library filter if specified
             if library_id:
                 params["musicFolderId"] = library_id
-                print(f"🎵 Using configured library ID: {library_id}")
-            # MULTIPLE LIBRARIES FIX - END
-            
+                print(f"🎵 Using library ID: {library_id}")
+
             # Log the full request for debugging (minus auth details)
             log_params = {k: v for k, v in params.items() if k not in ['t', 's']}
             print(f"🌐 getArtists request: GET {self.base_url}/rest/getArtists.view with params: {log_params}")
-            
+
             response = await self.client.get(
                 f"{self.base_url}/rest/getArtists.view",
                 params=params
             )
             response.raise_for_status()
-            
+
             data = response.json()
             print(f"📊 getArtists response status: {response.status_code}")
-            
+
             # Handle Subsonic API response format
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
                 error_message = error.get('message', 'Unknown error')
                 error_code = error.get('code', 0)
-                
+
                 print(f"❌ Subsonic API error: {error_message} (code: {error_code})")
-                
-                # MULTIPLE LIBRARIES FIX - START
+
                 # Handle "Library not found" error
                 if "Library not found" in error_message or "empty" in error_message.lower():
                     print("⚠️ Library not found error detected - attempting retry without library filter")
-                    
+
                     # Retry without library filter
                     retry_params = self._get_subsonic_params()
                     # Remove any library-specific parameters
                     retry_params.pop("musicFolderId", None)
-                    
+
                     print(f"🔄 Retry getArtists request: GET {self.base_url}/rest/getArtists.view with params: {retry_params}")
-                    
+
                     retry_response = await self.client.get(
                         f"{self.base_url}/rest/getArtists.view",
                         params=retry_params
                     )
                     retry_response.raise_for_status()
-                    
+
                     retry_data = retry_response.json()
                     retry_subsonic = retry_data.get("subsonic-response", {})
-                    
+
                     print(f"📊 Retry getArtists response status: {retry_response.status_code}")
-                    
+
                     if retry_subsonic.get("status") == "ok":
                         print("✅ Retry successful - multiple libraries detected, using all available libraries")
                         data = retry_data
@@ -147,13 +195,16 @@ class NavidromeClient:
                     else:
                         retry_error = retry_subsonic.get("error", {})
                         raise Exception(f"Multiple libraries error: {retry_error.get('message', 'Unknown error')}")
-                # MULTIPLE LIBRARIES FIX - END
                 else:
                     raise Exception(f"Subsonic API error: {error_message}")
-            
+
+            # Ensure we have valid data to process
+            if 'data' not in locals():
+                raise Exception("No valid response data available")
+
             artists_data = subsonic_response.get("artists", {})
             artists_list = []
-            
+
             # Parse the indexed artist structure
             for index_group in artists_data.get("index", []):
                 for artist in index_group.get("artist", []):
@@ -161,10 +212,10 @@ class NavidromeClient:
                         "id": artist.get("id"),
                         "name": artist.get("name")
                     })
-            
+
             print(f"✅ Successfully fetched {len(artists_list)} artists from Navidrome")
             return artists_list
-                
+
         except httpx.RequestError as e:
             print(f"🌐 Network error in getArtists: {e}")
             raise Exception(f"Network error connecting to Navidrome: {e}")
@@ -174,21 +225,74 @@ class NavidromeClient:
         except Exception as e:
             print(f"💥 Unexpected error in getArtists: {e}")
             raise Exception(f"Unexpected error fetching artists: {e}")
-    
-    async def get_tracks_by_artist(self, artist_id: str) -> List[Dict[str, Any]]:
+
+    async def get_music_folders(self) -> List[Dict[str, Any]]:
+        """Get all available music folders/libraries using Subsonic API
+
+        Returns:
+            List of music folders with format: {id, name}
+        """
+        try:
+            await self._ensure_authenticated()
+
+            params = self._get_subsonic_params()
+
+            print(f"🌐 getMusicFolders request: GET {self.base_url}/rest/getMusicFolders.view")
+
+            response = await self.client.get(
+                f"{self.base_url}/rest/getMusicFolders.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Handle Subsonic API response format
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+
+            music_folders_data = subsonic_response.get("musicFolders", {})
+            folders = music_folders_data.get("musicFolder", [])
+
+            # Ensure folders is a list (API might return single object)
+            if isinstance(folders, dict):
+                folders = [folders]
+
+            result = []
+            for folder in folders:
+                result.append({
+                    "id": str(folder.get("id", "")),
+                    "name": folder.get("name", "Unknown Library")
+                })
+
+            print(f"📁 Found {len(result)} music folders: {[f['name'] for f in result]}")
+            return result
+
+        except Exception as e:
+            print(f"💥 Error fetching music folders: {e}")
+            raise Exception(f"Failed to fetch music folders: {e}")
+
+    async def get_tracks_by_artist(self, artist_id: str, library_ids: Union[List[str], None] = None) -> List[Dict[str, Any]]:
         """Fetch tracks for a specific artist using Subsonic API
-        
+
         Args:
             artist_id: The artist ID
-            
+            library_ids: Optional list of library IDs to filter tracks
+
         Returns:
             List of tracks with format: {id, title, album, year, play_count}
         """
         try:
             await self._ensure_authenticated()
-            
+
             params = self._get_subsonic_params()
             params["id"] = artist_id
+
+            # Add library filter if specified (use first library if multiple provided)
+            if library_ids and len(library_ids) > 0:
+                params["musicFolderId"] = library_ids[0]
             
             response = await self.client.get(
                 f"{self.base_url}/rest/getArtist.view",
@@ -249,11 +353,12 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
 
-    async def get_tracks_by_genre(self, genre: str) -> List[Dict[str, Any]]:
+    async def get_tracks_by_genre(self, genre: str, library_ids: List[str] = None) -> List[Dict[str, Any]]:
         """Fetch tracks for a specific genre using Subsonic getSongsByGenre API with pagination
 
         Args:
             genre: The genre name
+            library_ids: Optional list of library IDs to filter tracks
 
         Returns:
             List of tracks with format: {id, title, album, year, play_count}
@@ -262,17 +367,22 @@ class NavidromeClient:
             await self._ensure_authenticated()
 
             all_tracks = []
+            total_fetched = 0
             offset = 0
             batch_size = 500  # Max allowed by API
-            total_fetched = 0
 
-            print(f"🎵 Starting genre track collection for '{genre}'")
+            library_filter = library_ids[0] if library_ids and len(library_ids) > 0 else None
+            print(f"🎵 Starting genre track collection for '{genre}'{' in library ' + library_filter if library_filter else ''}")
 
             while True:
                 params = self._get_subsonic_params()
                 params["genre"] = genre
                 params["count"] = batch_size
                 params["offset"] = offset
+
+                # Add library filter if specified (use first library if multiple provided)
+                if library_ids and len(library_ids) > 0:
+                    params["musicFolderId"] = library_ids[0]
 
                 response = await self.client.get(
                     f"{self.base_url}/rest/getSongsByGenre.view",
@@ -406,8 +516,11 @@ class NavidromeClient:
             print(f"❌ Fallback method also failed: {e}")
             return []
 
-    async def get_genres(self) -> List[str]:
+    async def get_genres(self, library_ids: Union[List[str], str, None] = None) -> List[str]:
         """Fetch all available genres from Navidrome using search
+
+        Args:
+            library_ids: Optional library ID(s) to filter genres (string, list of strings, or None)
 
         Returns:
             List of unique genre names
@@ -415,12 +528,57 @@ class NavidromeClient:
         try:
             await self._ensure_authenticated()
 
+            # Normalize library_ids to a list
+            if isinstance(library_ids, str):
+                library_ids_list = [library_ids]
+            elif isinstance(library_ids, list):
+                library_ids_list = library_ids
+            else:
+                library_ids_list = []
+
+            # If no specific libraries requested, use env var or fetch from all libraries
+            if not library_ids_list:
+                env_library_id = os.getenv("NAVIDROME_LIBRARY_ID")
+                if env_library_id:
+                    library_ids_list = [env_library_id]
+                else:
+                    # Fetch from all libraries
+                    library_ids_list = None
+
+            all_genres = set()
+
+            if library_ids_list:
+                # Fetch from specific libraries
+                for lib_id in library_ids_list:
+                    print(f"🎵 Fetching genres from library ID: {lib_id}")
+                    genres = await self._get_genres_from_library(lib_id)
+                    all_genres.update(genres)
+            else:
+                # Fetch from all libraries (no filter)
+                print("🎵 Fetching genres from all libraries")
+                genres = await self._get_genres_from_library(None)
+                all_genres.update(genres)
+
+            print(f"✅ Retrieved {len(all_genres)} unique genres from {len(library_ids_list) if library_ids_list else 'all'} libraries")
+            return sorted(list(all_genres))
+
+        except Exception as e:
+            print(f"❌ Error in get_genres: {e}")
+            raise
+
+    async def _get_genres_from_library(self, library_id: Union[str, None]) -> List[str]:
+        """Fetch genres from a specific library or all libraries"""
+        try:
             # Use a broad search to get tracks with genre information
             params = self._get_subsonic_params()
             params["query"] = ""  # Empty query to get all
             params["artistCount"] = 0
             params["albumCount"] = 0
             params["songCount"] = 2000  # Get larger sample of tracks
+
+            # Add library filter if specified
+            if library_id:
+                params["musicFolderId"] = library_id
 
             response = await self.client.get(
                 f"{self.base_url}/rest/search3.view",
@@ -446,7 +604,7 @@ class NavidromeClient:
                 if genre:
                     genres.add(genre)
 
-            return sorted(list(genres))
+            return list(genres)
 
         except httpx.RequestError as e:
             raise Exception(f"Network error connecting to Navidrome: {e}")

@@ -94,7 +94,7 @@ class RediscoverWeekly:
         # Limit to top artists to avoid overwhelming API calls
         for artist in artists[:50]:  # Process top 50 artists
             try:
-                tracks = await self.navidrome_client.get_tracks_by_artist(artist["id"])
+                tracks = await self.navidrome_client.get_tracks_by_artist(artist["id"], library_id)
                 for track in tracks:
                     play_count = track.get("play_count", 0)
                     if play_count > 0:
@@ -310,7 +310,7 @@ class RediscoverWeekly:
         
         return filtered_tracks
     
-    async def generate_rediscover_weekly(self, max_tracks: int = 20, use_ai: bool = True, variety_context: str = None) -> List[Dict[str, Any]]:
+    async def generate_rediscover_weekly(self, max_tracks: int = 20, use_ai: bool = True, variety_context: str = None, library_id: str = None) -> List[Dict[str, Any]]:
         """
         Main method to generate the Re-Discover Weekly playlist.
         Returns a list of track metadata for the final tracks.

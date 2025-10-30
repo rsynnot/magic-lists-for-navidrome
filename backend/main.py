@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
+from fastapi import Query
 import uvicorn
 import os
 import logging
@@ -175,11 +176,11 @@ async def system_check_page(request: Request):
 # SYSTEM CHECK FEATURE - END
 
 @app.get("/api/artists")
-async def get_artists():
+async def get_artists(library_id: List[str] = Query(None)):
     """Get list of artists from Navidrome"""
     try:
         client = get_navidrome_client()
-        artists = await client.get_artists()
+        artists = await client.get_artists(library_id)
         return artists
     except Exception as e:
         error_msg = str(e)
@@ -192,11 +193,11 @@ async def get_artists():
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
 
 @app.get("/api/genres")
-async def get_genres():
+async def get_genres(library_id: List[str] = Query(None)):
     """Get list of genres from Navidrome"""
     try:
         client = get_navidrome_client()
-        genres = await client.get_genres()
+        genres = await client.get_genres(library_id)
         return genres
     except Exception as e:
         error_msg = str(e)
@@ -207,6 +208,23 @@ async def get_genres():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch genres: {error_msg}")
+
+@app.get("/api/music-folders")
+async def get_music_folders():
+    """Get list of music folders/libraries from Navidrome"""
+    try:
+        client = get_navidrome_client()
+        folders = await client.get_music_folders()
+        return folders
+    except Exception as e:
+        error_msg = str(e)
+        # Check if it's an authentication error and return appropriate status code
+        if "Invalid username or password" in error_msg or "No authentication method available" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch music folders: {error_msg}")
 
 
 # SYSTEM CHECK FEATURE - START
@@ -278,7 +296,7 @@ async def create_playlist(
         
         # Get tracks for only the first artist
         all_tracks = []
-        tracks = await nav_client.get_tracks_by_artist(first_artist_id)
+        tracks = await nav_client.get_tracks_by_artist(first_artist_id, request.library_ids)
         if tracks:
             all_tracks.extend(tracks)
         
@@ -364,7 +382,8 @@ async def create_playlist(
             songs=track_titles,
             reasoning=reasoning,
             navidrome_playlist_id=navidrome_playlist_id,
-            playlist_length=request.playlist_length
+            playlist_length=request.playlist_length,
+            library_ids=request.library_ids
         )
         
         # Handle scheduling if not "none" or "never"
@@ -487,7 +506,7 @@ async def create_genre_playlist(
         playlist_name = request.playlist_name or f"Genre Mix: {request.genre}"
 
         # Get tracks for the genre
-        all_tracks = await nav_client.get_tracks_by_genre(request.genre)
+        all_tracks = await nav_client.get_tracks_by_genre(request.genre, request.library_ids)
         scheduler_logger.info(f"🎵 Found {len(all_tracks)} total tracks for genre '{request.genre}'")
 
         if not all_tracks:
@@ -571,7 +590,8 @@ async def create_genre_playlist(
             songs=track_titles,
             reasoning=reasoning,
             navidrome_playlist_id=navidrome_playlist_id,
-            playlist_length=request.playlist_length
+            playlist_length=request.playlist_length,
+            library_ids=request.library_ids
         )
 
         # Handle scheduling if not "none" or "never"
@@ -640,18 +660,25 @@ async def create_rediscover_playlist(
 ):
     """Create a Re-Discover Weekly playlist in Navidrome"""
     try:
+        scheduler_logger.info(f"🎵 Starting Re-Discover playlist creation with length {request.playlist_length}, library_ids: {request.library_ids}")
+
         # Get Navidrome client
         nav_client = get_navidrome_client()
-        
+
         # Create RediscoverWeekly instance
         rediscover = RediscoverWeekly(nav_client)
 
         # Generate the playlist tracks with user-specified length and AI curation
-        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True)
+        scheduler_logger.info("🎵 Generating rediscover tracks...")
+        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True, library_id=request.library_ids[0] if request.library_ids else "", variety_context="")
+        scheduler_logger.info(f"🎵 Generated {len(tracks) if tracks else 0} tracks")
         
         if not tracks:
+            scheduler_logger.error("❌ No tracks generated for Re-Discover Weekly")
             raise HTTPException(status_code=404, detail="No tracks found for Re-Discover Weekly")
-        
+
+        scheduler_logger.info(f"✅ Generated {len(tracks)} tracks for Re-Discover Weekly")
+
         # Extract AI reasoning if available
         ai_reasoning = ""
         ai_curated = False
@@ -659,6 +686,7 @@ async def create_rediscover_playlist(
             first_track = tracks[0]
             ai_reasoning = first_track.get("ai_reasoning", "")
             ai_curated = first_track.get("ai_curated", False)
+            scheduler_logger.info(f"🎵 AI curated: {ai_curated}, reasoning length: {len(ai_reasoning)}")
         
         # Log the AI reasoning for debugging (truncated)
         if ai_reasoning and ai_curated:
@@ -670,30 +698,36 @@ async def create_rediscover_playlist(
         # Create playlist name based on frequency
         frequency_names = {
             "daily": "Re-Discover Daily ✨",
-            "weekly": "Re-Discover Weekly ✨", 
+            "weekly": "Re-Discover Weekly ✨",
             "monthly": "Re-Discover Monthly ✨",
             "never": "Re-Discover ✨"
         }
         playlist_name = frequency_names.get(request.refresh_frequency, "Re-Discover Weekly ✨")
-        
+        scheduler_logger.info(f"📝 Creating playlist: {playlist_name}")
+
         # Extract track IDs
         track_ids = [track["id"] for track in tracks]
-        
+        scheduler_logger.info(f"🎵 Track IDs: {track_ids[:5]}... (total: {len(track_ids)})")
+
         # Create playlist in Navidrome with AI reasoning as comment if available
         comment_to_use = ai_reasoning if (ai_reasoning and ai_curated) else None
         comment_preview = comment_to_use[:200] + "..." if comment_to_use and len(comment_to_use) > 200 else comment_to_use
         scheduler_logger.info(f"💬 Creating Re-Discover playlist with comment (length: {len(comment_to_use) if comment_to_use else 0}): {comment_preview}")
 
+        scheduler_logger.info("🎵 Calling nav_client.create_playlist...")
         navidrome_playlist_id = await nav_client.create_playlist(
             name=playlist_name,
             track_ids=track_ids,
             comment=comment_to_use
         )
+        scheduler_logger.info(f"✅ Navidrome playlist created: {navidrome_playlist_id}")
         
         # Get track titles for database storage
         track_titles = [track["title"] for track in tracks]
-        
+        scheduler_logger.info(f"📊 Storing {len(track_titles)} track titles in database")
+
         # Store playlist in local database (using a synthetic artist_id for rediscover playlists)
+        scheduler_logger.info("💾 Creating playlist in database...")
         playlist = await db.create_playlist(
             artist_id="rediscover",
             playlist_name=playlist_name,
@@ -702,6 +736,7 @@ async def create_rediscover_playlist(
             navidrome_playlist_id=navidrome_playlist_id,
             playlist_length=request.playlist_length
         )
+        scheduler_logger.info(f"✅ Database playlist created: {playlist}")
         
         # Handle scheduling if not "never"
         if request.refresh_frequency != "never":
@@ -874,7 +909,8 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         tracks = await rediscover.generate_rediscover_weekly(
             max_tracks=original_length,
             use_ai=True,
-            variety_context=enhanced_variety_context
+            variety_context=enhanced_variety_context,
+            library_id=scheduled_playlist.library_id if hasattr(scheduled_playlist, 'library_id') else None
         )
         
         # The rediscover.generate_rediscover_weekly() method now uses the new recipe system internally

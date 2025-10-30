@@ -77,18 +77,51 @@
             
             <!-- Desktop sidebar - always visible on medium screens and up -->
             <aside id="desktopSidebar" class="hidden md:block md:w-60 md:bg-gray-100 bg-white  min-h-[calc(80vh)]">
-                <div class="px-4 h-full overflow-y-auto">
-                    <nav class="hs-accordion-group pt-1 pb-2 w-full" role="tablist">
-                        
-                        <div class="border-t border-gray-200 w-full block mt-0 pt-2">
-                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm bg-gray-100 text-gray-900 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200 " href="#" data-page="home">
-                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                                </svg>
-                                Home
-                            </a>
-                        </div>
+                 <div class="px-4 h-full overflow-y-auto">
+                     <nav class="hs-accordion-group pt-1 pb-2 w-full" role="tablist">
+
+                          <!-- Library Selector -->
+                          <div class="w-full block mt-0 pt-2 pb-3">
+                              <label class="block text-xs text-gray-500 font-medium mb-1">Music Library</label>
+                              <div class="relative">
+                                  <!-- Loading State -->
+                                  <div id="library-loading" class="flex items-center py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                      <svg class="animate-spin h-4 w-4 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      <span class="text-sm text-gray-500">Loading libraries...</span>
+                                  </div>
+                                  <!-- Single Library State -->
+                                  <div id="library-single" class="hidden py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                      <span id="library-single-name" class="text-sm text-gray-900"></span>
+                                  </div>
+                                  <!-- Multiple Libraries State -->
+                                  <div id="library-multi" class="hidden">
+                                      <button id="library-multi-toggle" type="button" class="relative py-2 px-3 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]">
+                                          <span id="library-multi-text" class="text-gray-500 truncate">Select library</span>
+                                          <svg class="absolute top-1/2 end-3 -translate-y-1/2 size-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                              <path d="m7 9 5 5 5-5"/>
+                                          </svg>
+                                      </button>
+                                      <div id="library-multi-dropdown" class="hidden absolute z-50 w-full max-h-72 p-1 mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto shadow-lg">
+                                          <div id="library-checkboxes" class="space-y-1">
+                                              <!-- Checkboxes will be dynamically inserted here -->
+                                          </div>
+                                      </div>
+                                  </div>
+                               </div>
+                           </div>
+
+                         <div class="border-t border-gray-200 w-full block mt-0 pt-2">
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm bg-gray-100 text-gray-900 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200 " href="#" data-page="home">
+                                 <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                     <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                 </svg>
+                                 Home
+                             </a>
+                         </div>
 
                         <div class="border-t border-gray-200 w-full block mt-2 pt-2">
                             <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
@@ -160,19 +193,53 @@
                         </header>
                         <!-- End Header -->
 
-                        <!-- Navigation -->
-                        <nav class="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300">
-                            <div class="p-2 w-full">
-                                
-                                <div class="border-t border-gray-200 w-full block mt-0 pt-2">
-                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm bg-white text-gray-900 rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="home">
-                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                                        </svg>
-                                        Home
-                                    </a>
-                                </div>
+                         <!-- Navigation -->
+                         <nav class="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300">
+                             <div class="p-2 w-full">
+
+                                  <!-- Library Selector -->
+                                  <div class="w-full block mt-0 pt-2 pb-3">
+                                      <label class="block text-xs text-gray-500 font-medium mb-1">Music Library</label>
+                                      <div class="relative">
+                                          <!-- Loading State -->
+                                          <div id="mobile-library-loading" class="flex items-center py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                              <svg class="animate-spin h-4 w-4 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                              </svg>
+                                              <span class="text-sm text-gray-500">Loading libraries...</span>
+                                          </div>
+                                          <!-- Single Library State -->
+                                          <div id="mobile-library-single" class="hidden py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                              <span id="mobile-library-single-name" class="text-sm text-gray-900"></span>
+                                          </div>
+                                          <!-- Multiple Libraries State -->
+                                          <div id="mobile-library-multi" class="hidden">
+                                              <button id="mobile-library-multi-toggle" type="button" class="relative py-2 px-3 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]">
+                                                  <span id="mobile-library-multi-text" class="text-gray-500 truncate">Select library</span>
+                                                  <svg class="absolute top-1/2 end-3 -translate-y-1/2 size-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                      <path d="m7 9 5 5 5-5"/>
+                                                  </svg>
+                                              </button>
+                                              <div id="mobile-library-multi-dropdown" class="hidden absolute z-50 w-full max-h-72 p-1 mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto shadow-lg">
+                                                  <div id="mobile-library-checkboxes" class="space-y-1">
+                                                      <!-- Checkboxes will be dynamically inserted here -->
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+                                 </div>
+
+                                 <div class="border-t border-gray-200 w-full block mt-0 pt-2">
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm bg-white text-gray-900 rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="home">
+                                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                             <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                         </svg>
+                                         Home
+                                     </a>
+                                 </div>
 
                                 <div class="border-t border-gray-200 w-full block mt-2 pt-2">
                                     <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
@@ -223,16 +290,39 @@
                                 
                             </div>
                         </nav>
-                        <!-- End Navigation -->
-                    </div>
-                </aside>
-            </div>
+                         <!-- End Navigation -->
+                     </div>
+                 </aside>
 
-            <!-- Main content area -->
+             <!-- Main content area -->
             <main class="flex-1 mt-3 md:mt-0 md:p-0 md:pr-4 md:py-0 md:pt-0">
 
+                <!-- Database Error Alert -->
+                <div id="database-error-alert" class="hidden bg-red-50 border-s-4 border-red-500 p-4 mb-4" role="alert">
+                    <div class="flex">
+                        <div class="shrink-0">
+                            <span class="inline-flex justify-center items-center size-8 rounded-full border-4 border-red-100 bg-red-200 text-red-800">
+                                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6 6 18"></path>
+                                    <path d="m6 6 12 12"></path>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="text-gray-800 font-semibold">Database Configuration Error</h3>
+                            <p class="text-sm text-gray-700 mt-1">
+                                MagicLists cannot access its database. Playlists cannot be saved or loaded.
+                                Please check your DATABASE_PATH environment variable configuration.
+                            </p>
+                            <p class="text-sm text-blue-600 mt-2">
+                                <a href="#" data-page="system-check" class="underline">Run System Check</a> for detailed configuration help.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Welcome Content (Home) -->
-                <div id="welcome-content" class="bg-white md:border md:border-gray-200 p-4 pb-10 md:pt-10 md:pl-10 md:pr-14 md:pb-12   md:rounded-lg">
+                <div id="welcome-content" style="display: none;" class="bg-white md:border md:border-gray-200 p-4 pb-10 md:pt-10 md:pl-10 md:pr-14 md:pb-12   md:rounded-lg">
                     <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 mb-4 md:mb-6" style="font-stretch: normal; font-optical-sizing: auto;">Create playlists from your Navidrome&nbsp;library</h1>
                     <p class="text-gray-500 mb-6">Generate, refresh and manage playlists locally. Fast, private, and under your control.</p>
                     
@@ -294,7 +384,7 @@
                 <!-- This Is Artist Content (hidden by default) -->
                 <div id="this-is-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                     <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-500 mb-3">This is <span class="text-gray-300">Artist</span></h1>
+                        <h1 class="text-2xl font-bold text-gray-900 mb-3">This is <span class="text-gray-400">Artist</span></h1>
                         <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
                     </div>
 
@@ -448,7 +538,7 @@
                  <!-- Genre Mix Content (hidden by default) -->
                  <div id="genre-mix-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
                      <div class="mb-6">
-                         <h1 class="text-2xl font-bold text-gray-500 mb-3">Genre Mix</h1>
+                         <h1 class="text-2xl font-bold text-gray-900 mb-3">Genre Mix</h1>
                          <p class="text-gray-600">Create a curated mix playlist for a specific genre from your library. Get a diverse selection of tracks that represent the best of that genre.</p>
                      </div>
 

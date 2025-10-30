@@ -42,6 +42,13 @@ class DatabaseManager:
             except:
                 # Column already exists or other error - ignore
                 pass
+
+            # Add library_ids column if it doesn't exist (for existing databases)
+            try:
+                await db.execute("ALTER TABLE playlists ADD COLUMN library_ids TEXT")  # JSON array of library IDs
+            except:
+                # Column already exists or other error - ignore
+                pass
             
             # Add last_refreshed column if it doesn't exist (for tracking refreshes)
             try:
@@ -98,27 +105,39 @@ class DatabaseManager:
                     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
+            # Create the user_preferences table for storing user settings like selected library
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS user_preferences (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,  -- For future multi-user support
+                    selected_library_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
             await db.commit()
     
-    async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None, playlist_length: Optional[int] = None) -> Playlist:
+    async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None, playlist_length: Optional[int] = None, library_ids: Optional[List[str]] = None) -> Optional[Playlist]:
         """Create a new playlist in the database"""
         await self.init_db()
         
         songs_json = json.dumps(songs or [])
-        
+        library_ids_json = json.dumps(library_ids or [])
+
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("""
-                INSERT INTO playlists (artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, playlist_length)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (artist_id, playlist_name, songs_json, reasoning, navidrome_playlist_id, playlist_length))
+                INSERT INTO playlists (artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, playlist_length, library_ids)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (artist_id, playlist_name, songs_json, reasoning, navidrome_playlist_id, playlist_length, library_ids_json))
             
             playlist_id = cursor.lastrowid
             await db.commit()
             
             # Fetch the created playlist
             async with db.execute("""
-                SELECT id, artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, created_at, updated_at, playlist_length
+                SELECT id, artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, created_at, updated_at, playlist_length, library_ids
                 FROM playlists WHERE id = ?
             """, (playlist_id,)) as cursor:
                 row = await cursor.fetchone()
@@ -132,8 +151,10 @@ class DatabaseManager:
                         reasoning=row[4],
                         navidrome_playlist_id=row[5],
                         created_at=row[6],
-                        updated_at=row[7]
+                        updated_at=row[7],
+                        library_ids=json.loads(row[9]) if row[9] else []
                     )
+                return None
     
     async def get_playlist(self, playlist_id: int) -> Optional[Playlist]:
         """Get a playlist by ID"""
@@ -141,7 +162,7 @@ class DatabaseManager:
         
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute("""
-                SELECT id, artist_id, playlist_name, songs, reasoning, created_at, updated_at
+                SELECT id, artist_id, playlist_name, songs, reasoning, navidrome_playlist_id, created_at, updated_at, playlist_length, library_ids
                 FROM playlists WHERE id = ?
             """, (playlist_id,)) as cursor:
                 row = await cursor.fetchone()
@@ -153,8 +174,10 @@ class DatabaseManager:
                         playlist_name=row[2],
                         songs=json.loads(row[3]),
                         reasoning=row[4],
-                        created_at=row[5],
-                        updated_at=row[6]
+                        navidrome_playlist_id=row[5],
+                        created_at=row[6],
+                        updated_at=row[7],
+                        library_ids=json.loads(row[9]) if row[9] else []
                     )
         return None
     
@@ -498,6 +521,37 @@ class DatabaseManager:
             
             await db.commit()
             return True
+
+    async def get_user_preference(self, user_id: str, key: str) -> Optional[str]:
+        """Get a user preference value"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("""
+                SELECT value FROM user_preferences WHERE user_id = ? AND key = ?
+            """, (user_id, key)) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+
+    async def set_user_preference(self, user_id: str, key: str, value: str) -> bool:
+        """Set a user preference value"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO user_preferences (user_id, key, value, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            """, (user_id, key, value))
+            await db.commit()
+            return True
+
+    async def get_selected_library_id(self, user_id: str) -> Optional[str]:
+        """Get the user's selected library ID"""
+        return await self.get_user_preference(user_id, "selected_library_id")
+
+    async def set_selected_library_id(self, user_id: str, library_id: str) -> bool:
+        """Set the user's selected library ID"""
+        return await self.set_user_preference(user_id, "selected_library_id", library_id)
 
 # Dependency for FastAPI
 async def get_db() -> DatabaseManager:

@@ -172,3 +172,5 @@ debug_payloads/
 /recipes/archive/*
 /backend/chroma_db
 /backend/chroma_db/*
+/ref-docs
+/ref-docs/*

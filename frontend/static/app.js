@@ -5,6 +5,10 @@ let allArtists = [];
 let allGenres = [];
 let currentToast = null;
 
+// Global state for library selection
+let selectedLibraryIds = [];
+let allLibraries = [];
+
 
 // Helper function to format dates in friendly format (e.g., "5 Oct 2025 10:12am")
 function formatFriendlyDate(dateString) {
@@ -182,12 +186,17 @@ function setActiveMenuItem(page) {
 
 // Navigation functionality
 function showContent(contentId) {
+    console.log(`🎨 Showing content: ${contentId}`);
+
     // Hide all content sections
-    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
+    const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'genre-mix-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
     contentSections.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.style.display = 'none';
+            console.log(`🎨 Hidden: ${id}`);
+        } else {
+            console.log(`🎨 Element not found: ${id}`);
         }
     });
 
@@ -195,6 +204,9 @@ function showContent(contentId) {
     const targetContent = document.getElementById(contentId);
     if (targetContent) {
         targetContent.style.display = 'block';
+        console.log(`🎨 Shown: ${contentId}`);
+    } else {
+        console.log(`🎨 Target content not found: ${contentId}`);
     }
 }
 
@@ -258,7 +270,7 @@ async function trackLibrarySize() {
 
         if (response.ok) {
             const data = await response.json();
-            
+
             if (data.tracked && typeof window.rybbit !== 'undefined') {
                 // Track library size event with Rybbit
                 window.rybbit.event('Library Size Tracked', {
@@ -269,8 +281,26 @@ async function trackLibrarySize() {
             }
         }
     } catch (error) {
-        console.error('Error tracking library size:', error);
-        // Silently fail - don't disrupt user experience
+        console.error('❌ Error tracking library size:', error);
+    }
+}
+
+async function checkDatabaseConnectivity() {
+    const alertDiv = document.getElementById('database-error-alert');
+
+    try {
+        const response = await fetch('/api/playlists');
+        if (response.ok) {
+            // Database is accessible, hide alert
+            alertDiv.classList.add('hidden');
+        } else {
+            // Database error, show alert
+            alertDiv.classList.remove('hidden');
+        }
+    } catch (error) {
+        // Network/database error, show alert
+        alertDiv.classList.remove('hidden');
+        console.error('Database connectivity check failed:', error);
     }
 }
 
@@ -288,23 +318,53 @@ document.addEventListener('DOMContentLoaded', function() {
     const artistSelect = document.getElementById('artist-search-select');
     if (artistSelect) {
         artistSelect.addEventListener('change', handleArtistSelection);
+        // Add validation on click - highlight library selector if no libraries selected
+        artistSelect.addEventListener('click', function() {
+            if (selectedLibraryIds.length === 0) {
+                // Apply validation styling to library selectors
+                const libraryMulti = document.getElementById('library-multi');
+                const mobileLibraryMulti = document.getElementById('mobile-library-multi');
+                if (libraryMulti) {
+                    libraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+                    setTimeout(() => libraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+                }
+                if (mobileLibraryMulti) {
+                    mobileLibraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+                    setTimeout(() => mobileLibraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+                }
+                showToast('warning', 'Please select a music library first.');
+            }
+        });
     }
     
+    // Load libraries on page load
+    loadLibraries();
+
     // Load playlist count on page load
     updatePlaylistCount();
-    
-    // Handle initial page routing
-    const currentPage = getPageFromURL(window.location.pathname);
-    handlePageNavigation(currentPage);
-    
+
+    // Handle initial page routing (with small delay to ensure DOM is ready)
+    setTimeout(() => {
+        const currentPage = getPageFromURL(window.location.pathname);
+        handlePageNavigation(currentPage);
+    }, 100);
+
     // Track library size post-launch (with delay to not interfere with app loading)
     setTimeout(trackLibrarySize, 2000);
+
+    // Check database connectivity
+    checkDatabaseConnectivity();
 });
 
 // Load artists and populate the select (from original working code)
 async function loadArtists() {
     try {
-        const response = await fetch('/api/artists');
+        let url = '/api/artists';
+        if (selectedLibraryIds.length > 0) {
+            const libraryIdsParam = selectedLibraryIds.map(id => `library_id=${encodeURIComponent(id)}`).join('&');
+            url = `/api/artists?${libraryIdsParam}`;
+        }
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch artists');
         }
@@ -346,7 +406,12 @@ async function loadArtists() {
 
 async function loadGenres() {
     try {
-        const response = await fetch('/api/genres');
+        let url = '/api/genres';
+        if (selectedLibraryIds.length > 0) {
+            const libraryIdsParam = selectedLibraryIds.map(id => `library_id=${encodeURIComponent(id)}`).join('&');
+            url = `/api/genres?${libraryIdsParam}`;
+        }
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch genres');
         }
@@ -383,8 +448,6 @@ async function loadGenres() {
                 window.HSSelect.autoInit();
             }
         }
-
-        showToast('success', `Loaded ${allGenres.length} genres from your library`);
     } catch (error) {
         console.error('Error loading genres:', error);
         showToast('error', 'Failed to load genres from your library');
@@ -403,11 +466,293 @@ function handleGenreSelection(e) {
     }
 }
 
+// Load libraries and populate the multi-select interface
+async function loadLibraries() {
+    try {
+        console.log('📚 Loading libraries from API...');
+        console.log(`📚 Current localStorage:`, localStorage.getItem('selectedLibraryIds'));
+        const response = await fetch('/api/music-folders');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch libraries: ${response.status} ${response.statusText}`);
+        }
+        allLibraries = await response.json();
+        console.log(`📚 Loaded ${allLibraries.length} libraries:`, allLibraries);
+
+        // Clear any previous selection
+        selectedLibraryIds = [];
+
+        // Get UI elements
+        const desktopLoading = document.getElementById('library-loading');
+        const desktopSingle = document.getElementById('library-single');
+        const desktopSingleName = document.getElementById('library-single-name');
+        const desktopMulti = document.getElementById('library-multi');
+        const desktopMultiText = document.getElementById('library-multi-text');
+        const desktopCheckboxes = document.getElementById('library-checkboxes');
+
+        const mobileLoading = document.getElementById('mobile-library-loading');
+        const mobileSingle = document.getElementById('mobile-library-single');
+        const mobileSingleName = document.getElementById('mobile-library-single-name');
+        const mobileMulti = document.getElementById('mobile-library-multi');
+        const mobileMultiText = document.getElementById('mobile-library-multi-text');
+        const mobileCheckboxes = document.getElementById('mobile-library-checkboxes');
+
+        // Hide loading states
+        if (desktopLoading) desktopLoading.classList.add('hidden');
+        if (mobileLoading) mobileLoading.classList.add('hidden');
+
+        // Hide all states initially
+        if (desktopSingle) desktopSingle.classList.add('hidden');
+        if (mobileSingle) mobileSingle.classList.add('hidden');
+        if (desktopMulti) desktopMulti.classList.add('hidden');
+        if (mobileMulti) mobileMulti.classList.add('hidden');
+
+        if (allLibraries.length === 1) {
+            // Single library - show read-only display (AC1)
+            const library = allLibraries[0];
+            selectedLibraryIds = [library.id];
+
+            if (desktopSingle && desktopSingleName) {
+                desktopSingleName.textContent = library.name;
+                desktopSingle.classList.remove('hidden');
+            }
+            if (mobileSingle && mobileSingleName) {
+                mobileSingleName.textContent = library.name;
+                mobileSingle.classList.remove('hidden');
+            }
+
+            console.log(`📚 Single library detected: ${library.name} (ID: ${library.id}) - showing readonly display`);
+
+            // Save to localStorage
+            localStorage.setItem('selectedLibraryIds', JSON.stringify(selectedLibraryIds));
+            console.log(`📚 Saved to localStorage:`, selectedLibraryIds);
+
+        } else {
+            // Multiple libraries - show multi-select interface (AC2)
+            console.log(`📚 Multiple libraries detected: ${allLibraries.length} libraries - showing multi-select`);
+
+            // Load saved library selections from localStorage
+            const savedLibraryIds = localStorage.getItem('selectedLibraryIds');
+            if (savedLibraryIds) {
+                try {
+                    const parsedIds = JSON.parse(savedLibraryIds);
+                    // Filter to only include libraries that still exist
+                    selectedLibraryIds = parsedIds.filter(id => allLibraries.some(lib => lib.id === id));
+                    console.log(`📚 Loaded saved library selections:`, selectedLibraryIds);
+                } catch (e) {
+                    console.warn('📚 Invalid saved library IDs, starting fresh');
+                    selectedLibraryIds = [];
+                }
+            } else {
+                console.log('📚 No saved library selections found');
+                selectedLibraryIds = [];
+            }
+
+            // Create checkboxes for desktop
+            if (desktopCheckboxes) {
+                desktopCheckboxes.innerHTML = '';
+                allLibraries.forEach(library => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'flex items-center px-3 py-2 hover:bg-gray-50 rounded';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox"
+                               id="desktop-lib-${library.id}"
+                               value="${library.id}"
+                               class="shrink-0 mt-0.5 border-gray-200 rounded text-blue-600 focus:ring-blue-500"
+                               ${selectedLibraryIds.includes(library.id) ? 'checked' : ''}>
+                        <label for="desktop-lib-${library.id}" class="ml-2 text-sm text-gray-800 cursor-pointer">
+                            ${library.name}
+                        </label>
+                    `;
+                    desktopCheckboxes.appendChild(checkboxDiv);
+                });
+            }
+
+            // Create checkboxes for mobile
+            if (mobileCheckboxes) {
+                mobileCheckboxes.innerHTML = '';
+                allLibraries.forEach(library => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'flex items-center px-3 py-2 hover:bg-gray-50 rounded';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox"
+                               id="mobile-lib-${library.id}"
+                               value="${library.id}"
+                               class="shrink-0 mt-0.5 border-gray-200 rounded text-blue-600 focus:ring-blue-500"
+                               ${selectedLibraryIds.includes(library.id) ? 'checked' : ''}>
+                        <label for="mobile-lib-${library.id}" class="ml-2 text-sm text-gray-800 cursor-pointer">
+                            ${library.name}
+                        </label>
+                    `;
+                    mobileCheckboxes.appendChild(checkboxDiv);
+                });
+            }
+
+            // Update display text
+            updateLibraryDisplayText();
+
+            // Show multi-select interfaces
+            if (desktopMulti) desktopMulti.classList.remove('hidden');
+            if (mobileMulti) mobileMulti.classList.remove('hidden');
+
+            // Add event listeners for dropdown toggles
+            const desktopToggle = document.getElementById('library-multi-toggle');
+            const desktopDropdown = document.getElementById('library-multi-dropdown');
+            const mobileToggle = document.getElementById('mobile-library-multi-toggle');
+            const mobileDropdown = document.getElementById('mobile-library-multi-dropdown');
+
+            if (desktopToggle && desktopDropdown) {
+                desktopToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    desktopDropdown.classList.toggle('hidden');
+                });
+            }
+            if (mobileToggle && mobileDropdown) {
+                mobileToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    mobileDropdown.classList.toggle('hidden');
+                });
+            }
+
+            // Add event listeners for checkboxes
+            allLibraries.forEach(library => {
+                const desktopCheckbox = document.getElementById(`desktop-lib-${library.id}`);
+                const mobileCheckbox = document.getElementById(`mobile-lib-${library.id}`);
+
+                if (desktopCheckbox) {
+                    desktopCheckbox.addEventListener('change', handleLibraryCheckboxChange);
+                }
+                if (mobileCheckbox) {
+                    mobileCheckbox.addEventListener('change', handleLibraryCheckboxChange);
+                }
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (desktopDropdown && !desktopMulti.contains(e.target)) {
+                    desktopDropdown.classList.add('hidden');
+                }
+                if (mobileDropdown && !mobileMulti.contains(e.target)) {
+                    mobileDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Error loading libraries:', error);
+        showToast('error', 'Failed to load music libraries');
+
+        // Hide loading and show error state
+        const desktopLoading = document.getElementById('library-loading');
+        const mobileLoading = document.getElementById('mobile-library-loading');
+        const desktopSingle = document.getElementById('library-single');
+        const mobileSingle = document.getElementById('mobile-library-single');
+        const desktopMulti = document.getElementById('library-multi');
+        const mobileMulti = document.getElementById('mobile-library-multi');
+
+        // Hide all states
+        if (desktopLoading) desktopLoading.classList.add('hidden');
+        if (mobileLoading) mobileLoading.classList.add('hidden');
+        if (desktopSingle) desktopSingle.classList.add('hidden');
+        if (mobileSingle) mobileSingle.classList.add('hidden');
+        if (desktopMulti) desktopMulti.classList.add('hidden');
+        if (mobileMulti) mobileMulti.classList.add('hidden');
+    }
+}
+
+// Handle library selection change
+
+
+// Update the display text for multi-library selector
+function updateLibraryDisplayText() {
+    const desktopText = document.getElementById('library-multi-text');
+    const mobileText = document.getElementById('mobile-library-multi-text');
+
+    if (selectedLibraryIds.length === 0) {
+        if (desktopText) desktopText.textContent = 'Select library';
+        if (mobileText) mobileText.textContent = 'Select library';
+        if (desktopText) desktopText.className = 'text-gray-500 truncate';
+        if (mobileText) mobileText.className = 'text-gray-500 truncate';
+    } else if (selectedLibraryIds.length === 1) {
+        const library = allLibraries.find(lib => lib.id === selectedLibraryIds[0]);
+        const libraryName = library ? library.name : '1 library';
+        if (desktopText) desktopText.textContent = libraryName;
+        if (mobileText) mobileText.textContent = libraryName;
+        if (desktopText) desktopText.className = 'text-gray-900 truncate';
+        if (mobileText) mobileText.className = 'text-gray-900 truncate';
+    } else {
+        if (desktopText) desktopText.textContent = `${selectedLibraryIds.length} libraries`;
+        if (mobileText) mobileText.textContent = `${selectedLibraryIds.length} libraries`;
+        if (desktopText) desktopText.className = 'text-gray-900 truncate';
+        if (mobileText) mobileText.className = 'text-gray-900 truncate';
+    }
+}
+
+// Handle library checkbox changes
+function handleLibraryCheckboxChange(e) {
+    const libraryId = e.target.value;
+    const isChecked = e.target.checked;
+
+    if (isChecked) {
+        if (!selectedLibraryIds.includes(libraryId)) {
+            selectedLibraryIds.push(libraryId);
+        }
+    } else {
+        selectedLibraryIds = selectedLibraryIds.filter(id => id !== libraryId);
+    }
+
+    // Sync checkboxes between desktop and mobile
+    const desktopCheckbox = document.getElementById(`desktop-lib-${libraryId}`);
+    const mobileCheckbox = document.getElementById(`mobile-lib-${libraryId}`);
+
+    if (desktopCheckbox && desktopCheckbox !== e.target) {
+        desktopCheckbox.checked = isChecked;
+    }
+    if (mobileCheckbox && mobileCheckbox !== e.target) {
+        mobileCheckbox.checked = isChecked;
+    }
+
+    // Update localStorage
+    localStorage.setItem('selectedLibraryIds', JSON.stringify(selectedLibraryIds));
+
+    // Update display text
+    updateLibraryDisplayText();
+
+    // Refresh current page content if needed
+    const currentPage = getPageFromURL(window.location.pathname);
+    if (currentPage === 'this-is-artist') {
+        loadArtists();
+    } else if (currentPage === 'genre-mix') {
+        loadGenres();
+    }
+
+    console.log(`📚 Library selection updated:`, selectedLibraryIds);
+}
+
+// Check if libraries are selected and show warning if not
+function checkLibrarySelection() {
+    if (selectedLibraryIds.length === 0) {
+        showToast('warning', 'Please select a music library.');
+        // Highlight the library selector
+        const libraryMulti = document.getElementById('library-multi');
+        const mobileLibraryMulti = document.getElementById('mobile-library-multi');
+        if (libraryMulti) {
+            libraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+            setTimeout(() => libraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+        }
+        if (mobileLibraryMulti) {
+            mobileLibraryMulti.classList.add('ring-2', 'ring-red-500', 'ring-opacity-50');
+            setTimeout(() => mobileLibraryMulti.classList.remove('ring-2', 'ring-red-500', 'ring-opacity-50'), 3000);
+        }
+        return false;
+    }
+    return true;
+}
+
 // Handle artist selection change
 function handleArtistSelection(e) {
     selectedArtistId = e.target.value;
     const submitBtn = document.getElementById('create-artist-playlist-btn');
-    
+
     if (selectedArtistId) {
         submitBtn.disabled = false;
     } else {
@@ -429,9 +774,13 @@ document.getElementById('genre-mix-form').addEventListener('submit', function(e)
 
 async function createArtistPlaylist() {
     const submitBtn = document.getElementById('create-artist-playlist-btn');
-    
+
     if (!selectedArtistId) {
         showToast('error', 'Please select an artist first');
+        return;
+    }
+
+    if (!checkLibrarySelection()) {
         return;
     }
 
@@ -451,7 +800,8 @@ async function createArtistPlaylist() {
             body: JSON.stringify({
                 artist_ids: [selectedArtistId],
                 refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength)
+                playlist_length: parseInt(playlistLength),
+                library_ids: selectedLibraryIds
             })
         });
 
@@ -495,6 +845,10 @@ async function createGenrePlaylist() {
         return;
     }
 
+    if (!checkLibrarySelection()) {
+        return;
+    }
+
     // Show loading toast
     showToast('loading', 'Creating your playlist...', 0);
     submitBtn.disabled = true;
@@ -511,7 +865,8 @@ async function createGenrePlaylist() {
             body: JSON.stringify({
                 genre: selectedGenre,
                 refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength)
+                playlist_length: parseInt(playlistLength),
+                library_ids: selectedLibraryIds
             })
         });
 
@@ -552,6 +907,10 @@ async function createGenrePlaylist() {
 async function generateRediscoverWeekly() {
     const button = document.getElementById('rediscover-btn');
 
+    if (!checkLibrarySelection()) {
+        return;
+    }
+
     // Show loading toast
     showToast('loading', 'Analyzing your listening history...', 0);
     button.disabled = true;
@@ -567,7 +926,8 @@ async function generateRediscoverWeekly() {
             },
             body: JSON.stringify({
                 refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength)
+                playlist_length: parseInt(playlistLength),
+                library_ids: selectedLibraryIds
             })
         });
 
@@ -775,17 +1135,21 @@ async function runSystemChecks() {
     const resultsContainer = document.getElementById('system-check-results');
     const successBanner = document.getElementById('success-banner');
     const errorBanner = document.getElementById('error-banner');
-    const continueBtn = document.getElementById('continue-btn');
     const updateSettingsBtn = document.getElementById('update-settings-btn');
     const rerunBtn = document.getElementById('rerun-checks-btn');
 
     // Reset UI
     successBanner.classList.add('hidden');
     errorBanner.classList.add('hidden');
-    continueBtn.classList.add('hidden');
     updateSettingsBtn.classList.add('hidden');
     rerunBtn.disabled = true;
-    rerunBtn.textContent = 'Running Checks...';
+    rerunBtn.innerHTML = `
+        <svg class="animate-spin h-4 w-4 text-gray-400 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-gray-400">Running checks...</span>
+    `;
 
     try {
         // Call backend health check endpoint
@@ -802,7 +1166,6 @@ async function runSystemChecks() {
         // Show appropriate banner and buttons
         if (data.all_passed) {
             successBanner.classList.remove('hidden');
-            continueBtn.classList.remove('hidden');
             
             // Track Rybbit event
             if (typeof window.rybbit !== 'undefined') {
@@ -851,7 +1214,7 @@ async function runSystemChecks() {
         errorBanner.classList.remove('hidden');
     } finally {
         rerunBtn.disabled = false;
-        rerunBtn.textContent = 'Re-run Checks';
+        rerunBtn.innerHTML = 'Re-run Checks';
     }
 }
 
@@ -873,7 +1236,7 @@ function displaySystemChecks(checks) {
                             </div>
                             <div class="ml-3">
                                 <h3 class="text-sm font-medium text-gray-900">${check.name}</h3>
-                                <p class="text-sm ${statusColor}">${getStatusText(check.status)}</p>
+                                ${check.status !== 'success' ? `<p class="text-sm ${statusColor}">${getStatusText(check.status)}</p>` : ''}
                             </div>
                         </div>
                         ${hasDetails ? `
@@ -959,7 +1322,7 @@ function getStatusText(status) {
         case 'warning':
             return 'Warning';
         case 'info':
-            return 'Info';
+            return '';
         case 'error':
             return 'Failed';
         default:
@@ -1033,47 +1396,66 @@ window.addEventListener('popstate', function(event) {
 
 // Get page from URL path
 function getPageFromURL(pathname) {
+    console.log(`🔗 Getting page from URL: ${pathname}`);
+    let page;
     switch(pathname) {
         case '/':
-            return 'home';
+            page = 'home';
+            break;
         case '/this-is':
-            return 'this-is-artist';
+            page = 'this-is-artist';
+            break;
         case '/re-discover':
-            return 're-discover';
+            page = 're-discover';
+            break;
         case '/genre-mix':
-            return 'genre-mix';
+            page = 'genre-mix';
+            break;
         case '/playlists':
-            return 'playlists';
+            page = 'playlists';
+            break;
         case '/system-check':
-            return 'system-check';
+            page = 'system-check';
+            break;
         case '/terms':
-            return 'terms';
+            page = 'terms';
+            break;
         default:
-            return 'home';
+            page = 'home';
+            break;
     }
+    console.log(`📄 Resolved page: ${page}`);
+    return page;
 }
 
 // Handle page navigation (used by both click and popstate)
 function handlePageNavigation(page) {
+    console.log(`🧭 Navigating to page: ${page}`);
+
     // Track page view with Rybbit
     if (typeof window.rybbit !== 'undefined') {
         window.rybbit.pageview();
     }
-    
+
     // Map page to content
     let contentId;
     if (page === 'home') {
         contentId = 'welcome-content';
+        console.log('🏠 Home page - showing welcome content');
     } else if (page === 'this-is-artist') {
         contentId = 'this-is-content';
-        // Load artists when navigating to This Is page
-        setTimeout(() => loadArtists(), 100);
+        // Load artists when navigating to This Is page (only if libraries selected)
+        if (selectedLibraryIds.length > 0) {
+            setTimeout(() => loadArtists(), 100);
+        }
     } else if (page === 're-discover') {
         contentId = 'rediscover-content';
     } else if (page === 'genre-mix') {
         contentId = 'genre-mix-content';
-        // Load genres when navigating to Genre Mix page
-        setTimeout(() => loadGenres(), 100);
+        // Load genres when navigating to Genre Mix page (only if libraries selected)
+        if (selectedLibraryIds.length > 0) {
+            setTimeout(() => loadGenres(), 100);
+        }
     } else if (page === 'playlists') {
         contentId = 'manage-playlists-content';
         // Load playlists when navigating to manage page
@@ -1085,7 +1467,8 @@ function handlePageNavigation(page) {
     } else if (page === 'terms') {
         contentId = 'terms-content';
     }
-    
+
+    console.log(`📄 Content ID: ${contentId}`);
     setActiveMenuItem(page);
     showContent(contentId);
 }

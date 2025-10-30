@@ -10,11 +10,9 @@ services:
       - .env
     environment:
       - DATABASE_PATH=/app/data/magiclists.db
-      # Remove AI_BASE_URL - now hardcoded per provider
     volumes:
       - magiclists_data:/app/data
     restart: unless-stopped
-
 volumes:
   magiclists_data:
     driver: local
