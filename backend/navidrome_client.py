@@ -613,6 +613,74 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching genres: {e}")
 
+    async def get_starred(self, library_ids: Union[List[str], str, None] = None) -> List[Dict[str, Any]]:
+        """Fetch starred tracks from Navidrome using getStarred API
+
+        Args:
+            library_ids: Optional library ID(s) to filter starred tracks
+
+        Returns:
+            List of starred track metadata
+        """
+        try:
+            await self._ensure_authenticated()
+
+            # Normalize library_ids to a single string for musicFolderId parameter
+            library_id = None
+            if isinstance(library_ids, list) and library_ids:
+                library_id = library_ids[0]  # Use first library ID
+            elif isinstance(library_ids, str):
+                library_id = library_ids
+
+            params = self._get_subsonic_params()
+            if library_id:
+                params["musicFolderId"] = library_id
+
+            response = await self.client.get(
+                f"{self.base_url}/rest/getStarred.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Handle Subsonic API response format
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+
+            starred_data = subsonic_response.get("starred", {})
+            songs = starred_data.get("song", [])
+
+            # Convert to consistent format
+            tracks = []
+            for song in songs:
+                tracks.append({
+                    "id": song.get("id"),
+                    "title": song.get("title"),
+                    "artist": song.get("artist"),
+                    "album": song.get("album"),
+                    "genre": song.get("genre"),
+                    "year": song.get("year"),
+                    "duration": song.get("duration"),
+                    "play_count": song.get("playCount", 0),
+                    "played": song.get("played"),
+                    "starred": song.get("starred"),
+                    "genres": song.get("genres", []),
+                    "path": song.get("path")
+                })
+
+            print(f"⭐ Retrieved {len(tracks)} starred tracks")
+            return tracks
+
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to Navidrome: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+        except Exception as e:
+            raise Exception(f"Unexpected error fetching starred tracks: {e}")
+
     async def get_genre_stats(self) -> List[Dict[str, Any]]:
         """Get genre statistics with track counts
 

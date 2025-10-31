@@ -117,6 +117,44 @@ class DatabaseManager:
                 )
             """)
 
+            # Create the playlist_history_v2 table for Re-Discover Weekly v2.0 logging
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS playlist_history_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    playlist_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    navidrome_server_id TEXT NOT NULL,
+                    mode_used TEXT NOT NULL,
+                    primary_theme TEXT,
+                    tracks_analyzed_count INTEGER NOT NULL,
+                    track_ids_json TEXT NOT NULL,  -- JSON array of track IDs
+                    track_count INTEGER NOT NULL,
+                    reasoning TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Create the api_cache table for caching API responses
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS api_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    cache_key TEXT NOT NULL UNIQUE,
+                    cache_value TEXT NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Create index on cache_key for faster lookups
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_api_cache_key ON api_cache(cache_key)
+            """)
+
+            # Create index on expires_at for cleanup
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_api_cache_expires ON api_cache(expires_at)
+            """)
+
             await db.commit()
     
     async def create_playlist(self, artist_id: str, playlist_name: str, songs: Optional[List[str]] = None, reasoning: Optional[str] = None, navidrome_playlist_id: Optional[str] = None, playlist_length: Optional[int] = None, library_ids: Optional[List[str]] = None) -> Optional[Playlist]:
@@ -335,27 +373,27 @@ class DatabaseManager:
             await db.commit()
             return cursor.rowcount > 0
     
-    async def create_scheduled_playlist(self, playlist_type: str, navidrome_playlist_id: str, 
+    async def create_scheduled_playlist(self, playlist_type: str, navidrome_playlist_id: str,
                                       refresh_frequency: str, next_refresh: datetime) -> ScheduledPlaylist:
         """Create a new scheduled playlist"""
         await self.init_db()
-        
+
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("""
                 INSERT INTO scheduled_playlists (playlist_type, navidrome_playlist_id, refresh_frequency, next_refresh)
                 VALUES (?, ?, ?, ?)
             """, (playlist_type, navidrome_playlist_id, refresh_frequency, next_refresh.isoformat()))
-            
+
             scheduled_id = cursor.lastrowid
             await db.commit()
-            
+
             # Fetch the created scheduled playlist
             async with db.execute("""
                 SELECT id, playlist_type, navidrome_playlist_id, refresh_frequency, next_refresh, created_at, updated_at
                 FROM scheduled_playlists WHERE id = ?
             """, (scheduled_id,)) as cursor:
                 row = await cursor.fetchone()
-                
+
                 if row:
                     return ScheduledPlaylist(
                         id=row[0],
@@ -366,6 +404,9 @@ class DatabaseManager:
                         created_at=row[5],
                         updated_at=row[6]
                     )
+
+        # This should never happen, but handle it gracefully
+        raise Exception("Failed to create scheduled playlist")
     
     async def get_scheduled_playlists_due(self, current_time: datetime, grace_hours: int = 168) -> List[ScheduledPlaylist]:
         """Get all scheduled playlists that are due for refresh, including overdue ones within grace period
@@ -552,6 +593,45 @@ class DatabaseManager:
     async def set_selected_library_id(self, user_id: str, library_id: str) -> bool:
         """Set the user's selected library ID"""
         return await self.set_user_preference(user_id, "selected_library_id", library_id)
+
+    async def get_cache(self, cache_key: str) -> Optional[str]:
+        """Get a cached value by key, checking expiration"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("""
+                SELECT cache_value FROM api_cache
+                WHERE cache_key = ? AND expires_at > datetime('now')
+            """, (cache_key,)) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row else None
+
+    async def set_cache(self, cache_key: str, cache_value: str, ttl_seconds: int) -> bool:
+        """Set a cached value with TTL (time to live in seconds)"""
+        await self.init_db()
+
+        from datetime import datetime, timedelta
+        expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO api_cache (cache_key, cache_value, expires_at)
+                VALUES (?, ?, ?)
+            """, (cache_key, cache_value, expires_at.isoformat()))
+            await db.commit()
+            return True
+
+    async def cleanup_expired_cache(self) -> int:
+        """Clean up expired cache entries. Returns number of entries deleted."""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                DELETE FROM api_cache WHERE expires_at <= datetime('now')
+            """)
+            deleted_count = cursor.rowcount
+            await db.commit()
+            return deleted_count
 
 # Dependency for FastAPI
 async def get_db() -> DatabaseManager:

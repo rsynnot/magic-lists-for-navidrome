@@ -911,57 +911,130 @@ async function generateRediscoverWeekly() {
         return;
     }
 
-    // Show loading toast
-    showToast('loading', 'Analyzing your listening history...', 0);
+    // Get selected version
+    const version = document.querySelector('input[name="rediscover-version"]:checked').value;
+
+    // Show loading toast with version info
+    const versionText = version === 'v2' ? 'v2.0 (temporal analysis)' : 'v1.0 (classic)';
+    showToast('loading', `Analyzing your listening history with ${versionText}...`, 0);
     button.disabled = true;
 
     try {
-        const refreshFrequency = document.querySelector('input[name="rediscover-refresh-frequency"]:checked').value;
-        const playlistLength = document.querySelector('input[name="rediscover-playlist-length"]:checked').value;
+        if (version === 'v2') {
+            // Use v2.0 create endpoint (generates and creates playlist in one step)
+            const refreshFrequency = "never"; // v2.0 doesn't have refresh options in UI yet
+            const playlistLength = 25; // v2.0 uses fixed 25 tracks
 
-        const response = await fetch('/api/create-rediscover-playlist', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                refresh_frequency: refreshFrequency,
-                playlist_length: parseInt(playlistLength),
-                library_ids: selectedLibraryIds
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || 'Failed to create Re-Discover playlist');
-        }
-
-        const data = await response.json();
-
-        // Track successful Re-Discover Weekly generation with Rybbit
-        if (typeof window.rybbit !== 'undefined') {
-            const modelInfo = await getAIModelInfo();
-            window.rybbit.event('Re-Discover Playlist Created', {
-                trackCount: data.tracks ? data.tracks.length : 0,
-                refreshFrequency: refreshFrequency,
-                aiModel: modelInfo.model,
-                aiProvider: modelInfo.provider
+            const response = await fetch('/api/create-rediscover-playlist-v2', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    refresh_frequency: refreshFrequency,
+                    playlist_length: playlistLength,
+                    library_ids: selectedLibraryIds
+                })
             });
-        }
 
-        // Show success toast
-        showToast('success', `Re-Discover playlist created with ${data.tracks ? data.tracks.length : 0} tracks`);
-        
-        // Update playlist count in sidebar
-        updatePlaylistCount();
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || 'Failed to create Re-Discover Weekly v2.0');
+            }
+
+            const data = await response.json();
+
+            // Track successful Re-Discover Weekly v2.0 creation
+            if (typeof window.rybbit !== 'undefined') {
+                const modelInfo = await getAIModelInfo();
+                window.rybbit.event('Re-Discover Weekly v2.0 Created', {
+                    trackCount: data.track_count,
+                    theme: data.theme,
+                    mode: data.mode,
+                    refreshFrequency: refreshFrequency,
+                    aiModel: modelInfo.model,
+                    aiProvider: modelInfo.provider,
+                    isFallback: data.is_fallback || false
+                });
+            }
+
+            // Show success message
+            const fallbackMsg = data.is_fallback ? ' (using fallback strategy)' : '';
+            showToast('success', `Re-Discover Weekly v2.0 created! "${data.theme}" theme with ${data.track_count} tracks${fallbackMsg}`);
+
+        } else {
+            // Use v1.0 endpoint
+            const refreshFrequency = document.querySelector('input[name="rediscover-refresh-frequency"]:checked').value;
+            const playlistLength = document.querySelector('input[name="rediscover-playlist-length"]:checked').value;
+
+            const response = await fetch('/api/create-rediscover-playlist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    refresh_frequency: refreshFrequency,
+                    playlist_length: parseInt(playlistLength),
+                    library_ids: selectedLibraryIds
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || 'Failed to create Re-Discover playlist');
+            }
+
+            const data = await response.json();
+
+            // Track successful Re-Discover Weekly v1.0 generation with Rybbit
+            if (typeof window.rybbit !== 'undefined') {
+                const modelInfo = await getAIModelInfo();
+                window.rybbit.event('Re-Discover Playlist Created', {
+                    trackCount: data.tracks ? data.tracks.length : 0,
+                    refreshFrequency: refreshFrequency,
+                    aiModel: modelInfo.model,
+                    aiProvider: modelInfo.provider
+                });
+            }
+
+            // Show success message
+            showToast('success', `Re-Discover Weekly v1.0 created! ${data.tracks.length} tracks added to your playlist`);
+        }
 
     } catch (error) {
-        console.error('Error generating Re-Discover Weekly:', error);
         showToast('error', error.message);
     } finally {
         button.disabled = false;
     }
 }
+
+// Handle version selection changes
+function handleVersionChange() {
+    const version = document.querySelector('input[name="rediscover-version"]:checked').value;
+    const button = document.getElementById('rediscover-btn');
+    const v1Options = document.querySelectorAll('.rediscover-v1-only');
+
+    if (version === 'v2') {
+        // Hide v1-specific options
+        v1Options.forEach(el => el.style.display = 'none');
+        button.textContent = 'Generate Re-Discover Weekly v2.0';
+    } else {
+        // Show v1-specific options
+        v1Options.forEach(el => el.style.display = '');
+        button.textContent = 'Generate Re-Discover Playlist';
+    }
+}
+
+// Initialize version change handler
+document.addEventListener('DOMContentLoaded', function() {
+    const versionRadios = document.querySelectorAll('input[name="rediscover-version"]');
+    versionRadios.forEach(radio => {
+        radio.addEventListener('change', handleVersionChange);
+    });
+
+    // Set initial state
+    handleVersionChange();
+});
 
 // Update playlist count in sidebar
 async function updatePlaylistCount() {

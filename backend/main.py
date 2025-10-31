@@ -8,7 +8,7 @@ import uvicorn
 import os
 import logging
 import logging.handlers
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -45,9 +45,9 @@ logging.getLogger('httpcore').setLevel(logging.WARNING)
 from .navidrome_client import NavidromeClient
 from .ai_client import AIClient
 from .database import DatabaseManager, get_db
-from .schemas import CreatePlaylistRequest, CreateGenrePlaylistRequest, Playlist, RediscoverWeeklyResponse, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
+from .schemas import CreatePlaylistRequest, CreateGenrePlaylistRequest, Playlist, RediscoverWeeklyResponse, RediscoverWeeklyV2Response, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
 from .recipe_manager import recipe_manager
-from .rediscover import RediscoverWeekly
+from .rediscover import RediscoverWeekly, ReDiscoverV2Processor
 from .track_scoring import filter_tracks_for_this_is_playlist
 # SYSTEM CHECK FEATURE - START
 from .services.health_check_service import HealthCheckService
@@ -652,6 +652,153 @@ async def get_rediscover_weekly():
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to generate Re-Discover Weekly: {error_msg}")
+
+@app.get("/api/rediscover-weekly-v2", response_model=RediscoverWeeklyV2Response)
+async def get_rediscover_weekly_v2(library_ids: Optional[List[str]] = Query(None), db: DatabaseManager = Depends(get_db)):
+    """Generate Re-Discover Weekly v2.0 playlist using temporal analysis and two-phase AI"""
+    try:
+        # Get clients
+        nav_client = get_navidrome_client()
+        ai_client = get_ai_client()
+
+        # Get user and server IDs
+        user_id = await db.get_or_create_user_id()
+        server_id = nav_client.base_url or "unknown_server"  # Use base URL as server identifier
+
+        # Create ReDiscoverV2Processor instance
+        processor = ReDiscoverV2Processor(nav_client, ai_client, db)
+
+        # Generate the playlist
+        result = await processor.generate_playlist(user_id, server_id, library_ids)
+
+        return RediscoverWeeklyV2Response(**result)
+
+    except Exception as e:
+        error_msg = str(e)
+        if "Insufficient listening history" in error_msg:
+            raise HTTPException(status_code=404, detail="Insufficient listening history. Star favorites and listen regularly. Check back in 2-3 weeks!")
+        elif "Invalid username or password" in error_msg or "No authentication method available" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to generate Re-Discover Weekly v2.0: {error_msg}")
+
+@app.post("/api/create-rediscover-playlist-v2")
+async def create_rediscover_playlist_v2(
+    request: CreateRediscoverPlaylistRequest,
+    db: DatabaseManager = Depends(get_db)
+):
+    """Create a Re-Discover Weekly v2.0 playlist in Navidrome"""
+    try:
+        scheduler_logger.info(f"🎵 Starting Re-Discover v2.0 playlist creation with length {request.playlist_length}, library_ids: {request.library_ids}")
+
+        # Get clients
+        nav_client = get_navidrome_client()
+        ai_client = get_ai_client()
+
+        # Get user and server IDs
+        user_id = await db.get_or_create_user_id()
+        server_id = nav_client.base_url or "unknown_server"
+
+        # Create ReDiscoverV2Processor instance
+        processor = ReDiscoverV2Processor(nav_client, ai_client, db)
+
+        # Generate the playlist
+        playlist_data = await processor.generate_playlist(user_id, server_id, request.library_ids)
+        tracks = playlist_data.get("tracks", [])
+
+        if not tracks:
+            scheduler_logger.error("❌ No tracks generated for Re-Discover Weekly v2.0")
+            raise HTTPException(status_code=404, detail="No tracks found for Re-Discover Weekly v2.0")
+
+        scheduler_logger.info(f"✅ Generated {len(tracks)} tracks for Re-Discover Weekly v2.0")
+
+        # Extract AI reasoning if available
+        ai_reasoning = playlist_data.get("reasoning", "")
+        ai_curated = any(track.get("ai_curated", False) for track in tracks)
+
+        # If AI curated, get reasoning from the tracks instead of Phase 1
+        if ai_curated:
+            track_reasoning = next((track.get("ai_reasoning", "") for track in tracks if track.get("ai_curated", False) and track.get("ai_reasoning")), "")
+            if track_reasoning:
+                ai_reasoning = track_reasoning
+
+        scheduler_logger.info(f"🎵 AI curated: {ai_curated}, reasoning length: {len(ai_reasoning)}")
+
+        # Log the AI reasoning for debugging (truncated)
+        if ai_reasoning and ai_curated:
+            reasoning_preview = ai_reasoning[:200] + "..." if len(ai_reasoning) > 200 else ai_reasoning
+            scheduler_logger.info(f"🎵 AI curation applied for Re-Discover Weekly v2.0 (reasoning length: {len(ai_reasoning)} chars): {reasoning_preview}")
+        else:
+            scheduler_logger.info(f"⚠️ Re-Discover Weekly v2.0 used fallback strategy")
+
+        # Create playlist name
+        playlist_name = f"Re-Discover Weekly v2.0 ✨"
+        if playlist_data.get("is_fallback"):
+            playlist_name += " (Fallback)"
+        scheduler_logger.info(f"📝 Creating playlist: {playlist_name}")
+
+        # Extract track IDs
+        track_ids = [track["id"] for track in tracks]
+        scheduler_logger.info(f"🎵 Track IDs: {track_ids[:5]}... (total: {len(track_ids)})")
+
+        # Create playlist in Navidrome with reasoning as comment
+        comment_to_use = ai_reasoning if ai_reasoning else f"Theme: {playlist_data.get('theme', 'Mixed')}"
+        comment_preview = comment_to_use[:200] + "..." if len(comment_to_use) > 200 else comment_to_use
+        scheduler_logger.info(f"💬 Creating Re-Discover v2.0 playlist with comment (length: {len(comment_to_use)}): {comment_preview}")
+
+        scheduler_logger.info("🎵 Calling nav_client.create_playlist...")
+        navidrome_playlist_id = await nav_client.create_playlist(
+            name=playlist_name,
+            track_ids=track_ids,
+            comment=comment_to_use
+        )
+        scheduler_logger.info(f"✅ Navidrome playlist created: {navidrome_playlist_id}")
+
+        # Get track titles for database storage
+        track_titles = [track.get("title", "Unknown") for track in tracks]
+        scheduler_logger.info(f"📊 Storing {len(track_titles)} track titles in database")
+
+        # Store playlist in local database (using a synthetic artist_id for rediscover playlists)
+        playlist_record = await db.create_playlist(
+            artist_id="rediscover_v2",
+            playlist_name=playlist_name,
+            songs=track_titles,
+            reasoning=ai_reasoning,
+            navidrome_playlist_id=navidrome_playlist_id,
+            playlist_length=len(tracks),
+            library_ids=request.library_ids
+        )
+        scheduler_logger.info(f"💾 Database playlist created: {playlist_record}")
+
+        # Set up scheduling if requested
+        if request.refresh_frequency != "never":
+            scheduler_logger.info(f"⏰ Setting up {request.refresh_frequency} refresh schedule")
+            scheduled_playlist = await db.create_scheduled_playlist(
+                playlist_type="rediscover_weekly_v2",
+                navidrome_playlist_id=navidrome_playlist_id,
+                refresh_frequency=request.refresh_frequency,
+                next_refresh=calculate_next_refresh(request.refresh_frequency)
+            )
+            scheduler_logger.info(f"✅ Scheduled playlist created: {scheduled_playlist}")
+        else:
+            scheduler_logger.info("⏰ No scheduling requested (refresh_frequency='never')")
+
+        return {
+            "message": f"Re-Discover Weekly v2.0 playlist created successfully with {len(tracks)} tracks",
+            "playlist_id": navidrome_playlist_id,
+            "track_count": len(tracks),
+            "theme": playlist_data.get("theme", "Mixed"),
+            "mode": playlist_data.get("mode", "Unknown"),
+            "is_fallback": playlist_data.get("is_fallback", False)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        scheduler_logger.error(f"❌ Failed to create Re-Discover Weekly v2.0 playlist: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create Re-Discover Weekly v2.0 playlist: {str(e)}")
 
 @app.post("/api/create-rediscover-playlist")
 async def create_rediscover_playlist(
