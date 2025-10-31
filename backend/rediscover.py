@@ -745,9 +745,9 @@ class ReDiscoverV2Processor:
 
                     cleaned_content = cleaned_content.strip()
 
-                    # Try to find JSON object
+                    # Try to find JSON object - use greedy match to handle nested objects
                     import re
-                    json_object_match = re.search(r'\{.*?\}', cleaned_content, re.DOTALL)
+                    json_object_match = re.search(r'\{.*\}', cleaned_content, re.DOTALL)
                     if json_object_match:
                         json_str = json_object_match.group(0)
                     else:
