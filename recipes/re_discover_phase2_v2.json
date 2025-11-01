@@ -1,0 +1,46 @@
+{
+  "recipe_id": "Re_Discover_Weekly_v2_Phase2",
+  "name": "Re-Discover Weekly v2.0 - Phase 2: Track Sequencing & Flow Optimization",
+  "user_parameters": {
+    "analysis_summary": "{{ANALYSIS_SUMMARY}}",
+    "candidate_tracks": "{{candidate_tracks}}",
+    "num_tracks": "{{num_tracks}}"
+  },
+  "llm_config": {
+    "max_output_tokens": 16000,
+    "temperature": 0.6
+  },
+     "model_instructions": "You are an expert music curator crafting a 'Re-Discover' playlist. Your goal is to select and order tracks that build a dynamic, continuous listening experience.\n\n## CURATION STRATEGY\n{{ANALYSIS_SUMMARY}}\n\n## CANDIDATE TRACKS\n{{candidate_tracks}}\n\n## SELECTION RULES\n- Select up to {{num_tracks}} tracks (no more than provided)\n- Choose songs that fit the theme and strategy\n- Prioritise tracks with higher rediscovery_score\n- Include variety: max 2 tracks per artist\n- Keep the flow cohesive—avoid jarring genre or tempo shifts\n- Start with energy, build interest, and close on a satisfying note\n\n## SEQUENCING PRINCIPLES\n1. **Energy Flow** – Shape the playlist with natural rises and falls\n2. **Artist Spread** – Space out tracks by the same artist\n3. **Genre & Mood** – Group related sounds, but keep the journey interesting\n4. **Era Mix** – Blend decades or styles for a nostalgic feel\n5. **Emotional Arc** – Create a story-like progression from start to finish\n\n## QUALITY CHECK\n- Every track must come from the candidate list\n- Match the number requested (unless fewer candidates exist)\n- Strong rediscovery potential and emotional or stylistic cohesion\n\n## RESPONSE FORMAT\nRespond with JSON: {\"track_ids\": [id1, id2, ...], \"reasoning\": \"Write an interesting ~280 character summary of the playlist in the style of a magazine album review.\"}. NB: For each track, ONLY return the ID as an integer—do not include titles or metadata.",
+  "global_strategy": {
+    "final_track_count": "{{num_tracks}}",
+    "max_consecutive_artist": 2,
+    "prioritize_discovery": true,
+    "ensure_flow": true
+  },
+  "processing_steps": [
+    {
+      "step_id": 1,
+      "title": "Theme Alignment",
+      "priority_score": 10,
+      "description": "Filter candidates that best match the identified theme"
+    },
+    {
+      "step_id": 2,
+      "title": "Quality Selection",
+      "priority_score": 8,
+      "description": "Select highest-quality tracks based on rediscovery potential"
+    },
+    {
+      "step_id": 3,
+      "title": "Flow Sequencing",
+      "priority_score": 9,
+      "description": "Arrange tracks for optimal listening experience"
+    },
+    {
+      "step_id": 4,
+      "title": "Diversity Check",
+      "priority_score": 7,
+      "description": "Ensure no artist dominates and maintain variety"
+    }
+  ]
+}

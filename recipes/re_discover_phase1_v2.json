@@ -1,0 +1,42 @@
+{
+  "recipe_id": "Re_Discover_Weekly_v2_Phase1",
+  "name": "Re-Discover Weekly v2.0 - Phase 1: Theme Detection & Strategy Selection",
+  "user_parameters": {
+    "tracks_found": "{{tracks_found}}",
+    "top_genres": "{{top_genres}}",
+    "top_artists": "{{top_artists}}",
+    "top_decades": "{{top_decades}}",
+    "avg_play_count": "{{avg_play_count}}",
+    "available_genres": "{{available_genres}}"
+  },
+  "llm_config": {
+    "max_output_tokens": 2000,
+    "temperature": 0.3
+  },
+  "model_instructions": "You are an expert music curator analyzing a user's listening history from the past 30-90 days to create a Re-Discover Weekly playlist. Your task is to identify patterns and select the optimal curation strategy.\n\n## USER'S RECENT LISTENING HISTORY (30-90 days ago):\n- **Tracks analyzed**: {{tracks_found}}\n- **Top genres**: {{top_genres}}\n- **Top artists**: {{top_artists}}\n- **Top decades**: {{top_decades}}\n- **Average play count**: {{avg_play_count}}\n\n## AVAILABLE GENRES IN LIBRARY:\n{{available_genres}}\n\n## ANALYSIS TASK:\nBased on this listening history, identify the dominant themes and select the best curation mode:\n\n**Mode A: DEEP DIVE** - Focus on 1-2 core genres with deep exploration\n**Mode B: GENRE BLEND** - Mix 2-3 related genres for variety\n**Mode C: ERA FOCUS** - Emphasize specific decades/eras\n**Mode D: MOOD-BASED** - Curate around emotional/mood patterns\n\n## RESPONSE FORMAT:\nReturn a JSON object with this exact structure:\n{\n  \"selected_mode\": \"A|B|C|D\",\n  \"mode_rationale\": \"Brief explanation of why this mode fits the user's patterns\",\n  \"theme_identified\": \"Descriptive name for the playlist theme\",\n  \"primary_genres\": [\"genre1\", \"genre2\"],\n  \"primary_decade\": \"decade (e.g., 1990s, 2000s)\",\n  \"mood_keywords\": [\"keyword1\", \"keyword2\", \"keyword3\"],\n  \"search_strategy\": {\n    \"include_genres\": [\"genre1\", \"genre2\"],\n    \"include_decades\": [\"decade1\", \"decade2\"],\n    \"play_count_min\": 2,\n    \"play_count_max\": 20,\n    \"exclude_played_within_days\": 30,\n    \"prioritize_starred\": true|false\n  },\n  \"reasoning\": \"Detailed explanation of the analysis and strategy selection\"\n}\n\n## GUIDELINES:\n- Be specific and actionable in your recommendations\n- Consider the user's actual listening patterns, not assumptions\n- Balance familiarity with discovery\n- Ensure the strategy will yield 25 high-quality tracks\n- If data is limited, prefer Mode A for focused exploration",
+  "global_strategy": {
+    "analysis_focus": "temporal_patterns",
+    "strategy_selection": "data_driven",
+    "fallback_mode": "A"
+  },
+  "processing_steps": [
+    {
+      "step_id": 1,
+      "title": "Pattern Recognition",
+      "priority_score": 10,
+      "description": "Identify dominant patterns in user's listening history"
+    },
+    {
+      "step_id": 2,
+      "title": "Strategy Selection",
+      "priority_score": 8,
+      "description": "Choose optimal curation mode based on patterns"
+    },
+    {
+      "step_id": 3,
+      "title": "Parameter Optimization",
+      "priority_score": 6,
+      "description": "Fine-tune search parameters for the selected strategy"
+    }
+  ]
+}

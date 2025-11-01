@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class Artist(BaseModel):
@@ -66,6 +66,18 @@ class RediscoverWeeklyResponse(BaseModel):
     tracks: List[RediscoverTrack]
     total_tracks: int
     message: str
+
+class RediscoverWeeklyV2Response(BaseModel):
+    """Response schema for Re-Discover Weekly v2.0"""
+    name: str
+    tracks: List[Dict[str, Any]]
+    theme: str
+    mode: str
+    reasoning: str
+    user_id: str
+    server_id: str
+    generated_at: str
+    is_fallback: Optional[bool] = False
 
 class CreateRediscoverPlaylistRequest(BaseModel):
     """Request schema for creating a Re-Discover Weekly playlist"""

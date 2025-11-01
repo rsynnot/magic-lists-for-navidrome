@@ -53,7 +53,7 @@ class AIProvider:
         self.base_url = base_url
         self.client = httpx.AsyncClient()
     
-    async def generate(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str, max_tokens: int = 16000, temperature: float = 0.7) -> str:
         """Send chat completion request to configured AI provider"""
         
         # Handle Google AI's different API format
@@ -142,7 +142,7 @@ class AIProvider:
             result = response.json()
             return result["choices"][0]["message"]["content"].strip()
     
-    async def _generate_google(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:  # type: ignore
+    async def _generate_google(self, system_prompt: str, user_prompt: str, max_tokens: int = 16000, temperature: float = 0.7) -> Union[str, NoReturn]:  # type: ignore
         """Handle Google AI's specific API format with controlled generation for JSON"""
         url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
 
@@ -157,9 +157,16 @@ class AIProvider:
         {user_prompt}
         """
 
+        # For genre mix, responses are small JSON, so cap output tokens reasonably
+        if "Genre Mix" in system_prompt or "genre_mix" in user_prompt.lower():
+            # max_output = 2500  # Genre mix responses are ~500 tokens
+            max_output = min(int(max_tokens), 16000)
+        else:
+            max_output = min(int(max_tokens), 16000)
+
         generation_config = {
             "temperature": temperature,
-            "maxOutputTokens": min(max_tokens * 3, 65000)  # More generous multiplier like This Is playlist
+            "maxOutputTokens": max_output
         }
 
         payload = {
@@ -172,6 +179,33 @@ class AIProvider:
         }
 
         headers = {"Content-Type": "application/json"}
+
+        # Debug: Save payload to file for inspection
+        import json
+        import time
+        timestamp = int(time.time())
+
+        # Add debug info to payload
+        debug_info = {
+            "timestamp": timestamp,
+            "model": self.model,
+            "max_tokens_param": max_tokens,
+            "max_output_tokens_calculated": generation_config.get("maxOutputTokens"),
+            "combined_prompt_length": len(combined_prompt),
+            "system_prompt_length": len(system_prompt),
+            "user_prompt_length": len(user_prompt),
+            "is_genre_mix": "Genre Mix" in system_prompt or "genre_mix" in user_prompt.lower()
+        }
+
+        payload_with_debug = {
+            "debug_info": debug_info,
+            "payload": payload
+        }
+
+        payload_file = f"payloads/google_ai_payload_{timestamp}.json"
+        with open(payload_file, 'w') as f:
+            json.dump(payload, f, indent=2)
+        print(f"📄 Saved payload to {payload_file} (prompt: ~{len(combined_prompt)//4} tokens)")
 
         try:
             response = await self.client.post(
@@ -187,13 +221,20 @@ class AIProvider:
             if "candidates" in result and len(result["candidates"]) > 0:
                 candidate = result["candidates"][0]
 
-                # Check finish reason
+                # Check finish reason 
                 finish_reason = candidate.get("finishReason", "")
                 if finish_reason:
                     if finish_reason in ["SAFETY", "RECITATION", "OTHER"]:
                         raise Exception(f"Google AI blocked the response due to: {finish_reason}")
                     elif finish_reason == "MAX_TOKENS":
-                        raise Exception(f"Google AI hit token limit (prompt: {result.get('usageMetadata', {}).get('promptTokenCount', 'unknown')} tokens). Try reducing max_tokens or simplifying the prompt.")
+                        # This means output hit the limit, not input
+                        prompt_tokens = result.get('usageMetadata', {}).get('promptTokenCount', 'unknown')
+                        output_tokens = result.get('usageMetadata', {}).get('candidatesTokenCount', 'unknown')
+                        raise Exception( 
+                            f"Google AI response incomplete: output hit {max_output} token limit. "
+                            f"Input: {prompt_tokens} tokens, Output: {output_tokens} tokens. "
+                            f"Increase max_tokens parameter if you need longer responses."
+                        )
 
                 # Parse the actual content
                 if "content" in candidate:
@@ -230,9 +271,6 @@ class AIProvider:
 
         except Exception as e:
             raise Exception(f"Google AI error: {str(e)}")
-
-        # This should never be reached
-        raise Exception("Unexpected end of function")
 
     async def close(self):
         """Close the HTTP client"""

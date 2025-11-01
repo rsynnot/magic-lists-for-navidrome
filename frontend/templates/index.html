@@ -477,6 +477,8 @@
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-Discover Playlist</h1>
                         <p class="text-gray-600">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
+
+
                     </div>
 
                     <div class="space-y-6">
@@ -568,154 +570,153 @@
                              </div>
                          </div>
 
-                         <!-- Options Grid -->
-                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <!-- Playlist Length -->
-                             <div>
-                                 <label class="block text-sm text-gray-900 font-bold mb-3">Playlist Length</label>
-                                 <div class="space-y-3">
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-length-25" name="genre-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
-                                     </div>
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-length-50" name="genre-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
-                                     </div>
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-length-100" name="genre-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
-                                     </div>
-                                 </div>
-                             </div>
+                        <!-- Options Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Playlist Length -->
+                            <div>
+                                <label class="block text-sm text-gray-900 font-bold mb-3">Playlist Length</label>
+                                <div class="space-y-3">
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-length-25" name="genre-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-length-50" name="genre-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-length-100" name="genre-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
+                                    </div>
+                                </div>
+                            </div>
 
-                             <!-- Refresh Frequency -->
-                             <div>
-                                 <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
-                                 <div class="space-y-3">
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-freq-none" name="genre-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-freq-none" class="text-sm text-gray-500  ms-2">Don't refresh</label>
-                                     </div>
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-freq-daily" name="genre-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-freq-daily" class="text-sm text-gray-500  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
-                                     </div>
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-freq-weekly" name="genre-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
-                                     </div>
-                                     <div class="flex items-center">
-                                         <input type="radio" id="genre-freq-monthly" name="genre-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="genre-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                         <!-- Submit Button -->
-                         <div class="pt-4">
-                             <button
-                                 type="submit"
-                                 id="create-genre-playlist-btn"
-                                 class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2  transition-colors"
-                             >
-                                 Create Playlist
-                             </button>
-                         </div>
+                            <!-- Refresh Frequency -->
+                            <div class="rediscover-v1-only">
+                                <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
+                                <div class="space-y-3">
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-freq-none" name="genre-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-freq-none" class="text-sm text-gray-500  ms-2">Don't refresh</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-freq-daily" name="genre-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-freq-daily" class="text-sm text-gray-500  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-freq-weekly" name="genre-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="genre-freq-monthly" name="genre-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
+                                        <label for="genre-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Submit Button -->
+                        <div class="pt-4">
+                            <button
+                                type="submit"
+                                id="create-genre-playlist-btn"
+                                class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2  transition-colors"
+                            >
+                                Create Genre Mix Playlist
+                            </button>
+                        </div>
                      </form>
                  </div>
 
-                 <!-- Manage Playlists Content (hidden by default) -->
-                <div id="manage-playlists-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                    <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>
-                        <p class="text-gray-600">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
-                    </div>
+                  <!-- Manage Playlists Content (hidden by default) -->
+                  <div id="manage-playlists-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+                      <div class="mb-6">
+                          <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>
+                          <p class="text-gray-600">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
+                      </div>
 
-                    <!-- Loading State -->
-                    <div id="playlists-loading" class="hidden text-center p-4 rounded-lg mb-4 bg-gray-50">
-                        <span class="text-gray-600">Loading your playlists...</span>
-                    </div>
+                      <!-- Loading State -->
+                      <div id="playlists-loading" class="hidden text-center p-4 rounded-lg mb-4 bg-gray-50">
+                          <span class="text-gray-600">Loading your playlists...</span>
+                      </div>
 
-                    <!-- Playlists Container -->
-                    <div id="playlists-container"></div>
-                </div>
+                      <!-- Playlists Container -->
+                      <div id="playlists-container"></div>
+                  </div>
 
-                <!-- System Check Content (hidden by default) -->
-                <div id="system-check-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                    <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">System Check</h1>
-                        <p class="text-gray-600">Verifying your MagicLists configuration...</p>
-                    </div>
+                  <!-- System Check Content (hidden by default) -->
+                  <div id="system-check-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+                      <div class="mb-6">
+                          <h1 class="text-2xl font-bold text-gray-900 mb-3">System Check</h1>
+                          <p class="text-gray-600">Verifying your MagicLists configuration...</p>
+                      </div>
 
-                    <!-- Check Items List -->
-                    <div id="system-checks-list" class="space-y-4 mb-6">
-                        <!-- Check items will be dynamically inserted here -->
-                    </div>
+                      <!-- Check Items List -->
+                      <div id="system-checks-list" class="space-y-4 mb-6">
+                          <!-- Check items will be dynamically inserted here -->
+                      </div>
 
-                    <!-- Result Banner and Actions -->
-                    <div id="system-check-results" class="mt-8">
-                        <!-- Success banner -->
-                        <div id="success-banner" class="hidden p-4 mb-4 text-green-800 border border-green-300 rounded-lg bg-green-50">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-5 h-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-green-800">All checks passed!</h3>
-                                    <div class="mt-2 text-sm text-green-700">
-                                        <p>Your MagicLists configuration is working correctly.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                      <!-- Result Banner and Actions -->
+                      <div id="system-check-results" class="mt-8">
+                          <!-- Success banner -->
+                          <div id="success-banner" class="hidden p-4 mb-4 text-green-800 border border-green-300 rounded-lg bg-green-50">
+                              <div class="flex">
+                                  <div class="flex-shrink-0">
+                                      <svg class="w-5 h-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                      </svg>
+                                  </div>
+                                  <div class="ml-3">
+                                      <h3 class="text-sm font-medium text-green-800">All checks passed!</h3>
+                                      <div class="mt-2 text-sm text-green-700">
+                                          <p>Your MagicLists configuration is working correctly.</p>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
 
-                        <!-- Error banner -->
-                        <div id="error-banner" class="hidden p-4 mb-4 text-red-800 border border-red-300 rounded-lg bg-red-50">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-5 h-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-red-800">Configuration issues found</h3>
-                                    <div class="mt-2 text-sm text-red-700">
-                                        <p id="error-summary">Some checks failed. Please review the details above and follow the suggestions to resolve the issues.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                          <!-- Error banner -->
+                          <div id="error-banner" class="hidden p-4 mb-4 text-red-800 border border-red-300 rounded-lg bg-red-50">
+                              <div class="flex">
+                                  <div class="flex-shrink-0">
+                                      <svg class="w-5 h-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                      </svg>
+                                  </div>
+                                  <div class="ml-3">
+                                      <h3 class="text-sm font-medium text-red-800">Configuration issues found</h3>
+                                      <div class="mt-2 text-sm text-red-700">
+                                          <p id="error-summary">Some checks failed. Please review the details above and follow the suggestions to resolve the issues.</p>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
 
-                        <!-- Action Buttons -->
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <button
-                                id="continue-btn"
-                                class="hidden w-full sm:w-auto bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 focus:ring-offset-2 transition-colors"
-                                onclick="navigateToHome()"
-                            >
-                                Continue to MagicLists
-                            </button>
-                            <button
-                                id="rerun-checks-btn"
-                                class="w-full sm:w-auto bg-gray-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 focus:ring-offset-2 transition-colors"
-                                onclick="runSystemChecks()"
-                            >
-                                Re-run Checks
-                            </button>
-                            <button
-                                id="update-settings-btn"
-                                class="hidden w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:blue-700 focus:ring-offset-2 transition-colors"
-                                onclick="showSettingsHelp()"
-                            >
-                                Update Settings
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                          <!-- Action Buttons -->
+                          <div class="flex flex-col sm:flex-row gap-3">
+                              <button
+                                  id="continue-btn"
+                                  class="hidden w-full sm:w-auto bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 focus:ring-offset-2 transition-colors"
+                                  onclick="navigateToHome()"
+                              >
+                                  Continue to MagicLists
+                              </button>
+                              <button
+                                  id="rerun-checks-btn"
+                                  class="w-full sm:w-auto bg-gray-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 focus:ring-offset-2 transition-colors"
+                                  onclick="runSystemChecks()"
+                              >
+                                  Re-run Checks
+                              </button>
+                              <button
+                                  id="update-settings-btn"
+                                  class="hidden w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:blue-700 focus:ring-offset-2 transition-colors"
+                                  onclick="showSettingsHelp()"
+                              >
+                                  Update Settings
+                              </button>
+                          </div>
+                      </div>
+                  </div>
 
                 <!-- Terms Content -->
                 <div id="terms-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">

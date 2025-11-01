@@ -186,17 +186,12 @@ function setActiveMenuItem(page) {
 
 // Navigation functionality
 function showContent(contentId) {
-    console.log(`🎨 Showing content: ${contentId}`);
-
     // Hide all content sections
     const contentSections = ['welcome-content', 'this-is-content', 'rediscover-content', 'genre-mix-content', 'manage-playlists-content', 'system-check-content', 'terms-content'];
     contentSections.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.style.display = 'none';
-            console.log(`🎨 Hidden: ${id}`);
-        } else {
-            console.log(`🎨 Element not found: ${id}`);
         }
     });
 
@@ -204,9 +199,6 @@ function showContent(contentId) {
     const targetContent = document.getElementById(contentId);
     if (targetContent) {
         targetContent.style.display = 'block';
-        console.log(`🎨 Shown: ${contentId}`);
-    } else {
-        console.log(`🎨 Target content not found: ${contentId}`);
     }
 }
 
@@ -417,11 +409,36 @@ async function loadGenres() {
         }
         allGenres = await response.json();
 
+        // Get the genre select element
+        const genreSelect = document.getElementById('genre-select');
+
+        // Update the placeholder text to show genre count
+        if (genreSelect && window.HSSelect) {
+            const selectInstance = window.HSSelect.getInstance(genreSelect);
+            if (selectInstance) {
+                selectInstance.destroy();
+            }
+
+            // Update the data-hs-select attribute with new placeholder
+            const newPlaceholder = `Select from ${allGenres.length} genres...`;
+            genreSelect.setAttribute('data-hs-select', JSON.stringify({
+                "placeholder": newPlaceholder,
+                "toggleTag": "<button type=\"button\"></button>",
+                "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 px-4 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
+                "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
+                "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
+                "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
+                "hasSearch": true,
+                "searchPlaceholder": "Search...",
+                "searchClasses": "block w-full text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1] py-2 px-3",
+                "searchWrapperClasses": "bg-white p-2 -mx-1 sticky top-0"
+            }));
+        }
+
         // Clear any previous selection
         selectedGenre = null;
 
         // Populate the select dropdown
-        const genreSelect = document.getElementById('genre-select');
         if (genreSelect) {
             // Clear existing options except the first one
             while (genreSelect.options.length > 1) {
@@ -431,8 +448,8 @@ async function loadGenres() {
             // Add genre options
             allGenres.forEach(genre => {
                 const option = document.createElement('option');
-                option.value = genre;
-                option.textContent = genre;
+                option.value = genre.name;
+                option.textContent = `${genre.name} (${genre.songCount})`;
                 genreSelect.appendChild(option);
             });
 
@@ -441,10 +458,6 @@ async function loadGenres() {
 
             // Reinitialize the HSSelect component
             if (window.HSSelect) {
-                const selectInstance = window.HSSelect.getInstance(genreSelect);
-                if (selectInstance) {
-                    selectInstance.destroy();
-                }
                 window.HSSelect.autoInit();
             }
         }
@@ -916,10 +929,11 @@ async function generateRediscoverWeekly() {
     button.disabled = true;
 
     try {
+        // Use v2.0 create endpoint (generates and creates playlist in one step)
         const refreshFrequency = document.querySelector('input[name="rediscover-refresh-frequency"]:checked').value;
         const playlistLength = document.querySelector('input[name="rediscover-playlist-length"]:checked').value;
 
-        const response = await fetch('/api/create-rediscover-playlist', {
+        const response = await fetch('/api/create-rediscover-playlist-v2', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -938,30 +952,42 @@ async function generateRediscoverWeekly() {
 
         const data = await response.json();
 
-        // Track successful Re-Discover Weekly generation with Rybbit
+        // Track successful Re-Discover playlist creation
         if (typeof window.rybbit !== 'undefined') {
             const modelInfo = await getAIModelInfo();
             window.rybbit.event('Re-Discover Playlist Created', {
-                trackCount: data.tracks ? data.tracks.length : 0,
+                trackCount: data.track_count,
+                theme: data.theme,
+                mode: data.mode,
                 refreshFrequency: refreshFrequency,
                 aiModel: modelInfo.model,
-                aiProvider: modelInfo.provider
+                aiProvider: modelInfo.provider,
+                isFallback: data.is_fallback || false
             });
         }
 
-        // Show success toast
-        showToast('success', `Re-Discover playlist created with ${data.tracks ? data.tracks.length : 0} tracks`);
-        
-        // Update playlist count in sidebar
-        updatePlaylistCount();
+        // Show success message
+        const fallbackMsg = data.is_fallback ? ' (using fallback strategy)' : '';
+        showToast('success', `Re-Discover playlist created! "${data.theme}" theme with ${data.track_count} tracks${fallbackMsg}`);
 
     } catch (error) {
-        console.error('Error generating Re-Discover Weekly:', error);
         showToast('error', error.message);
     } finally {
         button.disabled = false;
     }
 }
+
+// Handle version selection changes (removed - always use v2.0)
+function handleVersionChange() {
+    const button = document.getElementById('rediscover-btn');
+    button.textContent = 'Generate Re-Discover Playlist';
+}
+
+// Initialize button text
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial button text
+    handleVersionChange();
+});
 
 // Update playlist count in sidebar
 async function updatePlaylistCount() {
@@ -1396,7 +1422,6 @@ window.addEventListener('popstate', function(event) {
 
 // Get page from URL path
 function getPageFromURL(pathname) {
-    console.log(`🔗 Getting page from URL: ${pathname}`);
     let page;
     switch(pathname) {
         case '/':
@@ -1424,14 +1449,11 @@ function getPageFromURL(pathname) {
             page = 'home';
             break;
     }
-    console.log(`📄 Resolved page: ${page}`);
     return page;
 }
 
 // Handle page navigation (used by both click and popstate)
 function handlePageNavigation(page) {
-    console.log(`🧭 Navigating to page: ${page}`);
-
     // Track page view with Rybbit
     if (typeof window.rybbit !== 'undefined') {
         window.rybbit.pageview();
@@ -1441,7 +1463,6 @@ function handlePageNavigation(page) {
     let contentId;
     if (page === 'home') {
         contentId = 'welcome-content';
-        console.log('🏠 Home page - showing welcome content');
     } else if (page === 'this-is-artist') {
         contentId = 'this-is-content';
         // Load artists when navigating to This Is page (only if libraries selected)
@@ -1468,7 +1489,6 @@ function handlePageNavigation(page) {
         contentId = 'terms-content';
     }
 
-    console.log(`📄 Content ID: ${contentId}`);
     setActiveMenuItem(page);
     showContent(contentId);
 }
