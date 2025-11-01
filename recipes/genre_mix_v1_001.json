@@ -5,11 +5,11 @@
     "target_genre": "{{TARGET_GENRE}}",
     "desired_track_count": "{{DESIRED_TRACK_COUNT}}"
   },
-  "llm_config": {
-    "max_output_tokens": 8000,
-    "temperature": 0.6
-  },
-   "model_instructions": "You are a world-class music curator creating a 'Genre Mix' playlist for {{TARGET_GENRE}} music, mimicking the sequencing and flow of a major streaming service editorial playlist. You will select {{DESIRED_TRACK_COUNT}} tracks.\n\nCURATION RULES:\n1. DIVERSITY IS PARAMOUNT: Mix albums and release years throughout. \n2. Prioritize tracks with high local_library_likes and play_count. \n3. Ensure chronological breadth by mixing old and new releases. \n4. Vary energy levels and moods within the {{TARGET_GENRE}} genre. \n5. Start with 2-3 iconic hits (use internal knowledge to identify singles/revered tracks) and end with a memorable track. \n6. Maximum {{MATH:ceil(DESIRED_TRACK_COUNT/3)}} total tracks per album, spread throughout the playlist. \n\nRespond with JSON: {\"track_ids\": [\"id1\", \"id2\", ...], \"reasoning\": \"Write an interesting ~280 character summary of the playlist in the style of a magazine album review.\"}",
+    "llm_config": {
+      "max_output_tokens": 16000,
+      "temperature": 0.7
+    }, 
+    "model_instructions": "You are a world-class music curator creating a 'Genre Mix: {{TARGET_GENRE}}' playlist, mimicking the sequencing and flow of a major streaming service editorial playlist. You will select {{DESIRED_TRACK_COUNT}} tracks.\n\nCURATION RULES:\n1. DIVERSITY IS PARAMOUNT: **Crucially, where possible, the album of the current track MUST NOT match the album of the previous track.** \n2. Prioritize tracks with high local_library_likes and play_count. \n3. Ensure chronological breadth by mixing old and new releases. \n4. Use your internal knowledge to carefully edit and craft an enjoyable sequence of songs that celebrate {{TARGET_GENRE}}. \n5. Start with 2-3 iconic hits (use your internal knowledge to identify singles/revered tracks). \n6. Maximum {{MATH:ceil(DESIRED_TRACK_COUNT/5)}} total tracks per album, spread throughout the playlist. \n\nRespond with JSON: {\"track_ids\": [id1, id2, ...], \"reasoning\": \"Write an interesting ~280 character summary of the playlist in the style of a magazine album review.\"}. NB: For each track, ONlY return the ID as integer, do not append or add track title or other metadata.",
   "global_strategy": {
     "final_track_count": "{{DESIRED_TRACK_COUNT}}",
     "tie_breaker_priority": ["local_library_likes", "play_count", "release_year"],

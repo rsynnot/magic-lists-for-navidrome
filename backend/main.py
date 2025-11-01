@@ -733,8 +733,14 @@ async def create_rediscover_playlist_v2(
         else:
             scheduler_logger.info(f"⚠️ Re-Discover Weekly v2.0 used fallback strategy")
 
-        # Create playlist name
-        playlist_name = f"Re-Discover Weekly v2.0 ✨"
+        # Create playlist name based on refresh frequency
+        frequency_names = {
+            "daily": "Re-Discover Daily ✨",
+            "weekly": "Re-Discover Weekly ✨",
+            "monthly": "Re-Discover Monthly ✨",
+            "never": "Re-Discover ✨"
+        }
+        playlist_name = frequency_names.get(request.refresh_frequency, "Re-Discover Weekly ✨")
         if playlist_data.get("is_fallback"):
             playlist_name += " (Fallback)"
         scheduler_logger.info(f"📝 Creating playlist: {playlist_name}")
@@ -1041,24 +1047,30 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
         previous_songs = original_playlist.get("songs", [])[:10]
         variety_instruction = f"REFRESH CHALLENGE: The current playlist opens with these tracks in this order: {', '.join(previous_songs[:5])}. Your goal is to create a FRESH arrangement that tells a different musical story. You may include some of the same excellent tracks if they're rediscovery-worthy, but avoid replicating the same opening sequence or overall flow. Think creatively about re-ordering, substituting, or finding better transitions to ensure a genuinely refreshed listening experience." if previous_songs else ""
         
-        # Create RediscoverWeekly instance  
-        rediscover = RediscoverWeekly(nav_client)
+        # Get AI client for v2.0 processor
+        ai_client = get_ai_client()
 
-        # Enhanced variety instruction with current playlist context for AI
-        current_playlist_context = f"CURRENT PLAYLIST FLOW TO REFRESH: {', '.join(previous_songs[:10])}" if previous_songs else ""
-        enhanced_variety_context = f"{variety_instruction}\n\nFor reference, here's the complete current playlist sequence: {current_playlist_context}".strip() if variety_instruction or current_playlist_context else None
-        
+        # Get user and server IDs for v2.0 processor
+        user_id = await db.get_or_create_user_id()
+        server_id = nav_client.base_url or "unknown_server"
+
+        # Create ReDiscoverV2Processor instance (improved fallback handling)
+        processor = ReDiscoverV2Processor(nav_client, ai_client, db)
+
+        # Prepare library IDs for v2.0 processor
+        library_ids = [scheduled_playlist.library_id] if hasattr(scheduled_playlist, 'library_id') and scheduled_playlist.library_id else None
+
         # Log refresh context for debugging
-        scheduler_logger.info(f"🔄 Re-Discover refresh context - Previous tracks: {len(previous_songs)}, Enhanced variety: {bool(enhanced_variety_context)}")
+        scheduler_logger.info(f"🔄 Re-Discover v2.0 refresh context - Previous tracks: {len(previous_songs)}, Library IDs: {library_ids}")
 
-        # Generate new tracks using NEW recipe system with fresh data analysis
-        # Use the modern recipe-based approach like This Is playlists
-        tracks = await rediscover.generate_rediscover_weekly(
-            max_tracks=original_length,
-            use_ai=True,
-            variety_context=enhanced_variety_context,
-            library_id=scheduled_playlist.library_id if hasattr(scheduled_playlist, 'library_id') else None
-        )
+        # Generate new tracks using v2.0 processor with improved fallback handling
+        result = await processor.generate_playlist(user_id, server_id, library_ids)
+
+        # Extract tracks from v2.0 result format
+        tracks = result.get("tracks", [])
+
+        # Ensure tracks have the expected format for the rest of the refresh logic
+        # The v2.0 tracks should already have ai_curated and ai_reasoning fields
         
         # The rediscover.generate_rediscover_weekly() method now uses the new recipe system internally
         
@@ -1088,7 +1100,7 @@ async def refresh_rediscover_playlist(scheduled_playlist, db: DatabaseManager):
             
             # Update the existing playlist in Navidrome with reasoning
             track_ids = [track["id"] for track in tracks]
-            comment_to_use = ai_reasoning if (ai_reasoning and ai_curated) else None
+            comment_to_use = ai_reasoning if (ai_reasoning and ai_curated) else "Re-Discover Weekly v2.0 - Automatically refreshed"
             await nav_client.update_playlist(
                 playlist_id=scheduled_playlist.navidrome_playlist_id,
                 track_ids=track_ids,

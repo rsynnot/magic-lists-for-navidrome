@@ -2,15 +2,15 @@
   "recipe_id": "Re_Discover_Weekly_v2_Phase2",
   "name": "Re-Discover Weekly v2.0 - Phase 2: Track Sequencing & Flow Optimization",
   "user_parameters": {
-    "theme_strategy": "{{theme_strategy}}",
+    "analysis_summary": "{{ANALYSIS_SUMMARY}}",
     "candidate_tracks": "{{candidate_tracks}}",
     "num_tracks": "{{num_tracks}}"
   },
   "llm_config": {
-    "max_output_tokens": 1500,
-    "temperature": 0.4
+    "max_output_tokens": 16000,
+    "temperature": 0.6
   },
-  "model_instructions": "You are an expert music curator creating the perfect 25-track Re-Discover Weekly playlist. Your task is to select and sequence tracks for optimal listening flow.\n\n## CURATION STRATEGY:\n{{theme_strategy}}\n\n## CANDIDATE TRACKS:\n{{candidate_tracks}}\n\n## SELECTION REQUIREMENTS:\n- Select exactly {{num_tracks}} tracks (25 tracks)\n- Focus on tracks that match the identified theme and strategy\n- Prioritize tracks with higher rediscovery_score\n- Ensure variety: no more than 2 tracks from the same artist\n- Create smooth transitions between tracks\n- Balance energy levels throughout the playlist\n- Start strong, end smoothly\n\n## SEQUENCING PRINCIPLES:\n1. **ENERGY FLOW**: Arrange tracks from high-energy to mellow, or create intentional peaks/valleys\n2. **ARTIST SPREAD**: Distribute tracks from popular artists throughout the playlist\n3. **GENRE COHESION**: Group similar styles while maintaining interest\n4. **TEMPORAL VARIETY**: Mix different eras/decades for 'archaeological' feel\n5. **EMOTIONAL ARC**: Create a satisfying journey from start to finish\n\n## RESPONSE FORMAT:\nReturn a JSON object with this exact structure:\n{\n  \"track_ids\": [\"id1\", \"id2\", ..., \"id25\"],\n  \"reasoning\": \"Detailed explanation of your curation choices, sequencing decisions, and how the playlist achieves the theme. Keep under 280 characters.\"\n}\n\n## QUALITY CRITERIA:\n- Every track must be from the candidate list\n- Exactly 25 tracks (no more, no less)\n- Strong rediscovery potential (high play counts, long time since played)\n- Cohesive yet varied listening experience\n- Matches the theme identified in Phase 1",
+     "model_instructions": "You are an expert music curator crafting a 'Re-Discover' playlist. Your goal is to select and order tracks that build a dynamic, continuous listening experience.\n\n## CURATION STRATEGY\n{{ANALYSIS_SUMMARY}}\n\n## CANDIDATE TRACKS\n{{candidate_tracks}}\n\n## SELECTION RULES\n- Select up to {{num_tracks}} tracks (no more than provided)\n- Choose songs that fit the theme and strategy\n- Prioritise tracks with higher rediscovery_score\n- Include variety: max 2 tracks per artist\n- Keep the flow cohesive—avoid jarring genre or tempo shifts\n- Start with energy, build interest, and close on a satisfying note\n\n## SEQUENCING PRINCIPLES\n1. **Energy Flow** – Shape the playlist with natural rises and falls\n2. **Artist Spread** – Space out tracks by the same artist\n3. **Genre & Mood** – Group related sounds, but keep the journey interesting\n4. **Era Mix** – Blend decades or styles for a nostalgic feel\n5. **Emotional Arc** – Create a story-like progression from start to finish\n\n## QUALITY CHECK\n- Every track must come from the candidate list\n- Match the number requested (unless fewer candidates exist)\n- Strong rediscovery potential and emotional or stylistic cohesion\n\n## RESPONSE FORMAT\nRespond with JSON: {\"track_ids\": [id1, id2, ...], \"reasoning\": \"Write an interesting ~280 character summary of the playlist in the style of a magazine album review.\"}. NB: For each track, ONLY return the ID as an integer—do not include titles or metadata.",
   "global_strategy": {
     "final_track_count": "{{num_tracks}}",
     "max_consecutive_artist": 2,

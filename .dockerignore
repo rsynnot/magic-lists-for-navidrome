@@ -111,6 +111,21 @@ tmp_*
 wipe_playlists.py
 debug_payloads
 debug_payloads/
-
+# Temporary files
+tmp_*venv/
+test_env/
+tmp_rovodev_validate_docker.py
+.claude
+.claude/
+wipe_playlists.py 
+debug_payloads
+debug_payloads/
+/recipes/archive
+/recipes/archive/*
+/backend/chroma_db
+/backend/chroma_db/*
+/ref-docs
+/ref-docs/*
+/payloads
 
 

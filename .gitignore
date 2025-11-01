@@ -174,3 +174,4 @@ debug_payloads/
 /backend/chroma_db/*
 /ref-docs
 /ref-docs/*
+/payloads

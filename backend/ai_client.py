@@ -126,15 +126,14 @@ class AIClient:
                     # Store the actual track ID in our mapping
                     track_id_map.append(track["id"])
                     
-                    # Create indexed track (no complex ID, just index + music data)
+                    # Create indexed track (minimal essential data to reduce token usage)
                     indexed_track = {
                         "index": index,
                         "track_name": track.get("title", "Unknown"),
-                        "artist": track.get("artist", "Unknown"),
                         "album": track.get("album", "Unknown"),
-                        "genre": track.get("genre", "Unknown"),
                         "year": track.get("year", 0),
-                        "play_count": track.get("play_count", 0)
+                        "play_count": track.get("play_count", 0),
+                        "local_library_likes": track.get("local_library_likes", False)
                     }
                     indexed_tracks.append(indexed_track)
                 
@@ -145,24 +144,17 @@ class AIClient:
                         "artist_name": artist_name,
                         "desired_track_count": num_tracks,
                         "playlist_type": "this_is"
-                    }
+                     }
                 }
-                
+
                 print(f"🔢 Using index-based approach for {len(track_id_map)} tracks")
-                
-                user_content = f"""STRUCTURED PLAYLIST REQUEST:
 
-{json.dumps(structured_payload, indent=2, ensure_ascii=False)}
+                # Minimal payload for "This Is" - only essential data
+                user_content = f"""Select up to {num_tracks} tracks for a "This Is {artist_name}" playlist. If fewer than {num_tracks} tracks are available, select all available tracks.
 
-CRITICAL INSTRUCTIONS:
-- Analyze the recipe configuration (processing steps, filters, curation rules)
-- Select tracks from the available_tracks array
-- **IMPORTANT**: USE THE 'index' FIELD ONLY - never use the track_name, artist, or any other field
-- Your track_ids array must contain ONLY the exact 'index' values (as integers) from the available_tracks
-- Create a playlist of {num_tracks} tracks for {artist_name}
-- Respond with valid JSON: {{"track_ids": [0, 5, 12, 3, ...], "reasoning": "explanation"}}
+Tracks: {json.dumps(indexed_tracks, separators=(',', ':'), ensure_ascii=False)}
 
-EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "index": 12, return 12."""
+Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
                 
                 payload = {
                     "model": model,
@@ -211,32 +203,14 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             else:
                 # Legacy recipe format
                 content = await self.provider.generate(
-                    system_prompt="You are a professional music curator specializing in rediscovery playlists. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON.",
+                    system_prompt="You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside the JSON.",
                     user_prompt=prompt,
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
 
-            # Log the raw AI response for debugging (truncated preview)
-            import re
-            
-            # Extract first 3 track IDs for preview
-            track_preview = ""
-            try:
-                # Look for track_ids array in the content
-                track_ids_match = re.search(r'"track_ids":\s*\[(.*?)\]', content, re.DOTALL)
-                if track_ids_match:
-                    track_ids_content = track_ids_match.group(1)
-                    # Split by commas and take first 3
-                    track_lines = [line.strip() for line in track_ids_content.split(',')]
-                    first_three = track_lines[:3]
-                    track_preview = '[\n    ' + ',\n    '.join(first_three) + ',\n    ...\n  ]'
-                else:
-                    track_preview = content[:100] + "..."
-            except:
-                track_preview = content[:100] + "..."
-            
-            print(f"🤖 RAW AI RESPONSE for Re-Discover Weekly: {track_preview}")
+            # Log the full raw AI response for debugging
+            print(f"🤖 FULL RAW AI RESPONSE for This Is: {content}")
 
             # Parse the JSON response with comprehensive validation
             try:
@@ -316,24 +290,22 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                         raise ValueError("Invalid track_ids format: all IDs must be integers (indices)")
                     
                     returned_track_count = len(track_ids)
-                    
+
                     # Simplified validation - focus on response quality
                     # Check 1: AI returned some tracks
                     if returned_track_count == 0:
                         print(f"❌ AI returned no tracks - invalid response")
                         raise ValueError("AI response validation failed: No tracks returned")
-                    
+
                     # Check 2: Reasonable upper bound
                     max_reasonable = int(num_tracks * 1.5)  # Allow up to 1.5x requested for minor flexibility
                     if returned_track_count > max_reasonable:
                         print(f"❌ AI returned {returned_track_count} tracks, much more than requested {num_tracks}")
                         raise ValueError(f"AI response validation failed: Too many tracks returned ({returned_track_count} vs requested {num_tracks})")
-                    
-                    # Check 3: Validate tracks are within source bounds
-                    if returned_track_count > source_track_count:
-                        print(f"❌ AI returned {returned_track_count} tracks but we only provided {source_track_count}")
-                        raise ValueError(f"AI response validation failed: More tracks returned than provided")
-                    
+
+                    # Check 3: Allow AI to return more indices than available tracks (for duplicates to reach target count)
+                    # Note: Invalid indices will be filtered out later, duplicates are allowed
+
                     print(f"✅ AI returned {returned_track_count} tracks (requested: {num_tracks}), validation passed")
 
                     # INDEX-BASED: Map indices back to actual track IDs
@@ -508,19 +480,12 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                     }
                 }
 
-                user_content = f"""STRUCTURED REDISCOVER REQUEST:
+                # Minimal payload for re-discover - only essential data
+                user_content = f"""Select {num_tracks} tracks for a Re-Discover Weekly playlist.
 
-{json.dumps(structured_payload, indent=2, ensure_ascii=False)}
+Tracks: {json.dumps(indexed_tracks, separators=(',', ':'), ensure_ascii=False)}
 
-CRITICAL INSTRUCTIONS:
-- Analyze the recipe configuration (processing steps, filters, curation rules)
-- Select tracks from the available_tracks array using rediscovery_score and other metadata
-- **IMPORTANT**: USE THE 'index' FIELD ONLY - return the index numbers, NOT track_name, artist, or any other field
-- Your track_ids array must contain ONLY the exact 'index' values (as integers) from the available_tracks
-- Create a rediscover playlist of {num_tracks} tracks
-- Respond with valid JSON: {{"track_ids": [0, 5, 12, 3, ...], "reasoning": "explanation"}}
-
-EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "index": 12, return 12."""
+Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
 
                 print(f"📤 Phase 2 AI Payload (first 500 chars): {user_content[:500]}...")
                 print(f"📤 Phase 2 AI Payload (structured_tracks count): {len(indexed_tracks)}")
@@ -785,10 +750,6 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             prompt = ""
             track_id_map = []
 
-            # For legacy format support, create track_id_map from all tracks
-            for track in tracks_json:
-                track_id_map.append(track["id"])
-
             # New recipe format (genre_mix recipe has llm_config)
             llm_config = final_recipe.get("llm_config", {})
             model_instructions = final_recipe.get("model_instructions", "")
@@ -796,7 +757,7 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
             # Use model from environment (.env file), ignoring recipe model_name
             model = self.model or "openai/gpt-3.5-turbo"
             temperature = llm_config.get("temperature", 0.7)
-            max_tokens = llm_config.get("max_output_tokens", 1000)
+            max_tokens = llm_config.get("max_output_tokens", 16000)
 
             print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
 
@@ -811,15 +772,13 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 # Store the actual track ID in our mapping
                 track_id_map.append(track["id"])
 
-                # Create indexed track (no complex ID, just index + music data)
+                # Create indexed track (minimal essential data to reduce token usage)
                 indexed_track = {
                     "index": index,
                     "track_name": track.get("title", "Unknown"),
                     "artist": track.get("artist", "Unknown"),
-                    "album": track.get("album", "Unknown"),
-                    "genre": track.get("genre", "Unknown"),
-                    "year": track.get("year", 0),
-                    "play_count": track.get("play_count", 0)
+                    "play_count": track.get("play_count", 0),
+                    "local_library_likes": track.get("local_library_likes", False)
                 }
                 indexed_tracks.append(indexed_track)
 
@@ -835,19 +794,12 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
 
             print(f"🔢 Using index-based approach for {len(track_id_map)} tracks")
 
-            user_content = f"""STRUCTURED GENRE MIX REQUEST:
+            # Minimal payload for genre mix - only essential data
+            user_content = f"""Select {num_tracks} tracks for a {genre} playlist.
 
-{json.dumps(structured_payload, indent=2, ensure_ascii=False)}
+Tracks: {json.dumps(indexed_tracks, separators=(',', ':'), ensure_ascii=False)}
 
-CRITICAL INSTRUCTIONS:
-- Analyze the recipe configuration (processing steps, filters, curation rules)
-- Select tracks from the available_tracks array
-- **IMPORTANT**: USE THE 'index' FIELD ONLY - never use the track_name, artist, or any other field
-- Your track_ids array must contain ONLY the exact 'index' values (as integers) from the available_tracks
-- Create a playlist of {num_tracks} tracks for {genre} genre
-- Respond with valid JSON: {{"track_ids": [0, 5, 12, 3, ...], "reasoning": "explanation"}}
-
-EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "index": 12, return 12."""
+Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
 
             # Use the provider to make the AI request
             content = await self.provider.generate(
@@ -857,26 +809,8 @@ EXAMPLE: If track has "index": 5, return 5 in track_ids array. If track has "ind
                 temperature=temperature
             )
 
-            # Log the raw AI response for debugging (truncated preview)
-            import re
-
-            # Extract first 3 track IDs for preview
-            track_preview = ""
-            try:
-                # Look for track_ids array in the content
-                track_ids_match = re.search(r'"track_ids":\s*\[(.*?)\]', content, re.DOTALL)
-                if track_ids_match:
-                    track_ids_content = track_ids_match.group(1)
-                    # Split by commas and take first 3
-                    track_lines = [line.strip() for line in track_ids_content.split(',')]
-                    first_three = track_lines[:3]
-                    track_preview = '[\n    ' + ',\n    '.join(first_three) + ',\n    ...\n  ]'
-                else:
-                    track_preview = content[:100] + "..."
-            except:
-                track_preview = content[:100] + "..."
-
-            print(f"🤖 RAW AI RESPONSE for Genre Mix: {track_preview}")
+            # Log the full raw AI response for debugging
+            print(f"🤖 FULL RAW AI RESPONSE for Genre Mix: {content}")
 
             # Parse the JSON response with comprehensive validation
             try:

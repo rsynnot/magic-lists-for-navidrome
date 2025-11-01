@@ -78,12 +78,12 @@ class RediscoverWeekly:
             
             # Fallback: Get all songs and use play count as proxy for recent activity
             # This is less accurate but works when scrobbles aren't available
-            return await self._get_fallback_history()
+            return await self._get_fallback_history(library_id=None)
             
         except Exception as e:
             raise Exception(f"Failed to get listening history: {e}")
     
-    async def _get_fallback_history(self) -> List[Dict[str, Any]]:
+    async def _get_fallback_history(self, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Fallback method: Get songs with play counts as a proxy for listening history.
         This isn't perfect but provides some data when scrobbles aren't available.
