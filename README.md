@@ -38,27 +38,27 @@ _Caption: Creating a 'This is (Artist)' playlist_
 **Why this method?** Your MagicLists container will be on the same network as Navidrome, making connection simple and reliable. This also enables future features like audio analysis that require local file access.
 
 1. **Add MagicLists to your existing `docker-compose.yml`** (the one that runs Navidrome):
-```yaml
-   services:
-     navidrome:
-       # ... your existing Navidrome config ...
-     
-     magiclists:
-       image: rickysynnot/magic-lists-for-navidrome:latest
-       container_name: magiclists
-       ports:
-         - "4545:8000"
-       environment:
-         - NAVIDROME_URL=http://navidrome:4533
-         - NAVIDROME_USERNAME=your_username
-         - NAVIDROME_PASSWORD=your_password
-         - DATABASE_PATH=/app/data/magiclists.db # Required: Database location
-           - AI_PROVIDER=openrouter               # Optional: openrouter, groq, google, ollama
-           - AI_API_KEY=your_openrouter_api_key  # Optional, for OpenRouter/Groq/Google
-           - AI_MODEL=meta-llama/llama-3.3-70b-instruct # Optional, for AI providers
-       volumes:
-         - ./magiclists-data:/app/data          # Persist configuration
-       restart: unless-stopped
+```
+services:
+  navidrome:
+  # ... your existing Navidrome config ...
+  
+  magiclists:
+    image: rickysynnot/magic-lists-for-navidrome:latest
+    container_name: magiclists
+    ports:
+       - "4545:8000"
+    environment:
+      NAVIDROME_URL: "http://navidrome:4533"
+      NAVIDROME_USERNAME: "your_username"
+      NAVIDROME_PASSWORD: "your_password"
+      DATABASE_PATH: "/app/data/magiclists.db" # Required: Database location
+      AI_PROVIDER: "openrouter"               # Optional: openrouter, groq, google, ollama
+      AI_API_KEY: "your_openrouter_api_key"  # Optional, for OpenRouter/Groq/Google
+      AI_MODEL: "meta-llama/llama-3.3-70b-instruct" # Optional, for AI providers
+    volumes:
+      - ./magiclists-data:/app/data          # Persist configuration
+    restart: unless-stopped
 ```
 2. Update the environment variables with your Navidrome credentials
 3. Start the stack:
