@@ -9,7 +9,7 @@ class HealthCheckService:
     def __init__(self):
         self.timeout = 10.0
         
-    async def run_checks(self) -> Dict[str, Any]:
+    async def run_checks(self, is_startup: bool = False) -> Dict[str, Any]:
         """Run all system health checks
         
         Returns:
@@ -54,6 +54,12 @@ class HealthCheckService:
         library_check = await self._check_navidrome_library_config()
         checks.append(library_check)
         # Library config is informational only, don't fail on it
+
+        # Check library mappings and filesystem paths
+        library_mapping_check = await self._check_library_mappings(is_startup)
+        checks.append(library_mapping_check)
+        if library_mapping_check["status"] == "error":
+            all_passed = False
             
         # Track Umami events
         await self._track_umami_events(all_passed, checks)
@@ -162,7 +168,7 @@ class HealthCheckService:
             }
     
     async def _check_navidrome_authentication(self) -> Dict[str, str]:
-        """Check if Navidrome authentication works"""
+        """Check if Navidrome authentication works using Subsonic API"""
         navidrome_url = os.getenv("NAVIDROME_URL")
         username = os.getenv("NAVIDROME_USERNAME")
         password = os.getenv("NAVIDROME_PASSWORD")
@@ -173,6 +179,55 @@ class HealthCheckService:
                 "status": "error",
                 "message": "Missing authentication credentials",
                 "suggestion": "Verify username and password are correct in your .env file"
+            }
+
+        # Ensure password is a string
+        password = str(password)
+        
+        try:
+            # Use Subsonic API ping for authentication test
+            import hashlib
+            import time
+            
+            # Generate salt and token for Subsonic API
+            salt = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
+            salted_password = password + salt
+            token = hashlib.md5(salted_password.encode()).hexdigest()
+            
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{navidrome_url}/rest/ping.view",
+                    params={
+                        "u": username,
+                        "t": token,
+                        "s": salt,
+                        "v": "1.16.0",
+                        "c": "magiclists"
+                    }
+                )
+                response.raise_for_status()
+                
+                # Check if response contains successful subsonic-response
+                if "status=\"ok\"" in response.text:
+                    return {
+                        "name": "Navidrome Authentication",
+                        "status": "success",
+                        "message": "Successfully authenticated with Navidrome",
+                        "suggestion": ""
+                    }
+                else:
+                    return {
+                        "name": "Navidrome Authentication",
+                        "status": "error",
+                        "message": "Authentication failed - invalid response",
+                        "suggestion": "Verify username and password are correct in your .env file"
+                    }
+        except Exception as e:
+            return {
+                "name": "Navidrome Authentication",
+                "status": "error",
+                "message": f"Authentication failed: {str(e)}",
+                "suggestion": "Verify Navidrome is running and credentials are correct"
             }
         
         try:
@@ -223,7 +278,7 @@ class HealthCheckService:
             }
     
     async def _check_navidrome_artists_api(self) -> Dict[str, str]:
-        """Check if Navidrome Artists API works"""
+        """Check if Navidrome Artists API works using Subsonic API"""
         navidrome_url = os.getenv("NAVIDROME_URL")
         username = os.getenv("NAVIDROME_USERNAME") 
         password = os.getenv("NAVIDROME_PASSWORD")
@@ -235,38 +290,30 @@ class HealthCheckService:
                 "message": "Missing authentication credentials for API test",
                 "suggestion": "This may be a Navidrome library configuration issue. Check Navidrome logs for 'Library not found' errors."
             }
+
+        # Ensure password is a string
+        password = str(password)
         
         try:
-            # First authenticate to get token
+            # Generate salt and token for Subsonic API
+            import hashlib
+            import time
+            
+            salt = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
+            salted_password = password + salt
+            token = hashlib.md5(salted_password.encode()).hexdigest()
+            
+            # Test getArtists API
+            params = {
+                "u": username,
+                "t": token,
+                "s": salt,
+                "v": "1.16.0",
+                "c": "MagicLists",
+                "f": "json"
+            }
+            
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                auth_response = await client.post(
-                    f"{navidrome_url}/auth/login",
-                    json={"username": username, "password": password}
-                )
-                auth_response.raise_for_status()
-                
-                auth_data = auth_response.json()
-                subsonic_token = auth_data.get("subsonicToken")
-                subsonic_salt = auth_data.get("subsonicSalt")
-                
-                if not subsonic_token or not subsonic_salt:
-                    return {
-                        "name": "Navidrome Artists API",
-                        "status": "error",
-                        "message": "No Subsonic credentials received from login",
-                        "suggestion": "This may be a Navidrome library configuration issue. Check Navidrome logs for 'Library not found' errors."
-                    }
-                
-                # Test getArtists API
-                params = {
-                    "u": username,
-                    "t": subsonic_token,
-                    "s": subsonic_salt,
-                    "v": "1.16.1",
-                    "c": "MagicLists",
-                    "f": "json"
-                }
-                
                 response = await client.get(
                     f"{navidrome_url}/rest/getArtists.view",
                     params=params
@@ -621,7 +668,7 @@ class HealthCheckService:
     async def _check_navidrome_library_config(self) -> Dict[str, str]:
         """Check if Navidrome library configuration is present"""
         library_id = os.getenv("NAVIDROME_LIBRARY_ID")
-        
+
         if library_id:
             return {
                 "name": "Navidrome Library Configuration",
@@ -631,10 +678,129 @@ class HealthCheckService:
             }
         else:
             return {
-                "name": "Navidrome Library Configuration", 
+                "name": "Navidrome Library Configuration",
                 "status": "info",
                 "message": "Using automatic library detection",
                 "suggestion": "For multiple libraries: Set NAVIDROME_LIBRARY_ID in your .env file if you want to target a specific library"
+            }
+
+    async def _check_library_mappings(self, is_startup: bool = False) -> Dict[str, str]:
+        """Check library mappings and filesystem path accessibility"""
+        try:
+            # Import here to avoid circular imports
+            import asyncio
+            import os
+            import logging
+            from ..database import DatabaseManager
+            from .library_mapping_service import LibraryMappingService
+            from ..navidrome_client import NavidromeClient
+
+            logger = logging.getLogger(__name__)
+
+            # Get correct database path from environment
+            default_path = "/app/data/magiclists.db" if os.path.exists("/app/data") else "./magiclists.db"
+            db_path = os.getenv("DATABASE_PATH", default_path)
+            
+            db = DatabaseManager(db_path)
+            navidrome_client = NavidromeClient()
+            mapping_service = LibraryMappingService(db, navidrome_client)
+
+            # Get current mappings with retry logic for startup timing
+            mappings = None
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    mappings = await db.get_library_mappings()
+                    break
+                except Exception as db_error:
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(0.5)
+                    else:
+                        raise
+            
+            if not mappings:
+                # Try auto-mapping for single library scenarios (only on startup)
+                if is_startup:
+                    try:
+                        logger.info("Checking for auto-mapping opportunity...")
+                        # Check if Navidrome has exactly one library
+                        libraries = await navidrome_client.get_music_folders()
+                        logger.info(f"Found {len(libraries)} libraries from Navidrome")
+
+                        # Only auto-map for single library scenarios
+                        if len(libraries) == 1:
+                            logger.info("Single library detected, checking for music paths...")
+                            # Check if music paths are configured
+                            music_paths_env = os.getenv("MUSIC_LIBRARY_PATHS", os.getenv("MUSIC_PATH", ""))
+                            logger.info(f"MUSIC_LIBRARY_PATHS/MUSIC_PATH env: '{music_paths_env}'")
+
+                            if music_paths_env:
+                                paths = [p.strip() for p in music_paths_env.split(",") if p.strip()]
+                                logger.info(f"Parsed paths: {paths}")
+
+                                if paths:
+                                    # Auto-map the single library to the first path
+                                    library = libraries[0]
+                                    first_path = paths[0]
+
+                                    logger.info(f"Auto-mapping library {library['id']} ({library['name']}) to path {first_path}")
+                                    success = await db.upsert_library_mapping(library['id'], library['name'], first_path)
+
+                                    if success:
+                                        logger.info("✅ Auto-mapping successful")
+                                        return {
+                                            "name": "Library Mappings",
+                                            "status": "success",
+                                            "message": f"Auto-mapped library '{library['name']}' to path '{first_path}'",
+                                            "suggestion": ""
+                                        }
+                                    else:
+                                        logger.warning("Auto-mapping database insert failed")
+                                else:
+                                    logger.info("No valid paths found in MUSIC_LIBRARY_PATHS")
+                            else:
+                                logger.info("MUSIC_LIBRARY_PATHS not configured")
+                        else:
+                            logger.info(f"Multiple libraries ({len(libraries)}) detected, skipping auto-mapping")
+                    except Exception as auto_map_error:
+                        logger.warning(f"Auto-mapping failed: {auto_map_error}")
+                        # Continue to manual setup
+                else:
+                    logger.info("Skipping auto-mapping (not startup)")
+
+                # Fall back to manual setup
+                return {
+                    "name": "Library Mappings",
+                    "status": "warning",
+                    "message": "No music library path mapping found.",
+                    "suggestion": "Choose which Navidrome library each configured music path belongs to:"
+                }
+
+            # Validate mappings
+            validation = await mapping_service.validate_mappings(mappings)
+
+            if validation["all_valid"]:
+                return {
+                    "name": "Library Mappings",
+                    "status": "success",
+                    "message": f"All {len(mappings)} library mappings are valid and accessible",
+                    "suggestion": ""
+                }
+            else:
+                invalid_paths = [m["library_name"] + f" ({m['error']})" for m in validation["invalid"]]
+                return {
+                    "name": "Library Mappings",
+                    "status": "error",
+                    "message": f"{len(validation['invalid'])} library paths are invalid: {', '.join(invalid_paths)}",
+                    "suggestion": "Update library mappings via PUT /api/library-mappings/{library_id} with correct music_path values"
+                }
+
+        except Exception as e:
+            return {
+                "name": "Library Mappings",
+                "status": "error",
+                "message": f"Failed to check library mappings: {str(e)}",
+                "suggestion": "Check database connectivity and library mapping setup"
             }
     
     async def _track_umami_events(self, all_passed: bool, checks: List[Dict[str, str]]):

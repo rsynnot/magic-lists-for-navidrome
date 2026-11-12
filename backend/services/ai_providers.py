@@ -142,7 +142,7 @@ class AIProvider:
             result = response.json()
             return result["choices"][0]["message"]["content"].strip()
     
-    async def _generate_google(self, system_prompt: str, user_prompt: str, max_tokens: int = 16000, temperature: float = 0.7) -> Union[str, NoReturn]:  # type: ignore
+    async def _generate_google(self, system_prompt: str, user_prompt: str, max_tokens: int = 16000, temperature: float = 0.7) -> str:  # type: ignore[return]
         """Handle Google AI's specific API format with controlled generation for JSON"""
         url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
 
@@ -180,32 +180,7 @@ class AIProvider:
 
         headers = {"Content-Type": "application/json"}
 
-        # Debug: Save payload to file for inspection
-        import json
-        import time
-        timestamp = int(time.time())
 
-        # Add debug info to payload
-        debug_info = {
-            "timestamp": timestamp,
-            "model": self.model,
-            "max_tokens_param": max_tokens,
-            "max_output_tokens_calculated": generation_config.get("maxOutputTokens"),
-            "combined_prompt_length": len(combined_prompt),
-            "system_prompt_length": len(system_prompt),
-            "user_prompt_length": len(user_prompt),
-            "is_genre_mix": "Genre Mix" in system_prompt or "genre_mix" in user_prompt.lower()
-        }
-
-        payload_with_debug = {
-            "debug_info": debug_info,
-            "payload": payload
-        }
-
-        payload_file = f"payloads/google_ai_payload_{timestamp}.json"
-        with open(payload_file, 'w') as f:
-            json.dump(payload, f, indent=2)
-        print(f"📄 Saved payload to {payload_file} (prompt: ~{len(combined_prompt)//4} tokens)")
 
         try:
             response = await self.client.post(
@@ -247,23 +222,16 @@ class AIProvider:
                             if "text" in part:
                                 text = part["text"].strip()
 
-                                # Try to extract JSON from the response
-                                try:
-                                    # First try direct JSON parsing
-                                    json_response = json.loads(text)
-                                    return json.dumps(json_response, ensure_ascii=False)
-                                except json.JSONDecodeError:
-                                    # Try to find JSON within the text (in case of extra content)
-                                    json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                                    if json_match:
-                                        try:
-                                            json_response = json.loads(json_match.group())
-                                            return json.dumps(json_response, ensure_ascii=False)
-                                        except json.JSONDecodeError:
-                                            pass
+                                # Return the raw text and let upstream handle JSON parsing
+                                # This prevents double JSON parsing/serialization issues
+                                return text if text else ""
 
-                                    # If all else fails, return the text as-is and let upstream handle it
-                                    return text
+                            else:
+                                raise Exception("Google AI response part missing text content")
+                        else:
+                            raise Exception("Google AI response has no content parts")
+                    else:
+                        raise Exception("Google AI response content missing parts array")
 
                 raise Exception("Google AI response missing content structure")
 
@@ -289,7 +257,7 @@ def get_ai_provider() -> AIProvider:
     
     provider_config = AIProviderConfig.PROVIDERS[provider_type]
     
-    # OpenRouter without a key uses the local curation fallback in AIClient.
+    # OpenRouter without a key uses local curation.
     api_key = os.getenv("AI_API_KEY")
     if provider_config.requires_key and not api_key and provider_type != "openrouter":
         raise ValueError(f"{provider_type} requires AI_API_KEY. Get one at: {provider_config.signup_url}")

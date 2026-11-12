@@ -1,15 +1,18 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi import Query
+import os
 import uvicorn
 import os
+import json
 import logging
 import logging.handlers
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+import time
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
@@ -37,21 +40,35 @@ logging.basicConfig(
 
 # Create a specific logger for scheduler activities
 scheduler_logger = logging.getLogger('scheduler')
-
-# Reduce httpx logging verbosity to avoid cluttering scheduler.log
+logger = logging.getLogger(__name__)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
 from .navidrome_client import NavidromeClient
 from .ai_client import AIClient
 from .database import DatabaseManager, get_db
-from .schemas import CreatePlaylistRequest, CreateGenrePlaylistRequest, Playlist, RediscoverWeeklyResponse, RediscoverWeeklyV2Response, CreateRediscoverPlaylistRequest, PlaylistWithScheduleInfo
+from .services.chroma_service import get_chroma_service
+from .ai_client import AIClient
 from .recipe_manager import recipe_manager
+from .schemas import (
+    Playlist,
+    CreatePlaylistRequest,
+    CreateGenrePlaylistRequest,
+    CreateRediscoverPlaylistRequest,
+    RediscoverWeeklyResponse,
+    RediscoverWeeklyV2Response,
+    ScheduledPlaylist,
+)
 from .rediscover import RediscoverWeekly, ReDiscoverV2Processor
 from .track_scoring import filter_tracks_for_this_is_playlist
 # SYSTEM CHECK FEATURE - START
 from .services.health_check_service import HealthCheckService
+from .services.library_mapping_service import LibraryMappingService
 # SYSTEM CHECK FEATURE - END
+
+# Song Radio API endpoints
+from .api.scan_endpoints import router as scan_router
+from .api.radio_endpoints import curate_with_ai, format_candidates_for_ai, router as radio_router
 
 app = FastAPI(title="MagicLists Navidrome MVP")
 
@@ -59,18 +76,48 @@ app = FastAPI(title="MagicLists Navidrome MVP")
 async def startup_event():
     """Initialize scheduler on app startup"""
     global scheduler, system_check_passed, system_check_results
+    
+    # Detect local timezone offset
+    local_offset = time.timezone if not time.daylight else time.altzone
+    local_tz_offset = timedelta(seconds=-local_offset)
+    
+    # Create scheduler with local timezone awareness
     scheduler = AsyncIOScheduler()
     scheduler.start()
+    
+    # Log timezone information
+    utc_now = datetime.utcnow()
+    local_now = utc_now + local_tz_offset
+    scheduler_logger.info(f"⏰ System Timezone Detection - UTC: {utc_now.strftime('%H:%M:%S')} | Local: {local_now.strftime('%H:%M:%S')} | Offset: {local_tz_offset}")
     scheduler_logger.info("✅ Scheduler started successfully")
     # Auto-start the cron job
     await start_scheduler_job()
     scheduler_logger.info("✅ Cron job auto-started on application startup")
+
+    # Calculate time to next cron run
+    now = datetime.now()
+    candidates = [
+        now.replace(hour=1, minute=1, second=0, microsecond=0),
+        now.replace(hour=13, minute=1, second=0, microsecond=0)
+    ]
+    next_run = None
+    for candidate in candidates:
+        if candidate > now:
+            next_run = candidate
+            break
+    if next_run is None:
+        # Both today are past, next is tomorrow 1:01 AM
+        next_run = (now + timedelta(days=1)).replace(hour=1, minute=1, second=0, microsecond=0)
+    time_to_next = next_run - now
+    hours, remainder = divmod(int(time_to_next.total_seconds()), 3600)
+    minutes, _ = divmod(remainder, 60)
+    scheduler_logger.info(f"⏰ Time to next run: {hours}h:{minutes}m")
     
     # SYSTEM CHECK FEATURE - START
     # Run system checks on startup
     try:
         health_service = HealthCheckService()
-        system_check_results = await health_service.run_checks()
+        system_check_results = await health_service.run_checks(is_startup=True)
         system_check_passed = system_check_results.get("all_passed", False)
         
         if system_check_passed:
@@ -126,10 +173,18 @@ async def shutdown_event():
         scheduler_logger.info("🛑 Scheduler shutdown completed")
 
 # Mount static files
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
+import os
+
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory="frontend/templates")
+
+# Include API routers
+app.include_router(scan_router, prefix="/api/scan", tags=["scan"])
+app.include_router(radio_router, prefix="/api/radio", tags=["radio"])
 
 # Initialize clients (lazy loading)
 navidrome_client = None
@@ -193,12 +248,33 @@ async def get_artists(library_id: List[str] = Query(None)):
             raise HTTPException(status_code=500, detail=f"Failed to fetch artists: {error_msg}")
 
 @app.get("/api/genres")
-async def get_genres(library_id: List[str] = Query(None)):
-    """Get list of genres from Navidrome"""
+async def get_genres(library_id: List[str] = Query(None), db: DatabaseManager = Depends(get_db)):
+    """Get list of genres from Navidrome with caching"""
     try:
         client = get_navidrome_client()
-        genres = await client.get_genres(library_id)
-        return genres
+
+        # Create cache key
+        import hashlib
+        library_ids = library_id or []
+        library_ids_hash = hashlib.md5(",".join(sorted(library_ids)).encode()).hexdigest()
+        server_id = client.base_url or "unknown_server"
+
+        print(f"🎵 get_genres called with library_ids: {library_ids}, hash: {library_ids_hash[:8]}...")
+
+        # DISABLE CACHE TEMPORARILY FOR DEBUGGING
+        print(f"🚫 Genre cache disabled for debugging")
+        cached_data = None
+
+        # Cache miss or invalid - rebuild cache
+        print("🔄 Building fresh genre cache...")
+        cache_data = await client.build_genre_cache(library_ids if library_ids else None, db)
+        print(f"📊 Built cache with {len(cache_data['libraries'])} libraries: {list(cache_data['libraries'].keys())}")
+
+        # Return formatted response
+        result = await _format_genre_cache_response(cache_data, library_ids)
+        print(f"📋 Returning {len(result)} genres from fresh build: {[g['name'] for g in result[:3]]}...")
+        return result
+
     except Exception as e:
         error_msg = str(e)
         # Check if it's an authentication error and return appropriate status code
@@ -209,13 +285,43 @@ async def get_genres(library_id: List[str] = Query(None)):
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch genres: {error_msg}")
 
-@app.get("/api/music-folders")
-async def get_music_folders():
-    """Get list of music folders/libraries from Navidrome"""
+async def _format_genre_cache_response(cache_data: Dict[str, Any], requested_library_ids: List[str]) -> List[Dict[str, Any]]:
+    """Format cached genre data into the expected API response format"""
+    try:
+        genres_dict = {}
+
+        # Aggregate genres from requested libraries
+        libraries_to_check = requested_library_ids if requested_library_ids else list(cache_data["libraries"].keys())
+        print(f"🔍 Formatting cache response for libraries: {libraries_to_check}")
+
+        for lib_id in libraries_to_check:
+            if lib_id in cache_data["libraries"]:
+                lib_data = cache_data["libraries"][lib_id]
+                print(f"📊 Library {lib_id}: {len(lib_data['genres'])} genres")
+                for genre_name, count in lib_data["genres"].items():
+                    if genre_name in genres_dict:
+                        genres_dict[genre_name] += count
+                    else:
+                        genres_dict[genre_name] = count
+
+        # Convert to list format expected by frontend
+        genres = [{"name": name, "songCount": count} for name, count in genres_dict.items() if count > 0]
+        genres.sort(key=lambda x: x["name"])
+
+        print(f"📋 Formatted {len(genres)} total genres: {[g['name'] for g in genres[:3]]}...")
+        return genres
+
+    except Exception as e:
+        print(f"❌ Error formatting genre cache response: {e}")
+        return []
+
+@app.get("/api/libraries")
+async def get_libraries():
+    """Get list of music libraries from Navidrome"""
     try:
         client = get_navidrome_client()
-        folders = await client.get_music_folders()
-        return folders
+        libraries = await client.get_music_folders()
+        return libraries
     except Exception as e:
         error_msg = str(e)
         # Check if it's an authentication error and return appropriate status code
@@ -224,7 +330,135 @@ async def get_music_folders():
         elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
             raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
         else:
-            raise HTTPException(status_code=500, detail=f"Failed to fetch music folders: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch libraries: {error_msg}")
+
+@app.get("/api/libraries/{library_id}/stats")
+async def get_library_stats(library_id: str):
+    """Get statistics for a specific library"""
+    try:
+        from .services.library_scanner import get_library_scanner
+        scanner = get_library_scanner()
+        client = get_navidrome_client()
+
+        # Try to get total tracks from cache first (much faster and accurate)
+        cache_data = await scanner._load_track_cache(client)
+        total_tracks = 0
+        if cache_data and 'track_count' in cache_data:
+            total_tracks = cache_data['track_count']
+            logger.info(f"📊 Using cached track count for library stats: {total_tracks} tracks")
+        else:
+            # Fallback to API call if no cache
+            logger.warning("No track cache available, falling back to Navidrome API for library stats")
+            total_tracks = await client.get_library_song_count(library_id)
+
+        # Get artists count for this library
+        artists = await client.get_artists(library_ids=[library_id])
+        total_artists = len(artists)
+
+        # Get genres count (genres are global, not per library)
+        genres = await client.get_genres()
+        total_genres = len(genres)
+
+        return {
+            "library_id": library_id,
+            "total_tracks": total_tracks,
+            "total_artists": total_artists,
+            "total_genres": total_genres
+        }
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Failed to get library stats for {library_id}: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Failed to get library statistics: {error_msg}")
+
+@app.get("/api/music-folders")
+async def get_music_folders():
+    """Get list of music folders/libraries from Navidrome (legacy endpoint)"""
+    return await get_libraries()
+
+@app.get("/api/tracks")
+async def get_tracks(library_ids: List[str] = Query(None)):
+    """Get all tracks from Navidrome, optionally filtered by library IDs"""
+    try:
+        client = get_navidrome_client()
+        tracks = await client.get_tracks(library_ids=library_ids)
+        return {"tracks": tracks}
+    except Exception as e:
+        error_msg = str(e)
+        # Check if it's an authentication error and return appropriate status code
+        if "Invalid username or password" in error_msg or "No authentication method available" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch tracks: {error_msg}")
+
+@app.get("/api/tracks/count")
+async def get_tracks_count(library_ids: List[str] = Query(None)):
+    """Get cached track count for libraries (used for UI display to avoid expensive API calls)"""
+    try:
+        from .services.library_scanner import get_library_scanner
+        scanner = get_library_scanner()
+        client = get_navidrome_client()
+
+        # Try to get cached track count
+        cache_data = await scanner._load_track_cache(client)
+        if cache_data and 'track_count' in cache_data:
+            total_tracks = cache_data['track_count']
+            logger.info(f"📊 Returning cached track count: {total_tracks} tracks")
+            return {"total_tracks": total_tracks, "cached": True}
+
+        # Fallback to Navidrome API if no cache
+        logger.warning("No track cache available, falling back to Navidrome API")
+        tracks = await client.get_tracks(library_ids=library_ids)
+        return {"total_tracks": len(tracks), "cached": False}
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Failed to get track count: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Failed to get track count: {error_msg}")
+
+@app.post("/api/cache/invalidate")
+async def invalidate_track_cache():
+    """Invalidate the track metadata cache (useful when library changes)"""
+    try:
+        from .services.library_scanner import get_library_scanner
+        import os
+        scanner = get_library_scanner()
+        client = get_navidrome_client()
+
+        # Remove cache file
+        cache_key = scanner._get_cache_key(client)
+        cache_path = scanner._get_cache_path(cache_key)
+
+        if cache_path.exists():
+            cache_path.unlink()
+            logger.info(f"🗑️ Invalidated track cache: {cache_path}")
+            return {"message": "Cache invalidated successfully"}
+        else:
+            return {"message": "No cache file found to invalidate"}
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Failed to invalidate cache: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate cache: {error_msg}")
+
+@app.get("/api/starred")
+async def get_starred_tracks(library_ids: List[str] = Query(None)):
+    """Get starred tracks from Navidrome (used as sample tracks for radio)"""
+    try:
+        client = get_navidrome_client()
+        tracks = await client.get_starred(library_ids=library_ids)
+        return tracks
+    except Exception as e:
+        error_msg = str(e)
+        # Check if it's an authentication error and return appropriate status code
+        if "Invalid username or password" in error_msg or "No authentication method available" in error_msg:
+            raise HTTPException(status_code=401, detail=error_msg)
+        elif "Network error" in error_msg or "connecting to Navidrome" in error_msg:
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Navidrome server: {error_msg}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch starred tracks: {error_msg}")
 
 
 # SYSTEM CHECK FEATURE - START
@@ -263,8 +497,6 @@ async def get_health_check():
         }
         return error_results
 # SYSTEM CHECK FEATURE - END
-
-
 @app.post("/api/create_playlist", response_model=Playlist)
 async def create_playlist(
     request: CreatePlaylistRequest,
@@ -272,6 +504,9 @@ async def create_playlist(
 ):
     """Create an AI-curated 'This Is' playlist for a single artist"""
     try:
+        # Debug: Log what we received
+        scheduler_logger.info(f"DEBUG: include_mentions value = {request.include_mentions}")
+        
         # Get clients
         nav_client = get_navidrome_client()
         ai_client_instance = get_ai_client()
@@ -292,11 +527,19 @@ async def create_playlist(
             raise HTTPException(status_code=400, detail="At least one artist must be selected")
 
         # Generate playlist name if not provided - for single artist
-        playlist_name = request.playlist_name or f"This Is: {artist_names[0]}"
+        playlist_name = request.playlist_name or f"This is {artist_names[0]}"
         
         # Get tracks for only the first artist
         all_tracks = []
-        tracks = await nav_client.get_tracks_by_artist(first_artist_id, request.library_ids)
+        
+        # Check if we should include artist mentions (features, collaborations, etc.)
+        if request.include_mentions:
+            scheduler_logger.info(f"🔍 Searching for artist mentions (including collaborations)")
+            tracks = await nav_client.search_artist_mentions(artist_names[0], request.library_ids)
+        else:
+            scheduler_logger.info(f"🎯 Using exact artist match only")
+            tracks = await nav_client.get_tracks_by_artist(first_artist_id, request.library_ids)
+        
         if tracks:
             all_tracks.extend(tracks)
         
@@ -441,7 +684,7 @@ async def create_playlist_with_reasoning(
         artist_name = artist["name"]
         
         # Generate playlist name if not provided
-        playlist_name = getattr(request, 'playlist_name', None) or f"This Is: {artist_name}"
+        playlist_name = getattr(request, 'playlist_name', None) or f"This is  {artist_name}"
         
         # Get tracks for the artist
         tracks = await nav_client.get_tracks_by_artist(first_artist_id)
@@ -476,7 +719,8 @@ async def create_playlist_with_reasoning(
             artist_id=first_artist_id,
             playlist_name=playlist_name,
             songs=track_titles,
-            navidrome_playlist_id=navidrome_playlist_id
+            navidrome_playlist_id=navidrome_playlist_id,
+            library_ids=request.library_ids if hasattr(request, 'library_ids') else []
         )
         
         # Add Navidrome playlist ID and AI reasoning to response
@@ -491,7 +735,7 @@ async def create_playlist_with_reasoning(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create playlist with reasoning: {str(e)}")
 
-@app.post("/api/create_genre_playlist", response_model=Playlist)
+@app.post("/api/create_genre_playlist")
 async def create_genre_playlist(
     request: CreateGenrePlaylistRequest,
     db: DatabaseManager = Depends(get_db)
@@ -506,6 +750,7 @@ async def create_genre_playlist(
         playlist_name = request.playlist_name or f"Genre Mix: {request.genre}"
 
         # Get tracks for the genre
+        scheduler_logger.info(f"🎵 Request: genre='{request.genre}', library_ids={request.library_ids}")
         all_tracks = await nav_client.get_tracks_by_genre(request.genre, request.library_ids)
         scheduler_logger.info(f"🎵 Found {len(all_tracks)} total tracks for genre '{request.genre}'")
 
@@ -594,6 +839,10 @@ async def create_genre_playlist(
             library_ids=request.library_ids
         )
 
+        if not playlist:
+            scheduler_logger.error(f"❌ Failed to store genre playlist in database: {playlist_name}")
+            raise HTTPException(status_code=500, detail="Failed to store playlist in database")
+
         # Handle scheduling if not "none" or "never"
         if request.refresh_frequency not in ["none", "never"]:
             next_refresh = calculate_next_refresh(request.refresh_frequency)
@@ -606,7 +855,25 @@ async def create_genre_playlist(
                 next_refresh=next_refresh
             )
 
-        return playlist
+        # Add Navidrome playlist ID and other fields to response for consistency
+        playlist_dict = {
+            "id": playlist.id,
+            "artist_id": playlist.artist_id,
+            "playlist_name": playlist.playlist_name,
+            "name": playlist_name,  # Add name field for frontend consistency
+            "songs": playlist.songs,
+            "reasoning": playlist.reasoning,
+            "navidrome_playlist_id": navidrome_playlist_id,
+            "library_ids": playlist.library_ids,
+            "created_at": playlist.created_at,
+            "updated_at": playlist.updated_at,
+            "refresh_frequency": request.refresh_frequency
+        }
+        
+        if request.refresh_frequency != "none":
+            playlist_dict["next_refresh"] = calculate_next_refresh(request.refresh_frequency).isoformat()
+
+        return playlist_dict
 
     except HTTPException:
         raise
@@ -691,7 +958,7 @@ async def create_rediscover_playlist_v2(
 ):
     """Create a Re-Discover Weekly v2.0 playlist in Navidrome"""
     try:
-        scheduler_logger.info(f"🎵 Starting Re-Discover v2.0 playlist creation with length {request.playlist_length}, library_ids: {request.library_ids}")
+        scheduler_logger.info(f"🎵 Starting Re-Discover v2.0 playlist creation with length {request.playlist_length}, library_id: {request.library_id}")
 
         # Get clients
         nav_client = get_navidrome_client()
@@ -705,7 +972,7 @@ async def create_rediscover_playlist_v2(
         processor = ReDiscoverV2Processor(nav_client, ai_client, db)
 
         # Generate the playlist
-        playlist_data = await processor.generate_playlist(user_id, server_id, request.library_ids)
+        playlist_data = await processor.generate_playlist(user_id, server_id, [request.library_id])
         tracks = playlist_data.get("tracks", [])
 
         if not tracks:
@@ -774,7 +1041,7 @@ async def create_rediscover_playlist_v2(
             reasoning=ai_reasoning,
             navidrome_playlist_id=navidrome_playlist_id,
             playlist_length=len(tracks),
-            library_ids=request.library_ids
+            library_ids=[request.library_id]
         )
         scheduler_logger.info(f"💾 Database playlist created: {playlist_record}")
 
@@ -813,7 +1080,7 @@ async def create_rediscover_playlist(
 ):
     """Create a Re-Discover Weekly playlist in Navidrome"""
     try:
-        scheduler_logger.info(f"🎵 Starting Re-Discover playlist creation with length {request.playlist_length}, library_ids: {request.library_ids}")
+        scheduler_logger.info(f"🎵 Starting Re-Discover playlist creation with length {request.playlist_length}, library_id: {request.library_id}")
 
         # Get Navidrome client
         nav_client = get_navidrome_client()
@@ -823,7 +1090,7 @@ async def create_rediscover_playlist(
 
         # Generate the playlist tracks with user-specified length and AI curation
         scheduler_logger.info("🎵 Generating rediscover tracks...")
-        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True, library_id=request.library_ids[0] if request.library_ids else "", variety_context="")
+        tracks = await rediscover.generate_rediscover_weekly(max_tracks=request.playlist_length, use_ai=True, library_id=request.library_id, variety_context="")
         scheduler_logger.info(f"🎵 Generated {len(tracks) if tracks else 0} tracks")
         
         if not tracks:
@@ -887,7 +1154,8 @@ async def create_rediscover_playlist(
             songs=track_titles,
             reasoning=ai_reasoning if ai_curated else "Algorithmic selection",
             navidrome_playlist_id=navidrome_playlist_id,
-            playlist_length=request.playlist_length
+            playlist_length=request.playlist_length,
+            library_ids=[request.library_id]
         )
         scheduler_logger.info(f"✅ Database playlist created: {playlist}")
         
@@ -926,15 +1194,37 @@ async def create_rediscover_playlist(
 def calculate_next_refresh(frequency: str) -> datetime:
     """Calculate the next refresh time based on frequency"""
     now = datetime.now()
+
+    # The cron runs at 1:01 AM and 1:01 PM local time
+    # We need to find the next occurrence of these times
+
+    def next_cron_time():
+        """Find the next 1:01 AM or 1:01 PM"""
+        # Today at 1:01 AM
+        today_1am = now.replace(hour=1, minute=1, second=0, microsecond=0)
+        # Today at 1:01 PM
+        today_1pm = now.replace(hour=13, minute=1, second=0, microsecond=0)
+
+        if now < today_1am:
+            return today_1am
+        elif now < today_1pm:
+            return today_1pm
+        else:
+            # Next occurrence is tomorrow at 1:01 AM
+            return today_1am + timedelta(days=1)
+
     if frequency == "daily":
-        # Next day at 1:00 AM
+        # Next day at 1:00 AM (daily refresh)
         next_day = now + timedelta(days=1)
         return next_day.replace(hour=1, minute=0, second=0, microsecond=0)
     elif frequency == "weekly":
         # Next Monday at 1:00 AM
         days_until_monday = (7 - now.weekday()) % 7
-        if days_until_monday == 0 and now.hour >= 1:
-            days_until_monday = 7  # If it's Monday after 1 AM, go to next Monday
+        if days_until_monday == 0:
+            # It's Monday, check if we've passed 1:00 AM
+            monday_1am = now.replace(hour=1, minute=0, second=0, microsecond=0)
+            if now >= monday_1am:
+                days_until_monday = 7  # Next Monday
         next_monday = now + timedelta(days=days_until_monday)
         return next_monday.replace(hour=1, minute=0, second=0, microsecond=0)
     elif frequency == "monthly":
@@ -947,18 +1237,57 @@ def calculate_next_refresh(frequency: str) -> datetime:
     else:
         return now  # Fallback
 
+
 def schedule_playlist_refresh():
-    """Schedule the playlist refresh job to run every 12 hours"""
+    """Schedule the playlist refresh job to run every 12 hours in local time"""
     if not scheduler.get_job('playlist_refresh'):
-        scheduler.add_job(
-            refresh_scheduled_playlists,
-            'cron',
-            hour='1,13',  # Run at 1 AM and 1 PM
-            minute=1,     # Run at 1 minute past (1:01 AM and 1:01 PM)
-            id='playlist_refresh',
-            replace_existing=True
-        )
-        scheduler_logger.info("🔄 Playlist refresh job scheduled to run every 12 hours (1:01 AM and 1:01 PM)")
+        # Detect local timezone offset to convert desired local times to UTC
+        local_offset = time.timezone if not time.daylight else time.altzone
+        local_tz_offset = timedelta(seconds=-local_offset)
+        
+        # TEST MODE: Uncomment the lines below to test at 8:15-8:17 PM today
+        # Comment out the production times and uncomment test times
+        TEST_MODE = os.getenv("SCHEDULER_TEST_MODE", "false").lower() == "true"
+        
+        if TEST_MODE:
+            # Test times: 8:20 PM today (for testing)
+            local_time_test = timedelta(hours=20, minutes=20)
+            utc_time_test = (local_time_test - local_tz_offset).total_seconds() / 3600
+            utc_hour_test = int(utc_time_test) % 24
+            utc_minute_test = int((utc_time_test * 60) % 60)
+
+            scheduler.add_job(
+                refresh_scheduled_playlists,
+                'cron',
+                hour=utc_hour_test,  # Run at converted UTC hour
+                minute=f'{utc_minute_test}-{utc_minute_test + 2}',  # Run for 3 minutes (8:20-8:22)
+                id='playlist_refresh',
+                replace_existing=True
+            )
+            scheduler_logger.info(f"🧪 TEST MODE: Playlist refresh job scheduled - Local time 8:20 PM → UTC hour {utc_hour_test}:{utc_minute_test:02d}-{utc_minute_test+2:02d}")
+        else:
+            # Production times: 1:01 AM and 1:01 PM
+            local_time_1am = timedelta(hours=1, minutes=1)
+            local_time_1pm = timedelta(hours=13, minutes=1)
+
+            # Convert to UTC by subtracting the offset
+            utc_time_1am = (local_time_1am - local_tz_offset).total_seconds() / 3600
+            utc_time_1pm = (local_time_1pm - local_tz_offset).total_seconds() / 3600
+
+            # Handle day wrapping
+            utc_hour_1am = int(utc_time_1am) % 24
+            utc_hour_1pm = int(utc_time_1pm) % 24
+            utc_minute = int((utc_time_1am * 60) % 60)
+
+            scheduler.add_job(
+                refresh_scheduled_playlists,
+                'cron',
+                hour=f'{utc_hour_1am},{utc_hour_1pm}',  # Run at converted UTC hours
+                minute=utc_minute,
+                id='playlist_refresh',
+                replace_existing=True
+            )
+            scheduler_logger.info(f"🔄 Playlist refresh job scheduled - Local times 1:01 AM & 1:01 PM → UTC hours {utc_hour_1am}:{utc_minute:02d} & {utc_hour_1pm}:{utc_minute:02d}")
 
 async def refresh_scheduled_playlists():
     """Check for and refresh scheduled playlists that are due"""
@@ -1019,6 +1348,10 @@ async def refresh_scheduled_playlists():
                 await refresh_rediscover_playlist(scheduled_playlist, db)
             elif scheduled_playlist.playlist_type == "this_is":
                 await refresh_this_is_playlist(scheduled_playlist, db)
+            elif scheduled_playlist.playlist_type == "genre_mix":
+                await refresh_genre_mix_playlist(scheduled_playlist, db)
+            elif scheduled_playlist.playlist_type == "song_radio":
+                await refresh_song_radio_playlist(scheduled_playlist, db)
                 
     except Exception as e:
         scheduler_logger.error(f"❌ Error checking scheduled playlists: {e}")
@@ -1252,6 +1585,194 @@ async def refresh_this_is_playlist(scheduled_playlist, db: DatabaseManager):
     except Exception as e:
         scheduler_logger.error(f"❌ Error refreshing This Is playlist {scheduled_playlist.navidrome_playlist_id}: {e}")
 
+async def refresh_genre_mix_playlist(scheduled_playlist, db: DatabaseManager):
+    """Refresh a specific Genre Mix playlist"""
+    try:
+        scheduler_logger.info(f"🔄 Starting refresh for Genre Mix playlist ID: {scheduled_playlist.navidrome_playlist_id} (frequency: {scheduled_playlist.refresh_frequency})")
+
+        # Get clients
+        nav_client = get_navidrome_client()
+        ai_client_instance = get_ai_client()
+
+        # Find the original playlist to get genre and preferences
+        playlists = await db.get_all_playlists_with_schedule_info()
+        original_playlist = next((p for p in playlists if p.get("navidrome_playlist_id") == scheduled_playlist.navidrome_playlist_id), None)
+
+        if not original_playlist:
+            scheduler_logger.error(f"❌ Could not find original playlist data for {scheduled_playlist.navidrome_playlist_id}")
+            return
+
+        # Get genre and preferences from original playlist
+        genre = original_playlist["artist_id"]  # Genre is stored as artist_id for genre mix
+        original_length = original_playlist.get("playlist_length", 25)
+        library_ids = original_playlist.get("library_ids", [])
+
+        scheduler_logger.info(f"🎵 Refreshing Genre Mix: {genre} (length: {original_length}, libraries: {library_ids})")
+
+        # Get fresh tracks for the genre
+        all_tracks = await nav_client.get_tracks_by_genre(genre, library_ids)
+
+        if all_tracks:
+            scheduler_logger.info(f"🎵 Found {len(all_tracks)} tracks for genre: {genre} (fresh data)")
+
+            # ENFORCE original playlist length (MUST respect user's choice)
+            scheduler_logger.info(f"🎯 ENFORCING original playlist length: {original_length}")
+
+            # Check if we have enough tracks
+            if len(all_tracks) < original_length:
+                scheduler_logger.warning(f"⚠️ Genre only has {len(all_tracks)} tracks, but user requested {original_length}. Using all available tracks.")
+                original_length = len(all_tracks)
+
+            # Get previous playlist songs for variety context
+            previous_songs = original_playlist.get("songs", [])
+            variety_instruction = f"REFRESH CONSTRAINT: This is a REFRESH, not a copy. Previous playlist had these tracks: {', '.join(previous_songs[:10])}. Create a completely different track selection and arrangement. Prioritize tracks NOT in the previous list. Tell a fresh musical story. Avoid identical opening sequences." if previous_songs else "Create a fresh, engaging playlist arrangement."
+
+            # Apply smart filtering for Genre Mix playlists
+            library_stats = await nav_client.get_library_stats()
+            filtered_tracks, filter_metadata = filter_tracks_for_this_is_playlist(
+                source_tracks=all_tracks,
+                target_playlist_size=original_length,
+                library_stats=library_stats
+            )
+
+            # Log filtering results
+            if filter_metadata['filtered']:
+                scheduler_logger.info(f"🎯 Smart filtering applied: {filter_metadata['source_count']} → {filter_metadata['sent_count']} tracks (multiplier: {filter_metadata['threshold_multiplier']}x)")
+                scheduler_logger.info(f"📊 Score range: {filter_metadata['score_range']['highest']:.1f} - {filter_metadata['score_range']['lowest']:.1f} (cutoff: {filter_metadata['score_range']['cutoff']:.1f})")
+            else:
+                scheduler_logger.info(f"✅ No filtering needed: {filter_metadata['source_count']} tracks below threshold")
+
+            # Use AI to curate a FRESH playlist with variety enforcement
+            curation_result = await ai_client_instance.curate_genre_mix(
+                genre=genre,
+                tracks_json=filtered_tracks,
+                num_tracks=original_length,
+                include_reasoning=True,
+                variety_context=variety_instruction
+            )
+
+            # Handle both old and new return formats
+            if isinstance(curation_result, tuple):
+                curated_track_ids, reasoning = curation_result
+            else:
+                curated_track_ids = curation_result
+                reasoning = ""
+
+            if curated_track_ids:
+                # VALIDATE: Ensure we got the right number of tracks
+                if len(curated_track_ids) < original_length and len(all_tracks) >= original_length:
+                    scheduler_logger.warning(f"⚠️ AI returned only {len(curated_track_ids)} tracks but user requested {original_length}. Using fallback to fill gap.")
+                    # Fill the gap with remaining tracks
+                    used_ids = set(curated_track_ids)
+                    remaining_tracks = [t for t in all_tracks if t["id"] not in used_ids]
+                    additional_needed = original_length - len(curated_track_ids)
+                    additional_tracks = remaining_tracks[:additional_needed]
+                    curated_track_ids.extend([t["id"] for t in additional_tracks])
+
+                scheduler_logger.info(f"🎯 Final track count: {len(curated_track_ids)} (requested: {original_length})")
+
+                # Update the existing playlist in Navidrome with new reasoning
+                await nav_client.update_playlist(
+                    playlist_id=scheduled_playlist.navidrome_playlist_id,
+                    track_ids=curated_track_ids,
+                    comment=reasoning if reasoning else None
+                )
+
+                # Update the local database with new songs and reasoning
+                track_titles = []
+                track_id_to_title = {track["id"]: track["title"] for track in all_tracks}
+                for track_id in curated_track_ids:
+                    if track_id in track_id_to_title:
+                        track_titles.append(track_id_to_title[track_id])
+
+                await db.update_playlist_content(
+                    navidrome_playlist_id=scheduled_playlist.navidrome_playlist_id,
+                    songs=track_titles,
+                    reasoning=reasoning
+                )
+
+                # Calculate next refresh time
+                next_refresh = calculate_next_refresh(scheduled_playlist.refresh_frequency)
+
+                # Update the scheduled playlist record
+                await db.update_scheduled_playlist_next_refresh(
+                    scheduled_playlist.id,
+                    next_refresh
+                )
+
+                scheduler_logger.info(f"✅ Successfully refreshed Genre Mix playlist {scheduled_playlist.navidrome_playlist_id}. Next refresh: {next_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                scheduler_logger.warning(f"⚠️ No curated tracks generated for Genre Mix playlist {scheduled_playlist.navidrome_playlist_id}")
+        else:
+            scheduler_logger.warning(f"⚠️ No tracks found for genre {genre} in playlist {scheduled_playlist.navidrome_playlist_id}")
+
+    except Exception as e:
+        scheduler_logger.error(f"❌ Error refreshing Genre Mix playlist {scheduled_playlist.navidrome_playlist_id}: {e}")
+
+
+async def refresh_song_radio_playlist(scheduled_playlist: ScheduledPlaylist, db: DatabaseManager) -> None:
+    """Refresh a Song Radio playlist using its saved seed track and length."""
+    playlist_id = scheduled_playlist.navidrome_playlist_id
+    try:
+        playlists = await db.get_all_playlists_with_schedule_info()
+        original = next((item for item in playlists if item.get("navidrome_playlist_id") == playlist_id), None)
+        if not original or not original["artist_id"].startswith("song_radio_"):
+            scheduler_logger.warning("No Song Radio seed found for playlist %s", playlist_id)
+            return
+
+        seed_track_id = original["artist_id"].removeprefix("song_radio_")
+        chroma_service = get_chroma_service()
+        seed_result = chroma_service.get_embedding(seed_track_id)
+        if not seed_result:
+            scheduler_logger.warning("Song Radio seed %s is no longer analyzed", seed_track_id)
+            return
+
+        seed_embedding, seed_metadata = seed_result
+        seed_track = {**seed_metadata, "id": seed_track_id}
+        recipe = recipe_manager.get_recipe("song_radio")
+        original_length = original.get("playlist_length") or len(original["songs"]) or 25
+        candidates = chroma_service.find_similar_tracks(
+            query_embedding=seed_embedding,
+            n_results=original_length * recipe["config"]["candidate_multiplier"],
+            exclude_track_ids=[seed_track_id],
+            library_id=seed_metadata.get("library_id"),
+        )
+        candidate_count = min(original_length - 1, len(candidates))
+        if candidate_count < 1:
+            scheduler_logger.warning("No similar tracks found while refreshing Song Radio playlist %s", playlist_id)
+            return
+
+        formatted_candidates, track_id_map = format_candidates_for_ai(candidates, candidate_count)
+        nav_client = get_navidrome_client()
+        previous_ids = await nav_client.get_playlist_track_ids(playlist_id)
+        previous_indices = [idx for idx, track_id in enumerate(track_id_map) if track_id in previous_ids]
+        selected_ids, reasoning = await curate_with_ai(
+            seed_track,
+            formatted_candidates,
+            track_id_map,
+            candidate_count,
+            recipe,
+            get_ai_client(),
+            additional_instructions=(
+                f"This is a refresh. Previously selected candidates have indices {previous_indices}. "
+                "Vary the playlist while keeping it acoustically close to the seed."
+            ),
+        )
+        updated = await nav_client.update_playlist(playlist_id, [seed_track_id, *selected_ids], reasoning)
+        if not updated:
+            scheduler_logger.error("Navidrome could not refresh Song Radio playlist %s", playlist_id)
+            return
+
+        titles_by_id = {track["track_id"]: track["title"] for track in candidates}
+        titles = [seed_track.get("title", "Unknown")] + [titles_by_id[track_id] for track_id in selected_ids]
+        await db.update_playlist_content(playlist_id, titles, reasoning)
+        await db.update_scheduled_playlist_next_refresh(
+            scheduled_playlist.id, calculate_next_refresh(scheduled_playlist.refresh_frequency)
+        )
+    except Exception:
+        scheduler_logger.exception("Error refreshing Song Radio playlist %s", playlist_id)
+
+
 @app.get("/api/playlists")
 async def get_all_playlists(db: DatabaseManager = Depends(get_db)):
     """Get all playlists with scheduling information"""
@@ -1264,6 +1785,103 @@ async def get_all_playlists(db: DatabaseManager = Depends(get_db)):
         return playlists
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch playlists: {str(e)}")
+
+@app.post("/api/fix-refresh-times")
+async def fix_refresh_times(db: DatabaseManager = Depends(get_db)):
+    """Fix all refresh times to use :00 instead of :01"""
+    try:
+        # Get all playlists with schedule info
+        playlists = await db.get_all_playlists_with_schedule_info()
+        updated_count = 0
+
+        for playlist in playlists:
+            if "next_refresh" in playlist and playlist["next_refresh"]:
+                current_time = playlist["next_refresh"]
+                if ":01:" in current_time:
+                    # Replace :01: with :00:
+                    fixed_time = current_time.replace(":01:", ":00:")
+                    # Update in database
+                    await db.update_scheduled_playlist_next_refresh(playlist["id"], datetime.fromisoformat(fixed_time))
+                    updated_count += 1
+
+        return {"message": f"Updated {updated_count} refresh times to use :00"}
+    except Exception as e:
+        logger.error(f"Error fixing refresh times: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fix refresh times")
+
+# Library Mapping Endpoints
+@app.get("/api/library-mappings")
+async def get_library_mappings(db: DatabaseManager = Depends(get_db)):
+    """Get all library mappings"""
+    try:
+        mappings = await db.get_library_mappings()
+        return {"mappings": mappings}
+    except Exception as e:
+        logger.error(f"Error getting library mappings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get library mappings")
+
+@app.get("/api/library-paths")
+async def get_library_paths():
+    """Get configured music library paths from environment"""
+    try:
+        music_paths_env = os.getenv("MUSIC_LIBRARY_PATHS", "")
+        if not music_paths_env:
+            # Fallback to single MUSIC_PATH for backward compatibility
+            music_path = os.getenv("MUSIC_PATH", "/music")
+            paths = [music_path]
+        else:
+            # Split comma-separated paths
+            paths = [p.strip() for p in music_paths_env.split(",") if p.strip()]
+        
+        logger.info(f"Returning {len(paths)} configured library paths")
+        return {"paths": paths}
+    except Exception as e:
+        logger.error(f"Error getting library paths: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get library paths")
+
+@app.put("/api/library-mappings/{library_id}")
+async def update_library_mapping(
+    library_id: str, 
+    body: Dict[str, Any] = Body(...),
+    db: DatabaseManager = Depends(get_db)
+):
+    """Update the music path for a library mapping"""
+    try:
+        music_path = body.get("music_path")
+        library_name = body.get("library_name", "")
+        
+        if not music_path:
+            raise HTTPException(status_code=400, detail="music_path is required")
+
+        logger.info(f"Saving library mapping: library_id={library_id}, path={music_path}, name={library_name}")
+        success = await db.upsert_library_mapping(library_id, library_name, music_path)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update mapping")
+
+        logger.info(f"✅ Successfully saved library mapping for library_id={library_id}")
+        return {"message": "Library mapping updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating library mapping: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update library mapping")
+
+@app.delete("/api/library-mappings/{library_id}")
+async def delete_library_mapping(library_id: str, db: DatabaseManager = Depends(get_db)):
+    """Delete a library mapping"""
+    try:
+        logger.info(f"Deleting library mapping for library_id={library_id}")
+        success = await db.delete_library_mapping(library_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Library mapping not found")
+
+        logger.info(f"✅ Successfully deleted library mapping for library_id={library_id}")
+        return {"message": "Library mapping deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting library mapping: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete library mapping")
 
 @app.delete("/api/playlists/{playlist_id}")
 async def delete_playlist(playlist_id: int, db: DatabaseManager = Depends(get_db)):
@@ -1278,12 +1896,14 @@ async def delete_playlist(playlist_id: int, db: DatabaseManager = Depends(get_db
         
         # Delete from Navidrome if we have a playlist ID
         navidrome_playlist_id = playlist.get("navidrome_playlist_id")
+        navidrome_deleted = False
         if navidrome_playlist_id:
             nav_client = get_navidrome_client()
             try:
                 print(f"🗑️ Deleting playlist {playlist_id} from Navidrome (Navidrome ID: {navidrome_playlist_id})")
                 deletion_result = await nav_client.delete_playlist(navidrome_playlist_id)
                 print(f"✅ Navidrome deletion result: {deletion_result}")
+                navidrome_deleted = True
             except Exception as e:
                 print(f"❌ Warning: Failed to delete playlist from Navidrome: {e}")
                 # Continue with local deletion even if Navidrome deletion fails
@@ -1300,7 +1920,7 @@ async def delete_playlist(playlist_id: int, db: DatabaseManager = Depends(get_db
         if not success:
             raise HTTPException(status_code=404, detail="Playlist not found in database")
         
-        return {"message": "Playlist deleted successfully"}
+        return {"message": "Playlist deleted successfully", "navidrome_deleted": navidrome_deleted}
         
     except HTTPException:
         raise
@@ -1439,12 +2059,52 @@ async def track_library_size(db: DatabaseManager = Depends(get_db)):
         scheduler_logger.error(f"❌ Error tracking library size: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to track library size: {str(e)}")
 
+@app.post("/api/admin/erase-chroma-db")
+async def erase_chroma_db():
+    """Erase all data from ChromaDB - DANGER ZONE operation"""
+    try:
+        logger.warning("🗑️ DANGER: Erase ChromaDB operation initiated")
+
+        # Get ChromaDB service and erase all data
+        chroma_service = get_chroma_service()
+        collection = chroma_service.collection
+
+        # Delete all documents from the collection
+        count_before = collection.count()
+        logger.info(f"📊 ChromaDB contains {count_before} documents before erase")
+
+        # ChromaDB doesn't have a direct "delete all" method, so we need to delete in batches
+        # Get all IDs and delete them
+        results = collection.get(include=[])
+        if results and results.get('ids'):
+            ids_to_delete = results['ids']
+            if ids_to_delete:
+                # Delete in batches to avoid potential issues
+                batch_size = 1000
+                for i in range(0, len(ids_to_delete), batch_size):
+                    batch_ids = ids_to_delete[i:i + batch_size]
+                    collection.delete(ids=batch_ids)
+                    logger.info(f"🗑️ Deleted batch of {len(batch_ids)} documents")
+
+        count_after = collection.count()
+        logger.warning(f"✅ ChromaDB erase completed. Documents before: {count_before}, after: {count_after}")
+
+        return {
+            "message": f"Successfully erased {count_before} documents from ChromaDB",
+            "documents_deleted": count_before,
+            "remaining_documents": count_after
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error erasing ChromaDB: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to erase ChromaDB: {str(e)}")
+
 # SPA ROUTING - Smart catch-all for client-side routing (MUST be last route)
 @app.get("/{path:path}", response_class=HTMLResponse)
 async def spa_router(request: Request, path: str):
     """Handle SPA routing - serve app for known paths, redirect unknown paths"""
     # Known SPA paths - serve the app and let frontend handle routing
-    spa_paths = ["this-is", "genre-mix", "re-discover", "playlists", "terms"]
+    spa_paths = ["this-is", "re-discover", "playlists", "terms", "genre-mix", "song-radio", "system-check", "sonic-analysis"]
     
     if path in spa_paths:
         # Apply same system check logic as root

@@ -1,0 +1,286 @@
+<!-- Scan Library Content (hidden by default) -->
+<div id="scan-library-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-3">Run Sonic Analysis</h1>
+        <p class="text-gray-600">This feature runs a sonic analysis process using librosa, chroma and audio features from each track. It builds a database of sound vectors that power smart, similarity-based playlists.</p>
+    </div>
+
+    <!-- Library Mapping Alert (shown if no mappings) -->
+    <div id="scan-library-setup-alert" class="hidden mb-6 bg-blue-50 border border-blue-500 text-sm text-gray-500 rounded-lg p-4" role="alert">
+        <div class="flex">
+            <div class="shrink-0">
+                <svg class="shrink-0 size-4 text-blue-600 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                </svg>
+            </div>
+            <div class="ms-4 flex-1">
+                <h3 class="text-sm font-semibold text-blue-600">Music Library Setup Required</h3>
+                <div class="mt-1 text-sm">
+                    Please map your music library paths to Navidrome libraries. This is a one-time setup.
+                </div>
+
+                <!-- Form content -->
+                <p class="mt-4 text-sm font-semibold">Match Your Music Libraries</p>
+                <p class="mt-1 text-sm mb-3">Select which Navidrome library corresponds to each music path from your configuration:</p>
+
+                <div id="scan-library-mappings-container" class="space-y-3 mb-4">
+                    <!-- Mapping pairs will be inserted here -->
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="scan-save-library-mappings-btn" class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 text-sm">
+                        Save Mappings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Library Selection and Stats -->
+    <div class="mb-8 md:mb-16">
+        <!-- Multiple Libraries: Show selector -->
+        <div id="library-selector-section" class="hidden">
+
+            <!-- Library Selector -->
+            <div class="mb-4">
+                <label class="block text-sm text-gray-900 font-bold mb-3">Select library to analyze:</label>
+                <!-- <div id="scan-library-radios" class="grid sm:grid-cols-2 gap-2"> -->
+                <div id="scan-library-radios" class="grid grid-cols-1 md:grid-cols-2 md:pr-[20%] gap-6 mb-8">
+                    <!-- Radio buttons will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Single Library: Show summary well -->
+        <div id="library-summary-section" class="hidden">
+            <h2 class="text-md font-semibold text-gray-900 mb-4">Library Summary</h2>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <div class="grid grid-cols-4 gap-6">
+                    <!-- Library Name -->
+                    <div>
+                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Library</div>
+                        <div id="summary-library-name" class="text-lg font-semibold text-gray-900">-</div>
+                    </div>
+                    <!-- Total Tracks -->
+                    <div>
+                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Tracks</div>
+                        <div id="summary-total-tracks" class="text-lg font-semibold text-gray-900">-</div>
+                    </div>
+                    <!-- Tracks Scanned -->
+                    <div>
+                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Analyzed</div>
+                        <div id="summary-scanned-tracks" class="text-lg font-semibold text-gray-900">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Section -->
+    <div class="mb-8 "><!-- border corder-gray-200 rounded-lg p-6 -->
+        <div class="flex items-center gap-3 mb-4">
+            <h2 class="text-xl font-semibold text-gray-900">Analysis</h2>
+            <!-- Readiness Badge -->
+            <div id="scan-readiness-section">
+                <span id="readiness-badge" class="py-1 px-2 inline-flex items-center gap-x-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                    <div id="readiness-indicator" class="relative">
+                        <!-- Pulsing background circle -->
+                        <div id="readiness-pulse" class="w-3 h-3 rounded-full bg-green-300 animate-ping opacity-75" style="animation-duration: 2s;"></div>
+                        <!-- Solid inner circle -->
+                        <div id="readiness-core" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-green-700"></div>
+                    </div>
+                    <span id="readiness-text">Ready</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Partial Scan Alert -->
+        <div id="partial-scan-alert" class="hidden mb-6 border border-yellow-200 bg-yellow-50 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-sm font-medium text-yellow-800 mb-1">Partial Scan Detected</h3>
+                    <p id="partial-scan-message" class="text-sm text-yellow-700 mb-3">
+                        A previous scan was interrupted. You can continue from where it left off or start fresh.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="continue-partial-btn" class="bg-yellow-600 text-white text-sm font-medium py-1.5 px-3 rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition-colors">
+                            Continue Scan
+                        </button>
+                        <button id="cancel-partial-btn" class="bg-gray-600 text-white text-sm font-medium py-1.5 px-3 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+                            Start Fresh
+                        </button>
+                        <button id="dismiss-partial-btn" class="text-yellow-700 text-sm font-medium py-1.5 px-3 rounded-md hover:text-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition-colors">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan Options -->
+        <div class="grid grid-cols-1 md:grid-cols-2 md:pr-[20%] gap-6 mb-8">
+
+            <!-- Test Scan -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Test Analysis</h3>
+                <p class="text-sm text-gray-600 mb-4">Run a quick 10-track check to confirm everything's set up correctly and analysis works as expected.</p>
+                <button
+                    id="test-scan-btn"
+                    class="w-full border border-slate-600 text-slate-600 font-bold py-2 px-4 rounded-lg hover:bg-slate-200 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    Run 10-track test
+                </button>
+            </div>
+
+            <!-- Full Scan -->
+            <div class="bg-purple-500 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-2">Full Analysis</h3>
+                <p class="text-sm text-purple-100 mb-2">Analyze your entire library to build a complete sonic profile for every track. </p>
+                <p id="full-scan-time-display" class="text-sm mb-4 text-purple-100 flex items-center gap-1">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-timer-icon lucide-timer">
+                        <line x1="10" x2="14" y1="2" y2="2"/>
+                        <line x1="12" x2="15" y1="14" y2="11"/>
+                        <circle cx="12" cy="14" r="8"/>
+                    </svg>
+                    <span id="full-scan-time-text" class=" text-sm text-purple-100 ">Test run will estimate time</span>
+                </p>
+                <p id="full-scan-time-estimate" class="hidden text-sm text-purple-100 mb-4"></p>
+                <button
+                    id="full-scan-btn"
+                    class="w-full bg-purple-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-900 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    Run full analysis
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="scan-progress-section">
+            <!-- <h3 class="text-lg font-semibold text-gray-900 mb-4">Analysis Progress</h3> -->
+
+        <!-- Empty State -->
+        <div id="progress-empty-state" class="hidden text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+            </svg>
+            <h3 class="text-sm font-medium text-gray-900 mb-1">No analysis in progress</h3>
+            <p class="text-sm text-gray-500">Start a scan above to begin analyzing your music library.</p>
+        </div>
+
+         <!-- Active Progress -->
+         <div id="progress-active-state" class="hidden">
+             <!-- Terminal Progress Container -->
+             <div id="terminal-progress" class="terminal-progress mb-6">
+                 <!-- Top row: Status and percentage -->
+                 <div class="progress-header">
+                     <span class="status-text" id="terminal-status-text">Preparing analysis...</span>
+                     <span class="percentage" id="terminal-percentage">0%</span>
+                 </div>
+                 
+                 <!-- Middle: ASCII Progress Bar -->
+                 <div class="progress-bar-container">
+                     <span class="bracket">[</span>
+                     <span class="progress-bar">
+                         <span class="filled" id="terminal-filled">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</span>
+                         <span class="empty" id="terminal-empty"></span>
+                     </span>
+                     <span class="bracket">]</span>
+                 </div>
+                 
+                 <!-- Bottom row: Tracks and time -->
+                  <div class="progress-footer">
+                      <span class="track-count" id="terminal-track-count">0/0 tracks</span>
+                      <span class="time-info" id="terminal-time-info">Elapsed 0:00s<span id="eta-section"> / ETA Calculating...</span></span>
+                  </div>
+              </div>
+
+              <!-- Cancel Button -->
+             <div class="flex justify-end">
+                 <button
+                     id="cancel-scan-btn"
+                     class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 focus:ring-offset-2 transition-colors"
+                 >
+                     Cancel Analysis
+                 </button>
+             </div>
+         </div>
+        </div>
+    </div>
+
+    <!-- Scan History -->
+    <div class="mt-8 border border-gray-200 rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Analysis History</h2>
+
+        <div id="scan-history-loading" class="text-center py-4">
+            <span class="text-gray-600">Loading history...</span>
+        </div>
+
+        <div id="scan-history-empty" class="hidden text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <h3 class="text-sm font-medium text-gray-900 mb-1">No analysis history</h3>
+            <p class="text-sm text-gray-500">Completed analyses will appear here.</p>
+        </div>
+
+        <div id="scan-history-table" class="hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracks</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scan-history-body" class="bg-white divide-y divide-gray-200">
+                        <!-- History rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="mt-8 border border-red-300 rounded-lg bg-red-50">
+        <button
+            id="danger-zone-toggle"
+            class="w-full flex items-center justify-between p-4 text-left"
+            onclick="toggleDangerZone()"
+        >
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-red-600 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <h3 class="text-lg font-medium text-red-800">Danger Zone</h3>
+            </div>
+            <svg id="danger-zone-icon" class="w-5 h-5 text-red-600 transform transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+        </button>
+
+        <div id="danger-zone-content" class="hidden px-4 pb-4">
+            <p class="text-sm text-red-700 mb-4">
+                This action will permanently delete all sonic analysis data from your database. This includes all audio embeddings and track analysis results. This action cannot be undone.
+            </p>
+            <button
+                id="erase-profiles-btn"
+                class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                onclick="eraseSonicProfiles()"
+            >
+                Erase all Sonic Profiles (0)
+            </button>
+        </div>
+    </div>
+</div>

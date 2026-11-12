@@ -1,6 +1,10 @@
 import httpx
 import os
+import logging
+from datetime import datetime
 from typing import List, Dict, Any, Union, Optional
+
+logger = logging.getLogger(__name__)
 
 class NavidromeClient:
     """Simple client for interacting with Navidrome Subsonic API"""
@@ -23,22 +27,33 @@ class NavidromeClient:
             # Use provided static API key (future feature)
             self._auth_token = self.api_key
         elif self.username and self.password and not self._subsonic_token:
-            # Login with username/password to get Subsonic credentials
+            # Use Subsonic API authentication (Navidrome doesn't have separate auth endpoint)
+            # We'll use password-based authentication for each request
+            import hashlib
+            import time
+            
+            # Generate salt and token for Subsonic API
+            self._subsonic_salt = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
+            salted_password = self.password + self._subsonic_salt
+            self._subsonic_token = hashlib.md5(salted_password.encode()).hexdigest()
+            
+            # Test authentication with ping
             try:
-                response = await self.client.post(
-                    f"{self.base_url}/auth/login",
-                    json={"username": self.username, "password": self.password}
+                response = await self.client.get(
+                    f"{self.base_url}/rest/ping.view",
+                    params={
+                        "u": self.username,
+                        "t": self._subsonic_token,
+                        "s": self._subsonic_salt,
+                        "v": "1.16.0",
+                        "c": "magiclists"
+                    }
                 )
                 response.raise_for_status()
-                data = response.json()
                 
-                # Store both JWT token and Subsonic credentials
-                self._auth_token = data.get("token")
-                self._subsonic_token = data.get("subsonicToken")
-                self._subsonic_salt = data.get("subsonicSalt")
-                
-                if not self._subsonic_token or not self._subsonic_salt:
-                    raise Exception("No Subsonic credentials received from login response")
+                # Check if response indicates successful authentication
+                if 'status="ok"' not in response.text:
+                    raise Exception("Authentication failed")
                     
             except httpx.RequestError as e:
                 raise Exception(f"Network error during login: {e}")
@@ -210,7 +225,8 @@ class NavidromeClient:
                 for artist in index_group.get("artist", []):
                     artists_list.append({
                         "id": artist.get("id"),
-                        "name": artist.get("name")
+                        "name": artist.get("name"),
+                        "albumCount": artist.get("albumCount", 0)
                     })
 
             print(f"✅ Successfully fetched {len(artists_list)} artists from Navidrome")
@@ -273,6 +289,253 @@ class NavidromeClient:
         except Exception as e:
             print(f"💥 Error fetching music folders: {e}")
             raise Exception(f"Failed to fetch music folders: {e}")
+
+    async def search_artist_mentions(self, artist_name: str, library_ids: Union[List[str], None] = None) -> List[Dict[str, Any]]:
+        """Search for tracks that mention an artist in any field (title, featured artists, composers, etc.)
+
+        Args:
+            artist_name: The artist name to search for
+            library_ids: Optional list of library IDs to filter tracks
+
+        Returns:
+            List of tracks with format: {id, title, artist, album, year, play_count}
+        """
+        try:
+            await self._ensure_authenticated()
+
+            all_tracks = []
+
+            # If multiple libraries specified, fetch from each
+            if library_ids and len(library_ids) > 1:
+                for lib_id in library_ids:
+                    print(f"🎵 Searching for mentions of '{artist_name}' in library {lib_id}")
+                    tracks = await self._search_artist_mentions_in_library(artist_name, lib_id)
+                    all_tracks.extend(tracks)
+                # Remove duplicates based on track id
+                seen_ids = set()
+                unique_tracks = []
+                for track in all_tracks:
+                    if track["id"] not in seen_ids:
+                        seen_ids.add(track["id"])
+                        unique_tracks.append(track)
+                all_tracks = unique_tracks
+            else:
+                # Single library or no library filter
+                lib_id = library_ids[0] if library_ids else None
+                all_tracks = await self._search_artist_mentions_in_library(artist_name, lib_id)
+
+            print(f"✅ Found {len(all_tracks)} tracks mentioning '{artist_name}'")
+            return all_tracks
+
+        except Exception as e:
+            print(f"❌ Error searching for mentions of '{artist_name}': {e}")
+            raise
+
+    async def _search_artist_mentions_in_library(self, artist_name: str, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Search for artist mentions in a specific library using multiple strategies"""
+        all_tracks = {}  # Use dict to deduplicate by track ID
+        
+        library_filter = f" in library {library_id}" if library_id else ""
+        logger.info(f"🎵 Starting artist mention search for '{artist_name}'{library_filter}")
+        
+        # Strategy 1: Search for full artist name in all fields (song titles, etc.)
+        logger.info(f"  📍 Strategy 1: Full name search ('{artist_name}')")
+        tracks = await self._search_query(artist_name, library_id)
+        for track in tracks:
+            all_tracks[track["id"]] = track
+        logger.info(f"     Found {len(tracks)} tracks")
+        
+        # Strategy 2: Get a large sample of all tracks and filter by artist name in artist field (substring match)
+        # This catches cases like "Hardsoul, Ron Carroll" or "Ron Carroll, Eric Kupper"
+        logger.info(f"  📍 Strategy 2: Bulk fetch + artist field substring match")
+        tracks = await self._get_all_tracks_sample(library_id, batch_count=5)
+        matched_count = 0
+        for track in tracks:
+            track_artist = track.get("artist", "").lower()
+            search_artist = artist_name.lower()
+            
+            # Check if artist name appears in the artist field (substring match)
+            if search_artist in track_artist:
+                all_tracks[track["id"]] = track
+                matched_count += 1
+        logger.info(f"     Found {matched_count} matching tracks via artist field")
+        
+        result_tracks = list(all_tracks.values())
+        logger.info(f"✅ Found {len(result_tracks)} total unique tracks mentioning '{artist_name}'{library_filter}")
+        return result_tracks
+
+    async def _search_query(self, query: str, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Execute a search query and return all matching songs with pagination"""
+        tracks = []
+        offset = 0
+        batch_size = 500
+        max_iterations = 10  # Limit iterations to prevent hanging
+
+        iteration_count = 0
+        while iteration_count < max_iterations:
+            iteration_count += 1
+            params = self._get_subsonic_params()
+            params["query"] = query
+            params["count"] = batch_size
+            params["offset"] = offset
+            params["artistCount"] = "0"  # Don't return artists, just songs
+            params["albumCount"] = "0"   # Don't return albums, just songs
+            params["songCount"] = batch_size  # Return all matches as songs
+
+            # Add library filter if specified
+            if library_id:
+                params["musicFolderId"] = library_id
+
+            try:
+                response = await self.client.get(
+                    f"{self.base_url}/rest/search3.view",
+                    params=params,
+                    timeout=10.0  # Add timeout to prevent hanging
+                )
+                response.raise_for_status()
+            except httpx.TimeoutException:
+                logger.warning(f"     ⚠️ Search timeout for '{query}', stopping")
+                break
+            except Exception as e:
+                logger.warning(f"     ⚠️ Search failed for '{query}': {e}")
+                break
+
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                error_msg = error.get('message', 'Unknown error')
+                logger.warning(f"     ⚠️ API error: {error_msg}")
+                break
+
+            search_result = subsonic_response.get("searchResult3", {})
+            songs = search_result.get("song", [])
+
+            if not songs:
+                break
+
+            # Convert to our format
+            for song in songs:
+                track = {
+                    "id": song["id"],
+                    "title": song["title"],
+                    "album": song.get("album", ""),
+                    "artist": song.get("artist", ""),
+                    "year": song.get("year", 0),
+                    "duration": song.get("duration", 0),
+                    "genre": song.get("genre", ""),
+                    "play_count": song.get("playCount", 0),
+                    "path": song.get("path", ""),
+                    "track_number": song.get("track", 0),
+                    "disc_number": song.get("discNumber", 0),
+                    "size": song.get("size", 0),
+                    "bitrate": song.get("bitRate", 0),
+                    "content_type": song.get("contentType", ""),
+                    "created": song.get("created", ""),
+                    "changed": song.get("changed", ""),
+                    "starred": song.get("starred", False),
+                    "user_rating": song.get("userRating", 0),
+                    "average_rating": song.get("averageRating", 0),
+                    "type": song.get("type", "music"),
+                    "bookmark_position": song.get("bookmarkPosition", 0),
+                    "played": song.get("played", ""),
+                    "bpm": song.get("bpm", 0),
+                    "comment": song.get("comment", ""),
+                    "sort_name": song.get("sortName", ""),
+                    "media_type": song.get("mediaType", ""),
+                    "music_brainz_id": song.get("musicBrainzId", ""),
+                    "replay_gain_track": song.get("replayGain", {}).get("trackGain", 0),
+                    "replay_gain_album": song.get("replayGain", {}).get("albumGain", 0)
+                }
+                tracks.append(track)
+
+            offset += batch_size
+
+            # If we got fewer songs than batch size, we've reached the end
+            if len(songs) < batch_size:
+                break
+
+        return tracks
+
+    async def _get_all_tracks_sample(self, library_id: Optional[str] = None, batch_count: int = 5) -> List[Dict[str, Any]]:
+        """Fetch a large sample of all tracks for filtering"""
+        tracks = []
+        offset = 0
+        batch_size = 500
+        iteration = 0
+
+        while iteration < batch_count:
+            iteration += 1
+            params = self._get_subsonic_params()
+            params["query"] = ""  # Empty query returns all tracks
+            params["count"] = batch_size
+            params["offset"] = offset
+            params["artistCount"] = "0"
+            params["albumCount"] = "0"
+            params["songCount"] = batch_size
+
+            if library_id:
+                params["musicFolderId"] = library_id
+
+            try:
+                response = await self.client.get(
+                    f"{self.base_url}/rest/search3.view",
+                    params=params,
+                    timeout=10.0
+                )
+                response.raise_for_status()
+            except Exception as e:
+                logger.warning(f"     ⚠️ Failed to fetch sample batch {iteration}: {e}")
+                break
+
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                break
+
+            search_result = subsonic_response.get("searchResult3", {})
+            songs = search_result.get("song", [])
+
+            if not songs:
+                break
+
+            for song in songs:
+                track = {
+                    "id": song["id"],
+                    "title": song["title"],
+                    "album": song.get("album", ""),
+                    "artist": song.get("artist", ""),
+                    "year": song.get("year", 0),
+                    "duration": song.get("duration", 0),
+                    "genre": song.get("genre", ""),
+                    "play_count": song.get("playCount", 0),
+                    "path": song.get("path", ""),
+                    "track_number": song.get("track", 0),
+                    "disc_number": song.get("discNumber", 0),
+                    "size": song.get("size", 0),
+                    "bitrate": song.get("bitRate", 0),
+                    "content_type": song.get("contentType", ""),
+                    "created": song.get("created", ""),
+                    "changed": song.get("changed", ""),
+                    "starred": song.get("starred", False),
+                    "user_rating": song.get("userRating", 0),
+                    "average_rating": song.get("averageRating", 0),
+                    "type": song.get("type", "music"),
+                    "bookmark_position": song.get("bookmarkPosition", 0),
+                    "played": song.get("played", ""),
+                    "bpm": song.get("bpm", 0),
+                    "comment": song.get("comment", ""),
+                    "sort_name": song.get("sortName", ""),
+                    "media_type": song.get("mediaType", ""),
+                    "music_brainz_id": song.get("musicBrainzId", ""),
+                    "replay_gain_track": song.get("replayGain", {}).get("trackGain", 0),
+                    "replay_gain_album": song.get("replayGain", {}).get("albumGain", 0)
+                }
+                tracks.append(track)
+
+            offset += batch_size
+
+        return tracks
 
     async def get_tracks_by_artist(self, artist_id: str, library_ids: Union[List[str], None] = None) -> List[Dict[str, Any]]:
         """Fetch tracks for a specific artist using Subsonic API
@@ -353,7 +616,7 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
 
-    async def get_tracks_by_genre(self, genre: str, library_ids: List[str] = None) -> List[Dict[str, Any]]:
+    async def get_tracks_by_genre(self, genre: str, library_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Fetch tracks for a specific genre using Subsonic getSongsByGenre API with pagination
 
         Args:
@@ -367,115 +630,55 @@ class NavidromeClient:
             await self._ensure_authenticated()
 
             all_tracks = []
-            total_fetched = 0
-            offset = 0
-            batch_size = 500  # Max allowed by API
 
-            library_filter = library_ids[0] if library_ids and len(library_ids) > 0 else None
-            print(f"🎵 Starting genre track collection for '{genre}'{' in library ' + library_filter if library_filter else ''}")
+            # If multiple libraries specified, fetch from each
+            if library_ids and len(library_ids) > 1:
+                for lib_id in library_ids:
+                    print(f"🎵 Fetching tracks for genre '{genre}' from library {lib_id}")
+                    tracks = await self._get_tracks_by_genre_from_library(genre, lib_id)
+                    all_tracks.extend(tracks)
+                # Remove duplicates based on track id
+                seen_ids = set()
+                unique_tracks = []
+                for track in all_tracks:
+                    if track["id"] not in seen_ids:
+                        seen_ids.add(track["id"])
+                        unique_tracks.append(track)
+                all_tracks = unique_tracks
+            else:
+                # Single library or no library filter
+                lib_id = library_ids[0] if library_ids else None
+                all_tracks = await self._get_tracks_by_genre_from_library(genre, lib_id)
 
-            while True:
-                params = self._get_subsonic_params()
-                params["genre"] = genre
-                params["count"] = batch_size
-                params["offset"] = offset
-
-                # Add library filter if specified (use first library if multiple provided)
-                if library_ids and len(library_ids) > 0:
-                    params["musicFolderId"] = library_ids[0]
-
-                response = await self.client.get(
-                    f"{self.base_url}/rest/getSongsByGenre.view",
-                    params=params
-                )
-                response.raise_for_status()
-
-                data = response.json()
-
-                # Handle Subsonic API response format
-                subsonic_response = data.get("subsonic-response", {})
-                if subsonic_response.get("status") != "ok":
-                    error = subsonic_response.get("error", {})
-                    error_msg = error.get('message', 'Unknown error')
-                    error_code = error.get('code', 0)
-
-                    # If getSongsByGenre is not supported, fall back to search approach
-                    if "not implemented" in error_msg.lower() or error_code == 0:
-                        print(f"⚠️ getSongsByGenre not supported, falling back to search method")
-                        return await self._get_tracks_by_genre_fallback(genre)
-                    else:
-                        raise Exception(f"Subsonic API error: {error_msg}")
-
-                songs_by_genre = subsonic_response.get("songsByGenre", {})
-                songs = songs_by_genre.get("song", [])
-
-                # If no songs returned, we've reached the end
-                if not songs:
-                    break
-
-                # Convert songs to our track format
-                for song in songs:
-                    track = {
-                        "id": song.get("id"),
-                        "title": song.get("title"),
-                        "artist": song.get("artist"),
-                        "album": song.get("album"),
-                        "year": song.get("year"),
-                        "genre": song.get("genre"),
-                        "play_count": song.get("playCount", 0),
-                        "local_library_likes": song.get("starred") is not None,
-                        "duration": song.get("duration"),
-                        "track_number": song.get("track")
-                    }
-                    all_tracks.append(track)
-
-                batch_count = len(songs)
-                total_fetched += batch_count
-                offset += batch_size
-
-                print(f"📦 Fetched batch: {batch_count} tracks (total: {total_fetched})")
-
-                # Safety check: prevent infinite loops
-                if batch_count < batch_size:
-                    break
-
-                # Safety check: prevent too many API calls (max 100 batches = 50k tracks)
-                if offset >= 50000:
-                    print(f"⚠️ Reached safety limit of 50k tracks for genre '{genre}'")
-                    break
-
-            print(f"✅ Completed genre collection: {len(all_tracks)} tracks for '{genre}'")
+            print(f"✅ Collected {len(all_tracks)} tracks for genre '{genre}'")
             return all_tracks
 
-        except httpx.RequestError as e:
-            raise Exception(f"Network error connecting to Navidrome: {e}")
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
         except Exception as e:
-            raise Exception(f"Unexpected error fetching tracks for genre {genre}: {e}")
+            print(f"❌ Error fetching tracks by genre '{genre}': {e}")
+            raise
 
-    async def _get_tracks_by_genre_fallback(self, genre: str) -> List[Dict[str, Any]]:
-        """Fallback method using search3 when getSongsByGenre is not available
+    async def _get_tracks_by_genre_from_library(self, genre: str, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch tracks for a genre from a specific library"""
+        tracks = []
+        total_fetched = 0
+        offset = 0
+        batch_size = 500  # Max allowed by API
 
-        Args:
-            genre: The genre name
+        library_filter = f" in library {library_id}" if library_id else ""
+        print(f"🎵 Starting genre track collection for '{genre}'{library_filter}")
 
-        Returns:
-            List of tracks with format: {id, title, album, year, play_count}
-        """
-        print(f"🔄 Using fallback search method for genre '{genre}'")
-
-        try:
-            await self._ensure_authenticated()
-
+        while True:
             params = self._get_subsonic_params()
-            params["query"] = ""  # Empty query to get all tracks
-            params["artistCount"] = 0
-            params["albumCount"] = 0
-            params["songCount"] = 5000  # Get large sample to find genre tracks
+            params["genre"] = genre
+            params["count"] = batch_size
+            params["offset"] = offset
+
+            # Add library filter if specified
+            if library_id:
+                params["musicFolderId"] = library_id
 
             response = await self.client.get(
-                f"{self.base_url}/rest/search3.view",
+                f"{self.base_url}/rest/getSongsByGenre.view",
                 params=params
             )
             response.raise_for_status()
@@ -486,152 +689,83 @@ class NavidromeClient:
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
-                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+                error_msg = error.get('message', 'Unknown error')
+                error_code = error.get('code', 0)
 
-            search_result = subsonic_response.get("searchResult3", {})
-            songs = search_result.get("song", [])
-
-            tracks_list = []
-            for song in songs:
-                # Filter songs that match the genre exactly
-                if song.get("genre") == genre:
-                    track = {
-                        "id": song.get("id"),
-                        "title": song.get("title"),
-                        "artist": song.get("artist"),
-                        "album": song.get("album"),
-                        "year": song.get("year"),
-                        "genre": song.get("genre"),
-                        "play_count": song.get("playCount", 0),
-                        "local_library_likes": song.get("starred") is not None,
-                        "duration": song.get("duration"),
-                        "track_number": song.get("track")
-                    }
-                    tracks_list.append(track)
-
-            print(f"✅ Fallback method found {len(tracks_list)} tracks for '{genre}'")
-            return tracks_list
-
-        except Exception as e:
-            print(f"❌ Fallback method also failed: {e}")
-            return []
-
-    async def get_genres(self, library_ids: Union[List[str], str, None] = None) -> List[Dict[str, Any]]:
-        """Fetch all available genres from Navidrome with track counts
-
-        Args:
-            library_ids: Optional library ID(s) to filter genres (string, list of strings, or None)
-
-        Returns:
-            List of genre objects with name and songCount
-        """
-        try:
-            await self._ensure_authenticated()
-
-            # Normalize library_ids to a list
-            if isinstance(library_ids, str):
-                library_ids_list = [library_ids]
-            elif isinstance(library_ids, list):
-                library_ids_list = library_ids
-            else:
-                library_ids_list = []
-
-            # If no specific libraries requested, use env var or fetch from all libraries
-            if not library_ids_list:
-                env_library_id = os.getenv("NAVIDROME_LIBRARY_ID")
-                if env_library_id:
-                    library_ids_list = [env_library_id]
+                # If getSongsByGenre is not supported, raise error
+                if "not implemented" in error_msg.lower() or error_code == 0:
+                    raise Exception(f"getSongsByGenre not supported by Navidrome server")
                 else:
-                    # Fetch from all libraries
-                    library_ids_list = None
+                    raise Exception(f"Subsonic API error: {error_msg}")
 
-            all_genres = {}
+            songs_by_genre = subsonic_response.get("songsByGenre", {})
+            songs = songs_by_genre.get("song", [])
 
-            if library_ids_list:
-                # Fetch from specific libraries
-                for lib_id in library_ids_list:
-                    print(f"🎵 Fetching genres from library ID: {lib_id}")
-                    genres = await self._get_genres_from_library(lib_id)
-                    for genre in genres:
-                        name = genre["name"]
-                        count = genre["songCount"]
-                        if name in all_genres:
-                            all_genres[name] += count
-                        else:
-                            all_genres[name] = count
-            else:
-                # Fetch from all libraries (no filter)
-                print("🎵 Fetching genres from all libraries")
-                genres = await self._get_genres_from_library(None)
-                for genre in genres:
-                    name = genre["name"]
-                    count = genre["songCount"]
-                    all_genres[name] = count
+            # If no songs returned, we've reached the end
+            if not songs:
+                break
 
-            # Convert to list of genre objects
-            genre_list = [{"name": name, "songCount": count} for name, count in all_genres.items()]
+            # Convert to our format
+            for song in songs:
+                track = {
+                    "id": song["id"],
+                    "title": song["title"],
+                    "album": song.get("album", ""),
+                    "artist": song.get("artist", ""),
+                    "year": song.get("year", 0),
+                    "duration": song.get("duration", 0),
+                    "genre": song.get("genre", ""),
+                    "play_count": song.get("playCount", 0),
+                    "path": song.get("path", ""),
+                    "track_number": song.get("track", 0),
+                    "disc_number": song.get("discNumber", 0),
+                    "size": song.get("size", 0),
+                    "bitrate": song.get("bitRate", 0),
+                    "content_type": song.get("contentType", ""),
+                    "created": song.get("created", ""),
+                    "changed": song.get("changed", ""),
+                    "starred": song.get("starred", False),
+                    "user_rating": song.get("userRating", 0),
+                    "average_rating": song.get("averageRating", 0),
+                    "type": song.get("type", "music"),
+                    "bookmark_position": song.get("bookmarkPosition", 0),
+                    "played": song.get("played", ""),
+                    "bpm": song.get("bpm", 0),
+                    "comment": song.get("comment", ""),
+                    "sort_name": song.get("sortName", ""),
+                    "media_type": song.get("mediaType", ""),
+                    "music_brainz_id": song.get("musicBrainzId", ""),
+                    "replay_gain_track": song.get("replayGain", {}).get("trackGain", 0),
+                    "replay_gain_album": song.get("replayGain", {}).get("albumGain", 0)
+                }
+                tracks.append(track)
 
-            print(f"✅ Retrieved {len(genre_list)} unique genres from {len(library_ids_list) if library_ids_list else 'all'} libraries")
-            return sorted(genre_list, key=lambda x: x["name"])
+            total_fetched += len(songs)
+            offset += batch_size
 
-        except Exception as e:
-            print(f"❌ Error in get_genres: {e}")
-            raise
+            # Safety check to prevent infinite loops
+            if total_fetched >= 10000:  # Reasonable limit
+                print(f"⚠️ Reached safety limit of 10000 tracks for genre '{genre}'{library_filter}")
+                break
+
+        # If no tracks found with getSongsByGenre, try fallback search
+        if not tracks:
+            print(f"⚠️ No tracks found with getSongsByGenre for '{genre}', trying fallback search")
+            tracks = await self._fallback_genre_search(genre, library_id)
+
+        print(f"✅ Collected {len(tracks)} tracks for genre '{genre}'{library_filter}")
+        return tracks
 
     async def _get_genres_from_library(self, library_id: Union[str, None]) -> List[Dict[str, Any]]:
-        """Fetch genres from a specific library or all libraries"""
+        """Fetch genres from a specific library by sampling tracks"""
         try:
-            # First try the OpenSubsonic getGenres endpoint (returns ALL genres)
-            try:
-                params = self._get_subsonic_params()
-
-                # Add library filter if specified (musicFolderId parameter)
-                if library_id:
-                    params["musicFolderId"] = library_id
-
-                response = await self.client.get(
-                    f"{self.base_url}/rest/getGenres.view",
-                    params=params
-                )
-                response.raise_for_status()
-
-                data = response.json()
-
-                # Handle Subsonic API response format
-                subsonic_response = data.get("subsonic-response", {})
-                if subsonic_response.get("status") != "ok":
-                    error = subsonic_response.get("error", {})
-                    raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
-
-                genres_data = subsonic_response.get("genres", {})
-                genre_list = genres_data.get("genre", [])
-
-                # Extract genre objects with counts from the structured response
-                genres = []
-                for genre_item in genre_list:
-                    genre_name = genre_item.get("value")
-                    song_count = genre_item.get("songCount", 0)
-                    if genre_name:
-                        genres.append({
-                            "name": genre_name,
-                            "songCount": song_count
-                        })
-
-                if genres:
-                    print(f"✅ Retrieved {len(genres)} genres using getGenres endpoint")
-                    return genres
-
-            except Exception as e:
-                print(f"⚠️ getGenres endpoint failed ({e}), falling back to search-based method")
-
-            # Fallback: Use search-based method with larger sample
+            # Use search method to sample tracks from the library and extract genres
             params = self._get_subsonic_params()
-            params["query"] = ""  # Empty query to get all
+            params["query"] = ""  # Empty query to get all tracks
             params["artistCount"] = "0"
             params["albumCount"] = "0"
-            params["songCount"] = "10000"  # Increased sample size for better coverage
+            params["songCount"] = "2000"  # Sample more tracks for better genre coverage
 
-            # Add library filter if specified
             if library_id:
                 params["musicFolderId"] = library_id
 
@@ -642,8 +776,6 @@ class NavidromeClient:
             response.raise_for_status()
 
             data = response.json()
-
-            # Handle Subsonic API response format
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
@@ -652,36 +784,163 @@ class NavidromeClient:
             search_result = subsonic_response.get("searchResult3", {})
             songs = search_result.get("song", [])
 
-            # Extract unique genres with improved parsing and counts
+            # Extract genres from tracks
             genre_counts = {}
             for song in songs:
                 genre = song.get("genre")
                 if genre:
-                    # Parse multiple genres separated by common delimiters
                     parsed_genres = self._parse_genre_string(genre)
                     for parsed_genre in parsed_genres:
                         genre_counts[parsed_genre] = genre_counts.get(parsed_genre, 0) + 1
 
-            # Convert to list of genre objects
-            genres = [{"name": name, "songCount": count} for name, count in genre_counts.items()]
-
-            print(f"📊 Retrieved {len(genres)} genres using search fallback method (sampled {len(songs)} tracks)")
+            # Only include genres with at least one song
+            genres = [{"name": name, "songCount": count} for name, count in genre_counts.items() if count > 0]
+            print(f"📊 Retrieved {len(genres)} genres from library {library_id or 'all'} (sampled {len(songs)} tracks)")
             return genres
 
-        except httpx.RequestError as e:
-            raise Exception(f"Network error connecting to Navidrome: {e}")
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
         except Exception as e:
-            raise Exception(f"Unexpected error fetching genres: {e}")
+            raise Exception(f"Error fetching genres from library: {e}")
+
+    async def _fallback_genre_search(self, genre: str, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fallback method to find tracks by genre when getSongsByGenre fails"""
+        try:
+            tracks = []
+            offset = 0
+            batch_size = 500
+            max_iterations = 10  # Limit iterations to prevent hanging
+            iteration_count = 0
+
+            while len(tracks) < 5000 and iteration_count < max_iterations:  # Limit to prevent too many results
+                iteration_count += 1
+                params = self._get_subsonic_params()
+                params["query"] = ""  # Empty query to get all tracks
+                params["count"] = batch_size
+                params["offset"] = offset
+                params["songCount"] = batch_size
+                params["artistCount"] = "0"
+                params["albumCount"] = "0"
+
+                if library_id:
+                    params["musicFolderId"] = library_id
+
+                response = await self.client.get(
+                    f"{self.base_url}/rest/search3.view",
+                    params=params,
+                    timeout=10.0  # Add timeout to prevent hanging
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                subsonic_response = data.get("subsonic-response", {})
+                if subsonic_response.get("status") != "ok":
+                    error = subsonic_response.get("error", {})
+                    raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+
+                search_result = subsonic_response.get("searchResult3", {})
+                songs = search_result.get("song", [])
+
+                if not songs:
+                    break
+
+                # Filter songs where genre contains the search term (case insensitive)
+                for song in songs:
+                    song_genre = song.get("genre", "")
+                    if genre.lower() in song_genre.lower():
+                        track = {
+                            "id": song["id"],
+                            "title": song["title"],
+                            "album": song.get("album", ""),
+                            "artist": song.get("artist", ""),
+                            "year": song.get("year", 0),
+                            "duration": song.get("duration", 0),
+                            "genre": song_genre,
+                            "play_count": song.get("playCount", 0),
+                            "path": song.get("path", ""),
+                            "track_number": song.get("track", 0),
+                            "disc_number": song.get("discNumber", 0),
+                            "size": song.get("size", 0),
+                            "bitrate": song.get("bitRate", 0),
+                            "content_type": song.get("contentType", ""),
+                            "created": song.get("created", ""),
+                            "changed": song.get("changed", ""),
+                            "starred": song.get("starred", False),
+                            "user_rating": song.get("userRating", 0),
+                            "average_rating": song.get("averageRating", 0),
+                            "type": song.get("type", "music"),
+                            "bookmark_position": song.get("bookmarkPosition", 0),
+                            "played": song.get("played", ""),
+                            "bpm": song.get("bpm", 0),
+                            "comment": song.get("comment", ""),
+                            "sort_name": song.get("sortName", ""),
+                            "media_type": song.get("mediaType", ""),
+                            "music_brainz_id": song.get("musicBrainzId", ""),
+                            "replay_gain_track": song.get("replayGain", {}).get("trackGain", 0),
+                            "replay_gain_album": song.get("replayGain", {}).get("albumGain", 0)
+                        }
+                        tracks.append(track)
+
+                offset += batch_size
+
+                # If we found tracks, continue until we have enough or no more songs
+                if len(songs) < batch_size:
+                    break
+
+            print(f"📊 Fallback search found {len(tracks)} tracks for genre '{genre}'")
+            return tracks
+
+        except Exception as e:
+            print(f"❌ Fallback genre search failed: {e}")
+            return []
+
+    async def _get_genres_fallback(self, library_id: Union[str, None]) -> List[Dict[str, Any]]:
+        """Fallback method using search to sample tracks and extract genres"""
+        try:
+            params = self._get_subsonic_params()
+            params["query"] = ""  # Empty query to get all
+            params["artistCount"] = "0"
+            params["albumCount"] = "0"
+            params["songCount"] = "1000"  # Sample tracks
+
+            if library_id:
+                params["musicFolderId"] = library_id
+
+            response = await self.client.get(
+                f"{self.base_url}/rest/search3.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+
+            search_result = subsonic_response.get("searchResult3", {})
+            songs = search_result.get("song", [])
+
+            genre_counts = {}
+            for song in songs:
+                genre = song.get("genre")
+                if genre:
+                    parsed_genres = self._parse_genre_string(genre)
+                    for parsed_genre in parsed_genres:
+                        genre_counts[parsed_genre] = genre_counts.get(parsed_genre, 0) + 1
+
+            genres = [{"name": name, "songCount": count} for name, count in genre_counts.items() if count > 0]
+            print(f"📊 Retrieved {len(genres)} genres using search fallback (sampled {len(songs)} tracks)")
+            return genres
+
+        except Exception as e:
+            raise Exception(f"Fallback genre fetching failed: {e}")
 
     def _parse_genre_string(self, genre_str: str) -> List[str]:
         """Parse genre strings that may contain multiple genres separated by delimiters"""
         if not genre_str:
             return []
 
-        # Common separators: comma, slash, bullet, tab, pipe
-        separators = [",", "/", "•", "\t", "|", ";", "&"]
+        # Common separators: comma, slash, bullet, tab, pipe, semicolon, ampersand, newline
+        separators = [",", "/", "•", "\t", "|", ";", "&", "\n"]
 
         # Try each separator
         for sep in separators:
@@ -692,6 +951,254 @@ class NavidromeClient:
 
         # No separators found, return as single genre
         return [genre_str.strip()]
+
+    async def get_genres(self, library_ids: Union[List[str], str, None] = None) -> List[Dict[str, Any]]:
+        """Get list of genres (legacy method for compatibility)"""
+        # For backward compatibility, return genres from all libraries
+        genres = await self._get_genres_from_library(None)
+        return [{"name": g["name"], "songCount": g["songCount"]} for g in genres]
+
+    async def get_library_track_counts(self, library_ids: Optional[List[str]] = None) -> Dict[str, int]:
+        """Get total track counts for specified libraries
+
+        Args:
+            library_ids: List of library IDs to check, or None for all libraries
+
+        Returns:
+            Dict mapping library_id to track count
+        """
+        try:
+            await self._ensure_authenticated()
+
+            if not library_ids:
+                # Get all libraries
+                folders = await self.get_music_folders()
+                library_ids = [folder["id"] for folder in folders]
+
+            track_counts = {}
+
+            for lib_id in library_ids:
+                try:
+                    # Use search3 with musicFolderId to count tracks in this library
+                    params = self._get_subsonic_params()
+                    params["query"] = ""
+                    params["count"] = "1"  # Just need count, not actual tracks
+                    params["musicFolderId"] = lib_id
+
+                    response = await self.client.get(
+                        f"{self.base_url}/rest/search3.view",
+                        params=params
+                    )
+                    response.raise_for_status()
+
+                    data = response.json()
+                    subsonic_response = data.get("subsonic-response", {})
+                    if subsonic_response.get("status") != "ok":
+                        print(f"⚠️ Failed to get track count for library {lib_id}")
+                        continue
+
+                    search_result = subsonic_response.get("searchResult3", {})
+                    songs = search_result.get("song", [])
+                    # The total count isn't directly available, but we can estimate from offset
+                    # For now, we'll use a different approach - get a small sample and note it
+                    track_counts[lib_id] = len(songs) if isinstance(songs, list) else 1
+
+                except Exception as e:
+                    print(f"⚠️ Error getting track count for library {lib_id}: {e}")
+                    track_counts[lib_id] = 0
+
+            print(f"📊 Retrieved track counts for {len(track_counts)} libraries")
+            return track_counts
+
+        except Exception as e:
+            print(f"❌ Error getting library track counts: {e}")
+            return {}
+
+    async def build_genre_cache(self, library_ids: Optional[List[str]] = None, db = None) -> Dict[str, Any]:
+        """Build genre cache for specified libraries using the three use case approach
+
+        Args:
+            library_ids: List of library IDs to cache genres for
+            db: Database manager instance for caching
+
+        Returns:
+            Cache data structure with genre counts per library
+        """
+        try:
+            await self._ensure_authenticated()
+
+            # Determine which libraries to process
+            if not library_ids:
+                folders = await self.get_music_folders()
+                all_library_ids = [folder["id"] for folder in folders]
+            else:
+                all_library_ids = library_ids.copy()
+
+            # Get track counts for cache validation
+            track_counts = await self.get_library_track_counts(all_library_ids)
+            total_tracks = sum(track_counts.values())
+
+            cache_data = {
+                "libraries": {},
+                "cached_at": datetime.now().isoformat(),
+                "total_tracks": total_tracks
+            }
+
+            # Case determination
+            if not library_ids or len(library_ids) == len(all_library_ids):
+                # Case 1 & 2: Single library or all libraries selected
+                print("🎵 Building genre cache for all/single library scenario")
+                await self._build_genre_cache_all_libraries(cache_data, all_library_ids)
+            else:
+                # Case 3: Partial libraries selected
+                print("🎵 Building genre cache for partial libraries scenario")
+                await self._build_genre_cache_partial_libraries(cache_data, library_ids)
+
+            # Save to cache if db provided
+            if db:
+                import hashlib
+                library_ids_hash = hashlib.md5(",".join(sorted(library_ids or all_library_ids)).encode()).hexdigest()
+                server_id = self.base_url  # Use base URL as server identifier
+
+                await db.set_genre_cache(server_id, library_ids_hash, cache_data, total_tracks)
+                print(f"💾 Saved genre cache for {len(cache_data['libraries'])} libraries")
+
+            return cache_data
+
+        except Exception as e:
+            print(f"❌ Error building genre cache: {e}")
+            raise
+
+    async def _build_genre_cache_all_libraries(self, cache_data: Dict[str, Any], library_ids: List[str]) -> None:
+        """Build cache for case 1&2: getGenres + getSongsByGenre counting"""
+        try:
+            # Get all genres first
+            params = self._get_subsonic_params()
+            response = await self.client.get(
+                f"{self.base_url}/rest/getGenres.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                raise Exception(f"Subsonic API error: {subsonic_response.get('error', {}).get('message', 'Unknown error')}")
+
+            genres_data = subsonic_response.get("genres", {})
+            all_genres = genres_data.get("genre", [])
+
+            # For each genre, count tracks per library
+            for genre_item in all_genres:
+                genre_name = genre_item.get("value")
+                if not genre_name:
+                    continue
+
+                # Count tracks for this genre in each library
+                for lib_id in library_ids:
+                    try:
+                        track_count = await self._count_tracks_by_genre(genre_name, lib_id)
+                        if track_count > 0:
+                            if lib_id not in cache_data["libraries"]:
+                                cache_data["libraries"][lib_id] = {"genres": {}, "total_tracks": 0}
+                            cache_data["libraries"][lib_id]["genres"][genre_name] = track_count
+
+                    except Exception as e:
+                        print(f"⚠️ Error counting tracks for genre '{genre_name}' in library {lib_id}: {e}")
+                        continue
+
+        except Exception as e:
+            print(f"❌ Error in all libraries genre cache building: {e}")
+            raise
+
+    async def _build_genre_cache_partial_libraries(self, cache_data: Dict[str, Any], library_ids: List[str]) -> None:
+        """Build cache for case 3: getGenres globally + getSongsByGenre per library"""
+        try:
+            # Get all genres first
+            params = self._get_subsonic_params()
+            response = await self.client.get(
+                f"{self.base_url}/rest/getGenres.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                raise Exception(f"Subsonic API error: {subsonic_response.get('error', {}).get('message', 'Unknown error')}")
+
+            genres_data = subsonic_response.get("genres", {})
+            all_genres = genres_data.get("genre", [])
+
+            # For each genre, count tracks in each selected library
+            for genre_item in all_genres:
+                genre_name = genre_item.get("value")
+                if not genre_name:
+                    continue
+
+                for lib_id in library_ids:
+                    try:
+                        track_count = await self._count_tracks_by_genre(genre_name, lib_id)
+                        if track_count > 0:
+                            if lib_id not in cache_data["libraries"]:
+                                cache_data["libraries"][lib_id] = {"genres": {}, "total_tracks": 0}
+                            cache_data["libraries"][lib_id]["genres"][genre_name] = track_count
+
+                    except Exception as e:
+                        print(f"⚠️ Error counting tracks for genre '{genre_name}' in library {lib_id}: {e}")
+                        continue
+
+        except Exception as e:
+            print(f"❌ Error in partial libraries genre cache building: {e}")
+            raise
+
+    async def _count_tracks_by_genre(self, genre: str, library_id: Optional[str] = None) -> int:
+        """Count total tracks for a genre in a specific library or all libraries"""
+        try:
+            count = 0
+            offset = 0
+            batch_size = 500
+
+            while True:
+                params = self._get_subsonic_params()
+                params["genre"] = genre
+                params["count"] = batch_size
+                params["offset"] = offset
+
+                if library_id:
+                    params["musicFolderId"] = library_id
+
+                response = await self.client.get(
+                    f"{self.base_url}/rest/getSongsByGenre.view",
+                    params=params
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                subsonic_response = data.get("subsonic-response", {})
+                if subsonic_response.get("status") != "ok":
+                    error = subsonic_response.get("error", {})
+                    raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+
+                songs_by_genre = subsonic_response.get("songsByGenre", {})
+                songs = songs_by_genre.get("song", [])
+
+                count += len(songs)
+                offset += batch_size
+
+                if len(songs) < batch_size:
+                    break
+
+                # Safety limit
+                if count >= 50000:
+                    print(f"⚠️ Reached safety limit counting tracks for genre '{genre}'")
+                    break
+
+            return count
+
+        except Exception as e:
+            print(f"❌ Error counting tracks for genre '{genre}': {e}")
+            return 0
 
     async def get_starred(self, library_ids: Union[List[str], str, None] = None) -> List[Dict[str, Any]]:
         """Fetch starred tracks from Navidrome using getStarred API
@@ -817,7 +1324,7 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching genre stats: {e}")
 
-    async def create_playlist(self, name: str, track_ids: List[str], comment: str = None) -> str:
+    async def create_playlist(self, name: str, track_ids: List[str], comment: Optional[str] = None) -> str:
         """Create a new playlist in Navidrome using Subsonic API
         
         Args:
@@ -910,7 +1417,7 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error creating playlist: {e}")
     
-    async def update_playlist(self, playlist_id: str, track_ids: List[str], comment: str = None) -> bool:
+    async def update_playlist(self, playlist_id: str, track_ids: List[str], comment: Optional[str] = None) -> bool:
         """Update an existing playlist by replacing all tracks
         
         Args:
@@ -1009,6 +1516,47 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error updating playlist: {e}")
     
+    async def get_playlist_track_ids(self, playlist_id: str) -> List[str]:
+        """Get track IDs from an existing playlist
+
+        Args:
+            playlist_id: ID of the playlist to get tracks from
+
+        Returns:
+            List of track IDs in the playlist
+        """
+        try:
+            await self._ensure_authenticated()
+
+            params = self._get_subsonic_params()
+            params["id"] = playlist_id
+
+            response = await self.client.get(
+                f"{self.base_url}/rest/getPlaylist.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Failed to get playlist: {error.get('message', 'Unknown error')}")
+
+            playlist_data = subsonic_response.get("playlist", {})
+            entries = playlist_data.get("entry", [])
+
+            track_ids = []
+            for entry in entries:
+                if entry.get("id"):
+                    track_ids.append(entry["id"])
+
+            return track_ids
+
+        except Exception as e:
+            logger.error(f"Failed to get playlist track IDs for {playlist_id}: {e}")
+            return []
+
     async def delete_playlist(self, playlist_id: str) -> bool:
         """Delete a playlist from Navidrome
         
@@ -1062,42 +1610,90 @@ class NavidromeClient:
     
     async def get_total_song_count(self) -> int:
         """Get the total number of songs in the library using startScan API
-        
+
         Returns:
             int: Total number of songs in the library
         """
         try:
             await self._ensure_authenticated()
-            
+
             # Use startScan API to get accurate song count
             params = self._get_subsonic_params()
-            
+
             response = await self.client.get(
                 f"{self.base_url}/rest/startScan.view",
                 params=params
             )
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             # Handle Subsonic API response format
             subsonic_response = data.get("subsonic-response", {})
             if subsonic_response.get("status") != "ok":
                 error = subsonic_response.get("error", {})
                 raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
-            
+
             scan_status = subsonic_response.get("scanStatus", {})
             count = scan_status.get("count", 0)
-            
+
             print(f"📊 Total song count in library (via startScan): {count}")
             return count
-                
+
         except httpx.RequestError as e:
             raise Exception(f"Network error connecting to Navidrome: {e}")
         except httpx.HTTPStatusError as e:
             raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
         except Exception as e:
             raise Exception(f"Unexpected error getting song count: {e}")
+
+    async def get_library_song_count(self, library_id: str) -> int:
+        """Get the total number of songs in a specific library
+
+        Args:
+            library_id: The library ID to get count for
+
+        Returns:
+            int: Total number of songs in the specific library
+        """
+        try:
+            await self._ensure_authenticated()
+
+            # Use search3 API with library filter to get all tracks (set very high limit)
+            params = self._get_subsonic_params()
+            params["query"] = ""  # Empty query to get all tracks
+            params["artistCount"] = "0"
+            params["albumCount"] = "0"
+            params["songCount"] = "10000"  # Get up to 10,000 tracks (should be enough for large libraries)
+            params["musicFolderId"] = library_id
+
+            response = await self.client.get(
+                f"{self.base_url}/rest/search3.view",
+                params=params
+            )
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Handle Subsonic API response format
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+
+            search_result = subsonic_response.get("searchResult3", {})
+            songs = search_result.get("song", [])
+
+            count = len(songs)
+            print(f"📊 Song count in library {library_id}: {count}")
+            return count
+
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to Navidrome: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+        except Exception as e:
+            raise Exception(f"Unexpected error getting library song count: {e}")
     
     async def get_library_stats(self) -> dict:
         """
@@ -1134,6 +1730,68 @@ class NavidromeClient:
                 'max_playlist_appearances': 10,
                 'total_tracks': 0
             }
+    
+    async def get_tracks(self, library_ids: Union[List[str], None] = None) -> List[Dict[str, Any]]:
+        """Fetch all tracks from Navidrome, optionally filtered by library IDs
+        
+        Args:
+            library_ids: Optional list of library IDs to filter tracks
+            
+        Returns:
+            List of tracks with format: {id, title, artist, album, year, play_count, genre}
+        """
+        try:
+            await self._ensure_authenticated()
+            
+            params = self._get_subsonic_params()
+
+            # Add library filter if specified (use first library if multiple provided)
+            if library_ids and len(library_ids) > 0:
+                params["musicFolderId"] = library_ids[0]
+
+            response = await self.client.get(
+                f"{self.base_url}/rest/search3.view",
+                params=params
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Handle Subsonic API response format
+            subsonic_response = data.get("subsonic-response", {})
+            if subsonic_response.get("status") != "ok":
+                error = subsonic_response.get("error", {})
+                raise Exception(f"Subsonic API error: {error.get('message', 'Unknown error')}")
+            
+            search_result = subsonic_response.get("searchResult3", {})
+            songs = search_result.get("song", [])
+            
+            tracks_list = []
+            for song in songs:
+                track = {
+                    "id": song.get("id"),
+                    "title": song.get("title"),
+                    "artist": song.get("artist"),
+                    "album": song.get("album"),
+                    "year": song.get("year"),
+                    "genre": song.get("genre"),
+                    "play_count": song.get("playCount", 0),
+                    "local_library_likes": song.get("starred") is not None,
+                    "duration": song.get("duration"),
+                    "track_number": song.get("track"),
+                    "path": song.get("path")
+                }
+                tracks_list.append(track)
+
+            logger.info(f"Retrieved {len(tracks_list)} tracks from Navidrome")
+            return tracks_list
+            
+        except httpx.RequestError as e:
+            raise Exception(f"Network error connecting to Navidrome: {e}")
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
+        except Exception as e:
+            raise Exception(f"Unexpected error fetching tracks: {e}")
     
     async def close(self):
         """Close the HTTP client"""

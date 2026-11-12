@@ -1,0 +1,19 @@
+{
+  "recipe_id": "song_radio_v5",
+  "name": "Song Radio — Similarity-first (concise)",
+  "description": "Select tracks by acoustic similarity, make the fewest swaps needed to avoid artist/album/title clashes and keep good flow.",
+  "version": "1.0",
+  "config": {
+    "temperature": 0.5,
+    "max_tokens": 16000,
+    "candidate_multiplier": 5,
+    "max_seed_artist_tracks": 5
+  },
+  "system_prompt": "You are a precise playlist editor. Candidates are pre-sorted by acoustic similarity (best first). Select tracks using the rules below while changing the original order as little as possible.",
+  "user_prompt_template": "INPUT: Create a playlist for '{{SEED_TRACK_NAME}}' by {{SEED_TRACK_ARTIST}}.\n\nSeed track is already position 0. From these candidates (sorted best-first):\n\n{{CANDIDATES_JSON}}\n\nGOAL: Return {{DESIRED_TRACK_COUNT}} additional track indices (integers) to build a final playlist (seed + chosen tracks).\n\nRULES (apply in order):\n1) Start with the top N candidates (indices 0..{{DESIRED_TRACK_COUNT}}-1). Prefer lower indices over higher ones.\n2) Caps: at most 5 tracks by {{SEED_ARTIST}} total; at most 2 tracks by any other artist.\n3) No consecutive duplicates: same artist, same album, or identical song title may NOT appear back-to-back.\n4) Avoid duplicate recordings (skip alternate versions unless clearly labelled as distinct).\n5) Stay inside top 40 indices unless a rule violation cannot be fixed otherwise.\n6) Make the FEWEST swaps possible. Keep all swaps within ~10 indices when practical.\n7) Optional: 0–3 small local swaps (within 3–5 positions) to improve energy/flow only if there are obvious jarring transitions.\n\nOUTPUT FORMAT:\nReturn JSON only, with these fields:\n{\n  \"track_ids\": [int, int, ...],         // list of selected indices (integers), seed is NOT included here\n \"reasoning\": \"Write an engaging ~280 character playlist description in the style of a music magazine review. Focus on the DISCOVERY aspect, variety of artists, and sonic journey. Make it compelling!",
+  "output_rules": {
+    "return_indices_only": true,
+    "indices_type": "integers",
+    "max_indices": "{{DESIRED_TRACK_COUNT}}"
+  }
+}

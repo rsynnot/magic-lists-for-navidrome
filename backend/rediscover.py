@@ -802,6 +802,7 @@ class ReDiscoverV2Processor:
 
     async def _execute_searches(self, theme_strategy: Dict[str, Any], library_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Execute targeted searches based on AI strategy."""
+        import asyncio
         search_results = []
         strategy = theme_strategy.get("search_strategy", {})
 
@@ -809,10 +810,20 @@ class ReDiscoverV2Processor:
         include_genres = strategy.get("include_genres", [])
         for genre in include_genres[:3]:  # Limit to top 3 genres
             try:
-                tracks = await self.navidrome_client.get_tracks_by_genre(genre, library_ids)
-                search_results.extend(tracks)
+                # Add timeout to prevent hanging on genre search
+                tracks = await asyncio.wait_for(
+                    self.navidrome_client.get_tracks_by_genre(genre, library_ids),
+                    timeout=10.0  # 10 second timeout per genre
+                )
+                if tracks:
+                    print(f"✅ Genre search found {len(tracks)} tracks for '{genre}'")
+                    search_results.extend(tracks)
+                else:
+                    print(f"⚠️ No tracks found for genre '{genre}' - skipping")
+            except asyncio.TimeoutError:
+                print(f"⚠️ Genre search timed out for '{genre}' after 10 seconds - skipping")
             except Exception as e:
-                print(f"⚠️ Genre search failed for {genre}: {e}")
+                print(f"⚠️ Genre search failed for '{genre}': {e} - skipping")
 
         # Search by decades (year ranges)
         include_decades = strategy.get("include_decades", [])

@@ -16,6 +16,7 @@ class CreatePlaylistRequest(BaseModel):
     refresh_frequency: str = "none"  # "none", "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
     library_ids: List[str] = []  # List of library IDs to filter tracks
+    include_mentions: bool = False  # If True, include tracks mentioning the artist (features, collabs, etc.)
 
 class CreateGenrePlaylistRequest(BaseModel):
     """Request schema for creating a genre mix playlist"""
@@ -45,6 +46,26 @@ class Song(BaseModel):
     album: str
     duration: Optional[int] = None
     track_number: Optional[int] = None
+
+class StartScanRequest(BaseModel):
+    """Request schema for starting a library scan"""
+    music_directory: Optional[str] = None  # If not provided, will get from Navidrome
+    force_rescan: bool = False  # Whether to rescan already analyzed files
+    max_tracks: Optional[int] = None  # Limit the number of tracks to scan (for testing)
+    mode: str = "full"  # Scan mode: "scan" (analysis only), "ingest" (ChromaDB ingestion), "full" (both phases)
+
+class ScanStatus(BaseModel):
+    """Schema for scan status"""
+    session_id: str
+    status: str  # "initialized", "scanning", "completed", "failed", "cancelled"
+    progress_percentage: float
+    total_tracks: int
+    processed_tracks: int
+    failed_tracks: int
+    skipped_tracks: int
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    errors: List[str] = []
 
 class PlaylistResponse(BaseModel):
     """Response schema for playlist operations"""
@@ -83,7 +104,7 @@ class CreateRediscoverPlaylistRequest(BaseModel):
     """Request schema for creating a Re-Discover Weekly playlist"""
     refresh_frequency: str = "weekly"  # "daily", "weekly", "monthly"
     playlist_length: int = 25  # Number of tracks to include
-    library_ids: List[str] = []  # List of library IDs to filter tracks
+    library_id: str  # Single library ID to filter tracks
 
 class ScheduledPlaylist(BaseModel):
     """Schema for a scheduled playlist"""

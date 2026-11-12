@@ -1,9 +1,12 @@
 import sqlite3
 import aiosqlite
 import os
-from typing import List, Optional, Dict
+import logging
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import json
+
+logger = logging.getLogger(__name__)
 
 from .schemas import Playlist, ScheduledPlaylist
 
@@ -49,6 +52,26 @@ class DatabaseManager:
             except:
                 # Column already exists or other error - ignore
                 pass
+
+            # Create scan history table
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS scan_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT UNIQUE NOT NULL,
+                    music_directory TEXT NOT NULL,
+                    status TEXT NOT NULL,  -- completed, failed, cancelled
+                    total_tracks INTEGER DEFAULT 0,
+                    processed_tracks INTEGER DEFAULT 0,
+                    failed_tracks INTEGER DEFAULT 0,
+                    skipped_tracks INTEGER DEFAULT 0,
+                    duration_seconds INTEGER,
+                    started_at TIMESTAMP NOT NULL,
+                    completed_at TIMESTAMP,
+                    max_tracks INTEGER,  -- NULL for full scans, number for test scans
+                    errors TEXT,  -- JSON array of error messages
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             
             # Add last_refreshed column if it doesn't exist (for tracking refreshes)
             try:
@@ -153,6 +176,42 @@ class DatabaseManager:
             # Create index on expires_at for cleanup
             await db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_api_cache_expires ON api_cache(expires_at)
+            """)
+
+            # Create the genre_cache table for caching genre data per library
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS genre_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    server_id TEXT NOT NULL,
+                    library_ids_hash TEXT NOT NULL,
+                    cache_data TEXT NOT NULL,
+                    total_tracks INTEGER NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(server_id, library_ids_hash)
+                )
+            """)
+
+            # Create indexes for genre cache
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_genre_cache_server_lib ON genre_cache(server_id, library_ids_hash)
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_genre_cache_expires ON genre_cache(expires_at)
+            """)
+
+            # Create library mappings table for multi-library support
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS library_mappings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    library_id INTEGER NOT NULL,
+                    library_name TEXT NOT NULL,
+                    music_path TEXT NOT NULL,
+                    last_verified TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(library_id)
+                )
             """)
 
             await db.commit()
@@ -448,14 +507,27 @@ class DatabaseManager:
     async def update_scheduled_playlist_next_refresh(self, scheduled_id: int, next_refresh: datetime) -> bool:
         """Update the next refresh time for a scheduled playlist"""
         await self.init_db()
-        
+
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("""
-                UPDATE scheduled_playlists 
+                UPDATE scheduled_playlists
                 SET next_refresh = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (next_refresh.isoformat(), scheduled_id))
-            
+
+            await db.commit()
+            return cursor.rowcount > 0
+
+    async def update_all_scheduled_playlist_next_refresh(self, next_refresh: datetime) -> bool:
+        """Update the next refresh time for all scheduled playlists"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                UPDATE scheduled_playlists
+                SET next_refresh = ?, updated_at = CURRENT_TIMESTAMP
+            """, (next_refresh.isoformat(),))
+
             await db.commit()
             return cursor.rowcount > 0
     
@@ -632,6 +704,199 @@ class DatabaseManager:
             deleted_count = cursor.rowcount
             await db.commit()
             return deleted_count
+
+    async def get_genre_cache(self, server_id: str, library_ids_hash: str) -> Optional[Dict[str, Any]]:
+        """Get cached genre data for a server/library combination"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("""
+                SELECT cache_data, total_tracks FROM genre_cache
+                WHERE server_id = ? AND library_ids_hash = ? AND expires_at > datetime('now')
+            """, (server_id, library_ids_hash)) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    import json
+                    return {
+                        "cache_data": json.loads(row[0]),
+                        "total_tracks": row[1]
+                    }
+                return None
+
+    async def set_genre_cache(self, server_id: str, library_ids_hash: str, cache_data: Dict[str, Any], total_tracks: int) -> bool:
+        """Set genre cache data with 90-day TTL"""
+        await self.init_db()
+
+        import json
+        from datetime import datetime, timedelta
+        expires_at = datetime.now() + timedelta(days=90)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO genre_cache (server_id, library_ids_hash, cache_data, total_tracks, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (server_id, library_ids_hash, json.dumps(cache_data), total_tracks, expires_at.isoformat()))
+            await db.commit()
+            return True
+
+    async def cleanup_expired_genre_cache(self) -> int:
+        """Clean up expired genre cache entries. Returns number of entries deleted."""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                DELETE FROM genre_cache WHERE expires_at <= datetime('now')
+            """)
+            deleted_count = cursor.rowcount
+            await db.commit()
+            return deleted_count
+
+    async def save_scan_history(self, scan_data: Dict[str, Any]) -> Optional[int]:
+        """Save a completed scan to history"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                INSERT INTO scan_history (
+                    session_id, music_directory, status, total_tracks, processed_tracks,
+                    failed_tracks, skipped_tracks, duration_seconds, started_at,
+                    completed_at, max_tracks, errors
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                scan_data['session_id'],
+                scan_data['music_directory'],
+                scan_data['status'],
+                scan_data['total_tracks'],
+                scan_data['processed_tracks'],
+                scan_data['failed_tracks'],
+                scan_data['skipped_tracks'],
+                scan_data.get('duration_seconds'),
+                scan_data['started_at'],
+                scan_data.get('completed_at'),
+                scan_data.get('max_tracks'),
+                json.dumps(scan_data.get('errors', []))
+            ))
+            await db.commit()
+            return cursor.lastrowid
+
+    async def get_scan_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get scan history, most recent first"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("""
+                SELECT * FROM scan_history
+                ORDER BY completed_at DESC, created_at DESC
+                LIMIT ?
+            """, (limit,)) as cursor:
+
+                rows = await cursor.fetchall()
+                columns = [description[0] for description in cursor.description]
+
+                history = []
+                for row in rows:
+                    scan = dict(zip(columns, row))
+                    # Parse errors JSON
+                    scan['errors'] = json.loads(scan['errors'] or '[]')
+                    history.append(scan)
+
+                return history
+
+    async def clear_scan_history(self) -> bool:
+        """Clear all scan history records"""
+        try:
+            await self.init_db()
+
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute("DELETE FROM scan_history")
+                await db.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to clear scan history: {e}")
+            return False
+
+    # Library Mapping Methods
+    async def get_library_mappings(self) -> List[Dict[str, Any]]:
+        """Get all library mappings"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                SELECT id, library_id, library_name, music_path, last_verified, created_at, updated_at
+                FROM library_mappings
+                ORDER BY library_id
+            """)
+
+            rows = await cursor.fetchall()
+            mappings = []
+            for row in rows:
+                mappings.append({
+                    "id": row[0],
+                    "library_id": row[1],
+                    "library_name": row[2],
+                    "music_path": row[3],
+                    "last_verified": row[4],
+                    "created_at": row[5],
+                    "updated_at": row[6]
+                })
+
+            return mappings
+
+    async def get_library_mapping(self, library_id: str) -> Optional[Dict[str, Any]]:
+        """Get mapping for a specific library"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                SELECT id, library_id, library_name, music_path, last_verified, created_at, updated_at
+                FROM library_mappings
+                WHERE library_id = ?
+            """, (library_id,))
+
+            row = await cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "library_id": row[1],
+                    "library_name": row[2],
+                    "music_path": row[3],
+                    "last_verified": row[4],
+                    "created_at": row[5],
+                    "updated_at": row[6]
+                }
+            return None
+
+    async def upsert_library_mapping(self, library_id: str, library_name: str, music_path: str) -> bool:
+        """Insert or update a library mapping"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO library_mappings (library_id, library_name, music_path, last_verified, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT(library_id) DO UPDATE SET
+                    library_name = excluded.library_name,
+                    music_path = excluded.music_path,
+                    last_verified = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (library_id, library_name, music_path))
+
+            await db.commit()
+            return True
+
+    async def delete_library_mapping(self, library_id: str) -> bool:
+        """Delete a library mapping"""
+        await self.init_db()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("DELETE FROM library_mappings WHERE library_id = ?", (library_id,))
+            await db.commit()
+            return cursor.rowcount > 0
+
+    async def get_music_path_for_library(self, library_id: str) -> Optional[str]:
+        """Get the music path for a library ID"""
+        mapping = await self.get_library_mapping(library_id)
+        return mapping["music_path"] if mapping else None
 
 # Dependency for FastAPI
 async def get_db() -> DatabaseManager:

@@ -1,0 +1,74 @@
+<!-- System Check Content (hidden by default) -->
+<div id="system-check-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-3">System Check</h1>
+        <p class="text-gray-600">Verifying your MagicLists configuration...</p>
+    </div>
+
+    <!-- Check Items List -->
+    <div id="system-checks-list" class="space-y-4 mb-6">
+        <!-- Check items will be dynamically inserted here -->
+    </div>
+
+    <!-- Result Banner and Actions -->
+    <div id="system-check-results" class="mt-8">
+        <!-- Success banner -->
+        <div id="success-banner" class="hidden p-4 mb-4 text-green-800 border border-green-300 rounded-lg bg-green-50">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="w-5 h-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-green-800">All checks passed!</h3>
+                    <div class="mt-2 text-sm text-green-700">
+                        <p>Your MagicLists configuration is working correctly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error banner -->
+        <div id="error-banner" class="hidden p-4 mb-4 text-red-800 border border-red-300 rounded-lg bg-red-50">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="w-5 h-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Configuration issues found</h3>
+                    <div class="mt-2 text-sm text-red-700">
+                        <p id="error-summary">Some checks failed. Please review the details above and follow the suggestions to resolve the issues.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-3">
+            <button
+                id="continue-btn"
+                class="hidden w-full sm:w-auto bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 focus:ring-offset-2 transition-colors"
+                onclick="navigateToHome()"
+            >
+                Continue to MagicLists
+            </button>
+            <button
+                id="rerun-checks-btn"
+                class="w-full sm:w-auto bg-gray-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 focus:ring-offset-2 transition-colors"
+                onclick="runSystemChecks()"
+            >
+                Re-run Checks
+            </button>
+            <button
+                id="update-settings-btn"
+                class="hidden w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:blue-700 focus:ring-offset-2 transition-colors"
+                onclick="showSettingsHelp()"
+            >
+                Update Settings
+            </button>
+        </div>
+    </div>
+ </div>

@@ -7,6 +7,7 @@ MagicLists adds the kind of curated, evolving playlists you’d expect from Spot
 ## What it does
 - 🎵 **This Is (Artist)** — Builds a definitive playlist for any artist in your library, combining hits, deep cuts, and featured appearances without duplicates.
 - 🎸 **Genre Mix** — Creates curated playlists from your complete genre collections, using AI to craft the perfect mix of tracks.
+- 🎵 **Song Radio (preview)** — Choose a starting song and save a Navidrome playlist of acoustically similar tracks.
 - 🔄 **Re-Discover** — Rotates tracks you haven't played in a while, helping you fall back in love with your collection.
 - ⏰ **Auto-Refresh** — Keep playlists fresh with daily, weekly, or monthly updates.
 - 🐳 **Quick Setup** — Simple Docker install; get started in minutes.
@@ -32,6 +33,19 @@ _Caption: Creating a 'This is (Artist)' playlist_
 
 
 ## Installation
+
+### Try Song Radio
+
+Run MagicLists from this branch with `pip install -r requirements.txt` and
+`python -m uvicorn backend.main:app --host 127.0.0.1 --port 4545`. Configure your
+Navidrome connection in `.env` and set `MUSIC_LIBRARY_PATHS` to the corresponding
+music folders readable by MagicLists. The audio scan needs file access in addition
+to the Navidrome API connection.
+
+Open **Sonic Analysis** and run a full scan of a small library. Once the scan
+finishes, open **Song Radio**, search for a starting track, and create the playlist.
+With `AI_PROVIDER=openrouter` and an empty `AI_API_KEY`, Song Radio ranks tracks by
+acoustic similarity on the machine running MagicLists.
 
 ### Recommended: Add to Your Existing Docker Compose
 

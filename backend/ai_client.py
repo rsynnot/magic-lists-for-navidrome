@@ -1,9 +1,12 @@
 import httpx
 import os
 import json
+import logging
 from typing import List, Dict, Any, Union, Tuple, Optional
 from .recipe_manager import recipe_manager
 from .services.ai_providers import get_ai_provider
+
+logger = logging.getLogger(__name__)
 
 class AIClient:
     """Client for AI-powered track curation using configurable providers"""
@@ -354,43 +357,48 @@ Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
                 print(f"Failed to parse AI response: {e}")
                 print(f"Response content: {content}")
                 # Fall back to simple selection
-                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning)
-                
-        except httpx.RequestError as e:
-            print(f"🌐 Network error calling AI API: {e}")
-            print(f"🔑 API Key present: {bool(self.api_key)}")
-            print(f"🌐 Base URL: {self.base_url}")
-            return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"Network error: {e}")
-        except httpx.HTTPStatusError as e:
-            response_text = e.response.text
-            
-            # Detect HTML error pages (like Cloudflare 502 errors) and truncate for logging
-            if (response_text.strip().startswith('<!DOCTYPE html') or 
-                response_text.strip().startswith('<html') or
-                len(response_text) > 500):
-                
-                # Truncate long responses for clean logging
-                truncated_text = response_text[:200] + "..." if len(response_text) > 200 else response_text
-                print(f"🚨 HTTP error from AI API: {e.response.status_code} - {truncated_text}")
-                
-                # User-friendly error for common infrastructure issues
-                if e.response.status_code in [502, 503, 504]:
-                    user_message = f"AI service temporarily unavailable (error {e.response.status_code}). Please try again in a minute."
-                else:
-                    user_message = f"AI service error (HTTP {e.response.status_code}). Please try again."
-                    
-                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, user_message)
-            else:
-                # Normal error response, log as before
-                print(f"🚨 HTTP error from AI API: {e.response.status_code} - {response_text}")
+                return self._fallback_rediscover_selection(tracks_json, num_tracks, include_reasoning)
+
+            except httpx.RequestError as e:
+                print(f"🌐 Network error calling AI API: {e}")
                 print(f"🔑 API Key present: {bool(self.api_key)}")
-                print(f"🤖 Model: {self.model}")
-                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {response_text}")
+                print(f"🌐 Base URL: {self.base_url}")
+                return self._fallback_rediscover_selection(tracks_json, num_tracks, include_reasoning, f"Network error: {e}")
+            except httpx.HTTPStatusError as e:
+             response_text = e.response.text
+
+             # Detect HTML error pages (like Cloudflare 502 errors) and truncate for logging
+             if (response_text.strip().startswith('<!DOCTYPE html') or
+                 response_text.strip().startswith('<html') or
+                 len(response_text) > 500):
+
+                 # Truncate long responses for clean logging
+                 truncated_text = response_text[:200] + "..." if len(response_text) > 200 else response_text
+                 print(f"🚨 HTTP error from AI API: {e.response.status_code} - {truncated_text}")
+
+                 # User-friendly error for common infrastructure issues
+                 if e.response.status_code in [502, 503, 504]:
+                     user_message = f"AI service temporarily unavailable (error {e.response.status_code}). Please try again in a minute."
+                 else:
+                     user_message = f"AI service error (HTTP {e.response.status_code}). Please try again."
+
+                 return self._fallback_rediscover_selection(tracks_json, num_tracks, include_reasoning, user_message)
+             else:
+                 # Normal error response, log as before
+                 print(f"🚨 HTTP error from AI API: {e.response.status_code} - {response_text}")
+                 print(f"🔑 API Key present: {bool(self.api_key)}")
+                 print(f"🤖 Model: {self.model}")
+                 return self._fallback_rediscover_selection(tracks_json, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {response_text}")
+            except Exception as e:
+                print(f"💥 Unexpected error in This Is AI curation: {e}")
+                import traceback
+                print(f"📋 Traceback: {traceback.format_exc()}")
+                return self._fallback_rediscover_selection(tracks_json, num_tracks, include_reasoning, f"Unexpected error: {e}")
         except Exception as e:
-            print(f"💥 Unexpected error in Re-Discover Weekly AI curation: {e}")
+            print(f"💥 Unexpected error in AI curation setup: {e}")
             import traceback
             print(f"📋 Traceback: {traceback.format_exc()}")
-            return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"Unexpected error: {e}")
+            return self._fallback_rediscover_selection(tracks_json, num_tracks, include_reasoning, f"Setup error: {e}")
 
     async def curate_rediscover_weekly(
         self,
@@ -903,10 +911,9 @@ Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
                         print(f"❌ AI returned {returned_track_count} tracks, much more than requested {num_tracks}")
                         raise ValueError(f"AI response validation failed: Too many tracks returned ({returned_track_count} vs requested {num_tracks})")
 
-                    # Check 3: Validate tracks are within source bounds
+                    # Check 3: Warn if tracks exceed source bounds (will filter out invalid ones)
                     if returned_track_count > source_track_count:
-                        print(f"❌ AI returned {returned_track_count} tracks but we only provided {source_track_count}")
-                        raise ValueError(f"AI response validation failed: More tracks returned than provided")
+                        print(f"⚠️ AI returned {returned_track_count} tracks but we only provided {source_track_count} - will filter invalid indices")
 
                     print(f"✅ AI returned {returned_track_count} tracks (requested: {num_tracks}), validation passed")
 
@@ -1008,6 +1015,305 @@ Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
             return track_ids, reasoning
         else:
             return track_ids
+
+    async def curate_radio_playlist(self, seed_track: Dict[str, Any], candidate_tracks: List[Dict[str, Any]], target_length: int = 25) -> Dict[str, Any]:
+        """
+        Curate a radio playlist based on a seed track using AI and recipe system.
+        
+        Args:
+            seed_track: The seed track metadata
+            candidate_tracks: List of candidate tracks from similarity search
+            target_length: Desired playlist length
+        
+        Returns:
+            Dict with 'tracks' (ordered list) and 'reasoning' (explanation)
+        """
+        try:
+            if not candidate_tracks:
+                return {
+                    "tracks": [seed_track],
+                    "reasoning": "No similar tracks found, returning seed track only"
+                }
+
+            # Prepare tracks for AI (include seed track at the beginning)
+            all_tracks = [seed_track] + candidate_tracks
+
+            # Add play_count and local_library_likes to tracks if missing (for scoring)
+            for track in all_tracks:
+                if "play_count" not in track:
+                    track["play_count"] = 0
+                if "local_library_likes" not in track:
+                    track["local_library_likes"] = False
+
+            # Use recipe system for song radio curation
+            recipe_inputs = {
+                "seed_track_name": seed_track.get("title", "Unknown Track"),
+                "seed_track_artist": seed_track.get("artist", "Unknown Artist"),
+                "desired_track_count": target_length
+            }
+
+            print(f"🎵 Applying song radio recipe for '{seed_track.get('title', 'Unknown')}' ({len(all_tracks)} tracks available)")
+
+            # Apply recipe
+            final_recipe = recipe_manager.apply_recipe("song_radio", recipe_inputs, include_reasoning=True)
+
+            # Check if this is new recipe format (has llm_config) or legacy format
+            if "llm_config" in final_recipe:
+                # New recipe format - use structured approach like 'this_is'
+                llm_config = final_recipe.get("llm_config", {})
+                model_instructions = final_recipe.get("model_instructions", "")
+                
+                # Use model from environment (.env file), ignoring recipe model_name
+                model = self.model or "openai/gpt-3.5-turbo"
+                temperature = llm_config.get("temperature", 0.7)
+                max_tokens = llm_config.get("max_output_tokens", 2000)
+                
+                print(f"🤖 Using AI model: {model} (from {self.provider.provider_type} provider)")
+
+                # Check if we need to apply scoring (more than 10x tracks = >250)
+                total_tracks = len(all_tracks)
+                if total_tracks > 250:
+                    print(f"🎯 Large track pool ({total_tracks}), applying scoring filter")
+                    from .track_scoring import score_tracks_by_user_engagement
+                    
+                    # Get library stats for scoring
+                    library_stats = {
+                        "total_tracks": total_tracks,
+                        "avg_play_count": sum(t.get("play_count", 0) for t in all_tracks) / total_tracks,
+                        "max_play_count": max(t.get("play_count", 0) for t in all_tracks)
+                    }
+                    
+                    # Apply scoring filter
+                    scored_tracks = score_tracks_by_user_engagement(all_tracks, library_stats)
+                    threshold_count = min(target_length * 10, len(scored_tracks))  # 10x multiplier
+                    
+                    # Take top scored tracks
+                    filtered_tracks = [track for score, track in scored_tracks[:threshold_count]]
+                    print(f"✂️ Filtered {total_tracks} → {len(filtered_tracks)} tracks for AI curation")
+                else:
+                    # Small library - send all tracks to AI
+                    filtered_tracks = all_tracks
+                    print(f"📱 Small library ({total_tracks} tracks), sending all to AI without scoring")
+
+                # Create indexed tracks for AI (remove complex IDs, use simple indices)
+                indexed_tracks = []
+                track_id_map = []  # Keep mapping of index → actual track ID
+                
+                for index, track in enumerate(filtered_tracks):
+                    # Store actual track ID in our mapping
+                    track_id_map.append(track["id"])
+                    
+                    # Create indexed track (minimal essential data to reduce token usage)
+                    indexed_track = {
+                        "index": index,
+                        "track_name": track.get("title", "Unknown"),
+                        "album": track.get("album", "Unknown"),
+                        "year": track.get("year", 0),
+                        "play_count": track.get("play_count", 0),
+                        "local_library_likes": track.get("local_library_likes", False),
+                        "similarity_score": track.get("similarity_score", 0.0) if "similarity_score" in track else 0.0
+                    }
+                    indexed_tracks.append(indexed_track)
+
+                # Build user prompt with recipe instructions
+                user_content = final_recipe.get("user_prompt", "").replace(
+                    "{{SEED_TRACK_NAME}}", seed_track.get("title", "Unknown Track")
+                ).replace(
+                    "{{SEED_TRACK_ARTIST}}", seed_track.get("artist", "Unknown Artist")
+                ).replace(
+                    "{{DESIRED_TRACK_COUNT}}", str(target_length)
+                )
+
+                # Call AI with recipe system
+                content = await self.provider.generate(
+                    system_prompt=model_instructions,
+                    user_prompt=user_content,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+
+                print(f"🤖 FULL RAW AI RESPONSE for Song Radio: {content}")
+
+                # Parse the JSON response with comprehensive validation
+                try:
+                    # Clean up the response and extract JSON
+                    cleaned_content = content.strip()
+
+                    # Remove markdown code fences if present
+                    if cleaned_content.startswith("```json"):
+                        cleaned_content = cleaned_content[7:]  # Remove ```json
+                    if cleaned_content.startswith("```"):
+                        cleaned_content = cleaned_content[3:]   # Remove ```
+                    if cleaned_content.endswith("```"):
+                        cleaned_content = cleaned_content[:-3]     # Remove ending ```
+
+                    response_data = json.loads(cleaned_content)
+
+                    if isinstance(response_data, dict) and "track_ids" in response_data:
+                        track_indices = response_data["track_ids"]
+                        reasoning = response_data.get("reasoning", "AI-curated song radio playlist")
+
+                        # Validate indices
+                        valid_indices = [idx for idx in track_indices if 0 <= idx < len(track_id_map)]
+
+                        # Map indices back to tracks
+                        ordered_tracks = []
+                        for idx in valid_indices[:target_length]:
+                            track_id = track_id_map[idx]
+                            track_info = filtered_tracks[idx].copy()
+                            track_info["id"] = track_id
+                            ordered_tracks.append(track_info)
+
+                        print(f"✅ AI successfully curated {len(ordered_tracks)} tracks for song radio")
+                        return {
+                            "tracks": ordered_tracks,
+                            "reasoning": reasoning
+                        }
+
+                    else:
+                        raise ValueError("Invalid response format - missing track_ids array")
+
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(f"Failed to parse AI response for radio playlist: {e}, using fallback")
+                    # Fallback: return seed track + top similar tracks
+                    fallback_tracks = [seed_track] + candidate_tracks[:target_length-1]
+                    return {
+                        "tracks": fallback_tracks,
+                        "reasoning": f"AI response parsing failed, using similarity order: {str(e)}"
+                    }
+
+            else:
+                # Legacy recipe format (shouldn't happen with new recipe)
+                prompt = final_recipe["prompt"]
+                llm_params = final_recipe["llm_params"]
+                
+                # Use model from environment first, only fallback to recipe if not set
+                model = self.model or llm_params.get("model_fallback", "openai/gpt-3.5-turbo")
+                temperature = llm_params.get("temperature", 0.7)
+                max_tokens = llm_params.get("max_tokens", 2000)
+                
+                content = await self.provider.generate(
+                    system_prompt="You are a professional music curator. Always respond with valid JSON containing track_ids array and reasoning string. No other text outside of JSON.",
+                    user_prompt=prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+
+                # Parse legacy response format
+                try:
+                    response_data = json.loads(content)
+                    # ... legacy parsing logic
+                except:
+                    fallback_tracks = [seed_track] + candidate_tracks[:target_length-1]
+                    return {
+                        "tracks": fallback_tracks,
+                        "reasoning": "Legacy recipe format failed, using similarity order"
+                    }
+
+        except Exception as e:
+            logger.error(f"Error in radio playlist curation: {e}")
+            # Fallback: return seed track + top similar tracks
+            fallback_tracks = [seed_track] + candidate_tracks[:target_length-1]
+            return {
+                "tracks": fallback_tracks,
+                "reasoning": f"Error in AI curation, using similarity order: {str(e)}"
+            }
+
+            # Prepare tracks for AI (include seed track at the beginning)
+            all_tracks = [seed_track] + candidate_tracks
+
+            # Create track mapping for AI processing
+            track_id_map = []
+            indexed_tracks = []
+
+            for index, track in enumerate(all_tracks):
+                track_id_map.append(track["id"])
+
+                indexed_track = {
+                    "index": index,
+                    "track_name": track.get("title", "Unknown"),
+                    "artist": track.get("artist", "Unknown"),
+                    "album": track.get("album", "Unknown"),
+                    "genre": track.get("genre", ""),
+                    "is_seed": index == 0  # Mark seed track
+                }
+                indexed_tracks.append(indexed_track)
+
+            # Build AI prompt for radio playlist curation
+            seed_title = seed_track.get("title", "Unknown Track")
+            seed_artist = seed_track.get("artist", "Unknown Artist")
+
+            user_content = f"""Create a radio playlist starting with the seed track "{seed_title}" by {seed_artist}.
+
+Available tracks: {json.dumps(indexed_tracks, separators=(',', ':'), ensure_ascii=False)}
+
+Instructions:
+1. Start with the seed track (index 0)
+2. Select {target_length} tracks total for a cohesive radio experience
+3. Consider musical similarity, genre consistency, and artistic flow
+4. Avoid repetition of the same artist too frequently
+5. Create a playlist that feels like a natural radio progression
+
+Return a JSON object with:
+- "track_indices": array of indices in the desired order
+- "reasoning": brief explanation of your curation choices"""
+
+            # Call AI API
+            response = await self.call_ai(
+                llm_config={
+                    "system_prompt": "You are a music curator creating radio playlists. Focus on musical flow and similarity.",
+                    "user_prompt": user_content,
+                    "temperature": 0.7,
+                    "max_output_tokens": 2000
+                }
+            )
+
+            content = response.get("content", "").strip()
+
+            # Parse AI response
+            try:
+                response_data = json.loads(content)
+
+                if isinstance(response_data, dict) and "track_indices" in response_data:
+                    track_indices = response_data["track_indices"]
+                    reasoning = response_data.get("reasoning", "AI-curated radio playlist")
+
+                    # Validate indices
+                    valid_indices = [idx for idx in track_indices if 0 <= idx < len(track_id_map)]
+
+                    # Map indices back to tracks
+                    ordered_tracks = []
+                    for idx in valid_indices[:target_length]:
+                        track_id = track_id_map[idx]
+                        track_info = all_tracks[idx].copy()
+                        track_info["id"] = track_id
+                        ordered_tracks.append(track_info)
+
+                    return {
+                        "tracks": ordered_tracks,
+                        "reasoning": reasoning
+                    }
+
+                else:
+                    raise ValueError("Invalid response format")
+
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"Failed to parse AI response for radio playlist: {e}, using fallback")
+                # Fallback: return seed track + top similar tracks
+                fallback_tracks = [seed_track] + candidate_tracks[:target_length-1]
+                return {
+                    "tracks": fallback_tracks,
+                    "reasoning": "AI curation failed, using similarity-based ordering"
+                }
+
+        except Exception as e:
+            logger.error(f"Error in radio playlist curation: {e}")
+            # Final fallback
+            fallback_tracks = [seed_track] + candidate_tracks[:target_length-1]
+            return {
+                "tracks": fallback_tracks,
+                "reasoning": f"Fallback curation due to error: {str(e)}"
+            }
 
     async def close(self):
         """Close the HTTP client"""

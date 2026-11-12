@@ -9,7 +9,7 @@
     <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet"> -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <!-- Rybbit Analytics -->
     <script
@@ -19,6 +19,14 @@
     ></script>
 
     <!-- Tailwind CSS (required for Preline) -->
+
+    <!-- Custom styles -->
+    <style>
+        .text-2xs {
+            font-size: 0.675rem;
+            line-height: 0.75rem;
+        }
+    </style>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Preline UI -->
@@ -42,6 +50,103 @@
             font-family: "IBM Plex Serif", serif;
             font-weight: 400;
             font-style: normal;
+        }
+
+        /* Terminal Progress Bar Styles */
+        .terminal-progress {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Space Mono', monospace;
+            color: #00ffff;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .progress-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-top: 12px;
+            align-items: center;
+            margin-right: -20px;
+            padding-right: 20px;
+        }
+
+        .status-text {
+            font-weight: 700;
+            color: #00ffff;
+        }
+
+        .percentage {
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .progress-bar-container {
+            font-size: 16px;
+            letter-spacing: -1px;
+            white-space: nowrap;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .bracket {
+            color: #00ffff;
+        }
+
+        .progress-bar {
+            display: inline-block;
+        }
+
+        .filled {
+            color: #00ffff;
+        }
+
+        .empty {
+            color: #333333;
+        }
+
+        .track-count {
+            color: #00d4ff;
+            font-weight: 700;
+        }
+
+        .time-info {
+            color: #CCCCCC;
+        }
+
+
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .terminal-progress {
+                padding: 16px;
+                font-size: 12px;
+            }
+
+            .progress-bar-container {
+                font-size: 14px;
+            }
+
+            .progress-header,
+            .progress-footer {
+                flex-direction: column;
+                gap: 4px;
+                font-size: 12px;
+            }
+
+            .progress-footer {
+                font-size: 11px;
+            }
         }
     </style>
 </head>
@@ -127,47 +232,61 @@
                             <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
                                 CREATE
                             </span>
-                            <a class="flex items-center gap-x-2 py-2 px-2.5 mb-1 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="this-is-artist">
-                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9 18V5l12-2v13"/>
-                                    <circle cx="6" cy="18" r="3"/>
-                                    <circle cx="18" cy="16" r="3"/>
-                                </svg>
-                                <span class="">This is <span class="text-gray-500">Artist</span></span>
-                            </a>
-                        
-                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="re-discover">
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 mb-1 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="song-radio">
+                                   <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                       <circle cx="8" cy="18" r="4"/>
+                                       <path d="M12 18V2l7 4"/>
+                                   </svg>
+                                   <span class="">Song Radio</span>
+                                           <span class="inline-flex items-center py-0.5 px-1.5 rounded-full text-2xs font-semibold bg-purple-500 text-white ml-1">NEW</span>
+                               </a>
+
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 mb-1 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="this-is-artist">
                                  <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                      <path d="M9 18V5l12-2v13"/>
                                      <circle cx="6" cy="18" r="3"/>
                                      <circle cx="18" cy="16" r="3"/>
                                  </svg>
-                                 <span class="">Re-Discover</span>
+                                 <span class="">This is <span class="text-gray-500">Artist</span></span>
                              </a>
 
-                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="genre-mix">
-                                 <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                     <path d="M9 18V5l12-2v13"/>
-                                     <circle cx="6" cy="18" r="3"/>
-                                     <circle cx="18" cy="16" r="3"/>
-                                 </svg>
-                                 <span class="">Genre Mix</span>
-                             </a>
+                              <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="re-discover">
+                                  <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <path d="M9 18V5l12-2v13"/>
+                                      <circle cx="6" cy="18" r="3"/>
+                                      <circle cx="18" cy="16" r="3"/>
+                                  </svg>
+                                  <span class="">Re-Discover</span>
+                              </a>
+
+                               <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="genre-mix">
+                                   <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                       <path d="M9 18V5l12-2v13"/>
+                                       <circle cx="6" cy="18" r="3"/>
+                                       <circle cx="18" cy="16" r="3"/>
+                                   </svg>
+                                   <span class="">Genre Mix</span>
+                               </a>
                          </div>
 
-                        <div class="border-t border-gray-200 w-full block mt-2 pt-2">
-                            <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
-                                MANAGE
-                            </span>
-                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="playlists">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4"  width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-music-icon lucide-file-music"><path d="M10.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v8.4"/><path d="M8 18v-7.7L16 9v7"/><circle cx="14" cy="16" r="2"/><circle cx="6" cy="18" r="2"/></svg>
-                                <span id="desktop-playlists-text">Playlists</span>
-                            </a>
-                            <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="system-check">
-                                <svg xmlns="http://www.w3.org/2000/svg"  class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-activity-icon lucide-square-activity"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></svg>
-                                System Check
-                            </a>
-                        </div>
+                         <div class="border-t border-gray-200 w-full block mt-2 pt-2">
+                             <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
+                                 MANAGE
+                             </span>
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="scan-library">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-audio-lines-icon lucide-audio-lines"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
+                                    Sonic Analysis
+                                </a>
+                             <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="playlists">
+                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4"  width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-music-icon lucide-file-music"><path d="M10.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v8.4"/><path d="M8 18v-7.7L16 9v7"/><circle cx="14" cy="16" r="2"/><circle cx="6" cy="18" r="2"/></svg>
+                                 <span id="desktop-playlists-text">Playlists</span>
+                             </a>
+
+                              <a class="flex items-center gap-x-2 py-2 px-2.5 text-sm text-gray-900 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:bg-gray-200" href="#" data-page="system-check">
+                                   <svg xmlns="http://www.w3.org/2000/svg"  class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-activity-icon lucide-square-activity"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></svg>
+                                   System Check
+                               </a>
+                         </div>
                         <div class="border-t border-gray-200 w-full block mt-2 pt-2"> </div>
                     </nav>
                 </div>
@@ -245,47 +364,61 @@
                                     <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
                                         CREATE
                                     </span>
-                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 mb-1 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="this-is-artist">
-                                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M9 18V5l12-2v13"/>
-                                            <circle cx="6" cy="18" r="3"/>
-                                            <circle cx="18" cy="16" r="3"/>
-                                        </svg>
-                                        <span class="">This is <span class="text-gray-500">Artist</span></span>
-                                    </a>
-                                
-                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="re-discover">
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 mb-1 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="song-radio">
+                                           <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                               <circle cx="8" cy="18" r="4"/>
+                                               <path d="M12 18V2l7 4"/>
+                                           </svg>
+                                           <span class="">Song Radio</span>
+                                   <span class="inline-flex items-center py-0.5 px-1.5 rounded-full text-2xs font-semibold bg-purple-500 text-white ml-1">NEW</span>
+                                       </a>
+
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 mb-1 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="this-is-artist">
                                          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                              <path d="M9 18V5l12-2v13"/>
                                              <circle cx="6" cy="18" r="3"/>
                                              <circle cx="18" cy="16" r="3"/>
                                          </svg>
-                                         <span class="">Re-Discover</span>
+                                         <span class="">This is <span class="text-gray-500">Artist</span></span>
                                      </a>
 
-                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="genre-mix">
-                                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                             <path d="M9 18V5l12-2v13"/>
-                                             <circle cx="6" cy="18" r="3"/>
-                                             <circle cx="18" cy="16" r="3"/>
-                                         </svg>
-                                         <span class="">Genre Mix</span>
-                                     </a>
+                                      <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="re-discover">
+                                          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                              <path d="M9 18V5l12-2v13"/>
+                                              <circle cx="6" cy="18" r="3"/>
+                                              <circle cx="18" cy="16" r="3"/>
+                                          </svg>
+                                          <span class="">Re-Discover</span>
+                                      </a>
+
+                                       <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="genre-mix">
+                                           <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                               <path d="M9 18V5l12-2v13"/>
+                                               <circle cx="6" cy="18" r="3"/>
+                                               <circle cx="18" cy="16" r="3"/>
+                                           </svg>
+                                           <span class="">Genre Mix</span>
+                                       </a>
                                  </div>
 
-                                <div class="border-t border-gray-200 w-full block mt-2 pt-2">
-                                    <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
-                                        MANAGE
-                                    </span>
-                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="playlists">                                        
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-music-icon lucide-file-music"><path d="M10.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v8.4"/><path d="M8 18v-7.7L16 9v7"/><circle cx="14" cy="16" r="2"/><circle cx="6" cy="18" r="2"/></svg>
-                                        <span id="mobile-playlists-text">Playlists</span>
-                                    </a>
-                                    <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="system-check">
-                                        <svg xmlns="http://www.w3.org/2000/svg"  class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-activity-icon lucide-square-activity"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></svg>
-                                        System Check
-                                    </a>
-                                </div>
+                                 <div class="border-t border-gray-200 w-full block mt-2 pt-2">
+                                     <span class="block ps-2.5 mt-2 mb-2 font-medium text-xs uppercase text-gray-500">
+                                         MANAGE
+                                     </span>
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="scan-library">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-audio-lines-icon lucide-audio-lines"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
+                                            Sonic Analysis
+                                        </a>
+                                     <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="playlists">
+                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-music-icon lucide-file-music"><path d="M10.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v8.4"/><path d="M8 18v-7.7L16 9v7"/><circle cx="14" cy="16" r="2"/><circle cx="6" cy="18" r="2"/></svg>
+                                         <span id="mobile-playlists-text">Playlists</span>
+                                     </a>
+
+                                      <a class="flex items-center gap-x-3.5 py-2 px-2.5 text-sm text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:bg-gray-100" href="#" data-page="system-check">
+                                           <svg xmlns="http://www.w3.org/2000/svg"  class="w-4 h-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-activity-icon lucide-square-activity"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></svg>
+                                           System Check
+                                       </a>
+                                 </div>
                                 <div class="border-t border-gray-200 w-full block mt-2 pt-2"> </div>
                                 
                             </div>
@@ -314,470 +447,48 @@
                                 MagicLists cannot access its database. Playlists cannot be saved or loaded.
                                 Please check your DATABASE_PATH environment variable configuration.
                             </p>
-                            <p class="text-sm text-blue-600 mt-2">
-                                <a href="#" data-page="system-check" class="underline">Run System Check</a> for detailed configuration help.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scan Path Error Alert -->
+                <div id="scan-path-error-alert" class="hidden bg-red-50 border-s-4 border-red-500 p-4 mb-4" role="alert">
+                    <div class="flex">
+                        <div class="shrink-0">
+                            <span class="inline-flex justify-center items-center size-8 rounded-full border-4 border-red-100 bg-red-200 text-red-800">
+                                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                    <polyline points="14,2 14,8 20,8"></polyline>
+                                    <path d="M9 15 3 21"></path>
+                                    <path d="M9 21 3 15"></path>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="text-gray-800 font-semibold">Music Library Path Error</h3>
+                            <p class="text-sm text-gray-700 mt-1" id="scan-path-error-message">
+                                The configured music directory does not match your Navidrome library. Please check your MUSIC_PATH in docker-compose.yml.
                             </p>
+                            <div class="mt-2">
+                                <button id="dismiss-scan-path-error" class="text-sm text-red-600 hover:text-red-800 underline">
+                                    Dismiss
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Welcome Content (Home) -->
-                <div id="welcome-content" style="display: none;" class="bg-white md:border md:border-gray-200 p-4 pb-10 md:pt-10 md:pl-10 md:pr-14 md:pb-12   md:rounded-lg">
-                    <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 mb-4 md:mb-6" style="font-stretch: normal; font-optical-sizing: auto;">Create playlists from your Navidrome&nbsp;library</h1>
-                    <p class="text-gray-500 mb-6">Generate, refresh and manage playlists locally. Fast, private, and under your control.</p>
-                    
-                    <h2 class="text-xl font-semibold text-gray-900 mb-2">Quick Start</h2>
-                    <ol class="list-decimal list-ouside ml-5 space-y-2 mb-1 text-gray-500">
-                        <li><strong>Choose a tool</strong>: <a href="#" data-page="this-is-artist" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a> or <a href="#" data-page="re-discover" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a>.</li>
-                        <li><strong>Configure your playlist</strong>: Set the track count and how often it should auto-refresh (daily, weekly, monthly or never).</li>
-                        <li><strong>Let it run</strong>: Magic Lists works in the background to keep your playlists fresh.</li>
-                    </ol>
+                 <!-- Include all page partials -->
+                 {% include 'partials/welcome.html' %}
+                 {% include 'partials/this-is-artist.html' %}
+                 {% include 'partials/re-discover.html' %}
+                 {% include 'partials/genre-mix.html' %}
+                 {% include 'partials/manage-playlists.html' %}
+                 {% include 'partials/system-check.html' %}
+                 {% include 'partials/song-radio.html' %}
+                 {% include 'partials/scan-library.html' %}
 
-                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">What it does</h2>
-                    <p class="text-gray-600 mb-6">Magic Lists reads your local library metadata, then uses a versioned recipe to compose thoughtful playlists. Recipes can run locally or via your configured AI provider; the playlists and description are sent to your Navidrome library.</p>
-
-                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">Key features</h2>
-                    
-                    <div class="space-y-4 mb-2">
-                        <div>
-                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" data-page="this-is-artist" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">This Is</a></h3>
-                            <p class="text-gray-600">A definitive, single-artist mix. Includes primary and featured appearances, de-duplicates repeated versions, and balances hits and deep cuts.</p>
-                        </div>
-                        
-                        <div>
-                            <h3 class="text-base font-bold text-gray-500 mb-0"><a href="#" data-page="re-discover" class="text-indigo-600 hover:text-indigo-800 transition-color font-bold border-b border-indigo-200">Re-Discover</a></h3>
-                            <p class="text-gray-600">Surfaces tracks you haven't played recently so you can re-find forgotten favourites. Set it to refresh daily, weekly or monthly.</p>
-                        </div>
-                        
-                        <div>
-                            <h3 class="text-base font-bold text-gray-500 mb-0">Auto-Refresh</h3>
-                            <p class="text-gray-600">Schedule playlists to refresh automatically on your machine so lists stay current without manual effort.</p>
-                        </div>
-                    </div>
-
-                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">Privacy & control</h2>
-                    <p class="text-gray-600 mb-4">Your music and metadata remain yours. No music files are uploaded — you choose whether AI runs locally or via a remote API key.</p>
-
-                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">About this project</h2>
-                    <p class="text-gray-600 mb-4">MagicLists is an open-source experiment in AI-assisted music discovery for people who run their own Navidrome server. Instead of "renting" playlists from Apple or Spotify, you keep full control of your library and still enjoy smart, personalised mixes.</p>
-                    <p class="text-gray-600 mb-4">This is an ongoing research project led by a product designer with 20+ years in tech, built with and for the Navidrome community. Together we're proving that AI-powered curation can be free, transparent and privacy-respecting.</p>
-
-                    
-                    <h3 class="text-base font-semibold text-gray-500 mt-5 mb-2">Available Today</h3>
-                    <ul class="list-disc list-outside ml-5 space-y-1 text-gray-600 mb-2">
-                        <li>This Is: Create a curated mix for any artist.</li>
-                        <li>Re-Discover: Rotate forgotten tracks back into your library.</li>
-                    </ul>
-                
-                    <h3 class="text-base font-semibold text-gray-500 mt-5 mb-2">Coming Soon</h3>
-                    <ul class="list-disc list-outside ml-5 space-y-1 text-gray-600 mb-4">
-                        <li>True Artist Radio (multi-artist blends)</li>
-                        <li>Fresh discovery tools</li>
-                        <li>Library embeddings for richer, similarity-based mixes</li>
-                    </ul>
-
-                    <h2 class="text-xl font-semibold text-gray-900 mt-7 mb-2">Get in Touch</h2>
-                    <p class="text-gray-600">Questions or feedback? Reach out at <a href="mailto:magiclists@synnotstudio.com" class="text-indigo-600 hover:text-indigo-800 transition-color border-b border-indigo-200 ">magiclists@synnotstudio.com</a></p>
-                   
-                </div>
-
-                <!-- This Is Artist Content (hidden by default) -->
-                <div id="this-is-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                    <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">This is <span class="text-gray-400">Artist</span></h1>
-                        <p class="text-gray-600">Create a 'This Is' playlist for a single artist from your library. Get a curated mix of their best tracks, intelligently selected for the perfect listening experience.</p>
-                    </div>
-
-                    <form id="this-is-form" class="space-y-6">
-                        <!-- Artist Selection -->
-                        <div>
-                            <label for="artist-search-select" class="block text-sm text-gray-900 font-bold mb-2">Choose an artist from your library</label>
-                            <div class="relative">
-                                <select
-                                    id="artist-search-select"
-                                    data-hs-select='{
-                                        "placeholder": "Search for an artist...",
-                                        "toggleTag": "<button type=\"button\"></button>",
-                                        "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 px-4 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
-                                        "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
-                                        "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
-                                        "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
-                                        "hasSearch": true,
-                                        "searchPlaceholder": "Search...",
-                                        "searchClasses": "block w-full text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1] py-2 px-3",
-                                        "searchWrapperClasses": "bg-white p-2 -mx-1 sticky top-0"
-                                    }'
-                                    class="hidden"
-                                >
-                                    <option value="">Choose an artist</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Options Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Playlist Length -->
-                            <div>
-                                <label class="block text-sm text-gray-900 font-bold mb-3">Playlist Length</label>
-                                <div class="space-y-3">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-length-25" name="artist-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-length-50" name="artist-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-length-100" name="artist-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Refresh Frequency -->
-                            <div>
-                                <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
-                                <div class="space-y-3">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-none" name="artist-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-none" class="text-sm text-gray-500  ms-2">Don't refresh</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-daily" name="artist-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-daily" class="text-sm text-gray-500  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-weekly" name="artist-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="artist-freq-monthly" name="artist-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="artist-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <div class="pt-4">
-                            <button
-                                type="submit"
-                                id="create-artist-playlist-btn"
-                                class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2  transition-colors"
-                            >
-                                Create Playlist
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Re-Discover Content (hidden by default) -->
-                <div id="rediscover-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                    <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-900 mb-3">Re-Discover Playlist</h1>
-                        <p class="text-gray-600">Rediscover forgotten gems from your music library! We analyze your listening history to find tracks you loved but haven't heard recently.</p>
-
-
-                    </div>
-
-                    <div class="space-y-6">
-                        <!-- Options Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <!-- Playlist Length -->
-                             <div>
-                                 <label class="block text-sm  text-gray-900 font-bold mb-3">Playlist Length</label>
-                                 <div class="space-y-3">
-                                     <div class="flex items-center">
-                                         <input type="radio" id="rediscover-length-25" name="rediscover-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="rediscover-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
-                                     </div>
-                                     <div class="flex items-center">
-                                         <input type="radio" id="rediscover-length-50" name="rediscover-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                         <label for="rediscover-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
-                                     </div>
-                                 </div>
-                             </div>
-
-                            <!-- Refresh Frequency -->
-                            <div>
-                                <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
-                                <div class="space-y-3">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="rediscover-freq-daily" name="rediscover-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-daily" class="text-sm text-gray-500 ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="rediscover-freq-weekly" name="rediscover-refresh-frequency" value="weekly" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="rediscover-freq-monthly" name="rediscover-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="rediscover-freq-never" name="rediscover-refresh-frequency" value="never" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="rediscover-freq-never" class="text-sm text-gray-500  ms-2">Never</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Generate Button -->
-                        <div class="pt-4">
-                            <button
-                                type="button"
-                                id="rediscover-btn"
-                                onclick="generateRediscoverWeekly()"
-                                class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2 transition-colors"
-                            >
-                                Generate Re-Discover Playlist
-                            </button>
-                        </div>
-                     </div>
-                 </div>
-
-                 <!-- Genre Mix Content (hidden by default) -->
-                 <div id="genre-mix-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                     <div class="mb-6">
-                         <h1 class="text-2xl font-bold text-gray-900 mb-3">Genre Mix</h1>
-                         <p class="text-gray-600">Create a curated mix playlist for a specific genre from your library. Get a diverse selection of tracks that represent the best of that genre.</p>
-                     </div>
-
-                     <form id="genre-mix-form" class="space-y-6">
-                         <!-- Genre Selection -->
-                         <div>
-                             <label for="genre-select" class="block text-sm text-gray-900 font-bold mb-2">Choose a genre from your library</label>
-                             <div class="relative">
-                                 <select
-                                     id="genre-select"
-                                     data-hs-select='{
-                                         "placeholder": "Search for a genre...",
-                                         "toggleTag": "<button type=\"button\"></button>",
-                                         "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 px-4 pe-9 flex text-nowrap w-full cursor-pointer bg-white border border-gray-200 rounded-lg text-start text-sm focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1]",
-                                         "dropdownClasses": "hs-select-dropdown mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-gray-200 rounded-lg overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300",
-                                         "optionClasses": "py-2 px-4 w-full text-sm text-gray-800 cursor-pointer hover:bg-gray-100 rounded-lg focus:outline-none focus:bg-gray-100",
-                                         "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"flex-shrink-0 size-3.5 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>",
-                                         "hasSearch": true,
-                                         "searchPlaceholder": "Search...",
-                                         "searchClasses": "block w-full text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-[1] py-2 px-3",
-                                         "searchWrapperClasses": "bg-white p-2 -mx-1 sticky top-0"
-                                     }'
-                                     class="hidden"
-                                 >
-                                     <option value="">Choose a genre</option>
-                                 </select>
-                             </div>
-                         </div>
-
-                        <!-- Options Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Playlist Length -->
-                            <div>
-                                <label class="block text-sm text-gray-900 font-bold mb-3">Playlist Length</label>
-                                <div class="space-y-3">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-length-25" name="genre-playlist-length" value="25" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-length-25" class="text-sm text-gray-500  ms-2">25 tracks</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-length-50" name="genre-playlist-length" value="50" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-length-50" class="text-sm text-gray-500  ms-2">50 tracks</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-length-100" name="genre-playlist-length" value="100" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-length-100" class="text-sm text-gray-500  ms-2">100 tracks</label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Refresh Frequency -->
-                            <div class="rediscover-v1-only">
-                                <label class="block text-sm text-gray-900 font-bold mb-3">Refresh Frequency</label>
-                                <div class="space-y-3">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-freq-none" name="genre-refresh-frequency" value="none" checked class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-freq-none" class="text-sm text-gray-500  ms-2">Don't refresh</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-freq-daily" name="genre-refresh-frequency" value="daily" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-freq-daily" class="text-sm text-gray-500  ms-2">Daily <span class="text-xs text-gray-500">(1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-freq-weekly" name="genre-refresh-frequency" value="weekly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-freq-weekly" class="text-sm text-gray-500  ms-2">Weekly <span class="text-xs text-gray-500">(Monday 1am)</span></label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="genre-freq-monthly" name="genre-refresh-frequency" value="monthly" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500">
-                                        <label for="genre-freq-monthly" class="text-sm text-gray-500  ms-2">Monthly <span class="text-xs text-gray-500">(1st of month 1am)</span></label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Submit Button -->
-                        <div class="pt-4">
-                            <button
-                                type="submit"
-                                id="create-genre-playlist-btn"
-                                class="w-full md:w-auto bg-gray-900 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-gray-700 focus:ring-offset-2  transition-colors"
-                            >
-                                Create Genre Mix Playlist
-                            </button>
-                        </div>
-                     </form>
-                 </div>
-
-                  <!-- Manage Playlists Content (hidden by default) -->
-                  <div id="manage-playlists-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                      <div class="mb-6">
-                          <h1 class="text-2xl font-bold text-gray-900 mb-3">Manage Playlists</h1>
-                          <p class="text-gray-600">View and manage all playlists you've created. These are synced with your Navidrome library.</p>
-                      </div>
-
-                      <!-- Loading State -->
-                      <div id="playlists-loading" class="hidden text-center p-4 rounded-lg mb-4 bg-gray-50">
-                          <span class="text-gray-600">Loading your playlists...</span>
-                      </div>
-
-                      <!-- Playlists Container -->
-                      <div id="playlists-container"></div>
-                  </div>
-
-                  <!-- System Check Content (hidden by default) -->
-                  <div id="system-check-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                      <div class="mb-6">
-                          <h1 class="text-2xl font-bold text-gray-900 mb-3">System Check</h1>
-                          <p class="text-gray-600">Verifying your MagicLists configuration...</p>
-                      </div>
-
-                      <!-- Check Items List -->
-                      <div id="system-checks-list" class="space-y-4 mb-6">
-                          <!-- Check items will be dynamically inserted here -->
-                      </div>
-
-                      <!-- Result Banner and Actions -->
-                      <div id="system-check-results" class="mt-8">
-                          <!-- Success banner -->
-                          <div id="success-banner" class="hidden p-4 mb-4 text-green-800 border border-green-300 rounded-lg bg-green-50">
-                              <div class="flex">
-                                  <div class="flex-shrink-0">
-                                      <svg class="w-5 h-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                      </svg>
-                                  </div>
-                                  <div class="ml-3">
-                                      <h3 class="text-sm font-medium text-green-800">All checks passed!</h3>
-                                      <div class="mt-2 text-sm text-green-700">
-                                          <p>Your MagicLists configuration is working correctly.</p>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-
-                          <!-- Error banner -->
-                          <div id="error-banner" class="hidden p-4 mb-4 text-red-800 border border-red-300 rounded-lg bg-red-50">
-                              <div class="flex">
-                                  <div class="flex-shrink-0">
-                                      <svg class="w-5 h-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                      </svg>
-                                  </div>
-                                  <div class="ml-3">
-                                      <h3 class="text-sm font-medium text-red-800">Configuration issues found</h3>
-                                      <div class="mt-2 text-sm text-red-700">
-                                          <p id="error-summary">Some checks failed. Please review the details above and follow the suggestions to resolve the issues.</p>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-
-                          <!-- Action Buttons -->
-                          <div class="flex flex-col sm:flex-row gap-3">
-                              <button
-                                  id="continue-btn"
-                                  class="hidden w-full sm:w-auto bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 focus:ring-offset-2 transition-colors"
-                                  onclick="navigateToHome()"
-                              >
-                                  Continue to MagicLists
-                              </button>
-                              <button
-                                  id="rerun-checks-btn"
-                                  class="w-full sm:w-auto bg-gray-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 focus:ring-offset-2 transition-colors"
-                                  onclick="runSystemChecks()"
-                              >
-                                  Re-run Checks
-                              </button>
-                              <button
-                                  id="update-settings-btn"
-                                  class="hidden w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:blue-700 focus:ring-offset-2 transition-colors"
-                                  onclick="showSettingsHelp()"
-                              >
-                                  Update Settings
-                              </button>
-                          </div>
-                      </div>
-                  </div>
-
-                <!-- Terms Content -->
-                <div id="terms-content" style="display: none;" class="p-4 pb-6 md:p-8 md:pb-10 bg-white md:border md:border-gray-200 md:rounded-lg">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-6">A Few Things to Know</h1>
-                    
-                    <!-- Section 1: About This Project -->
-                    <section class="mb-8">
-                        <h2 class="text-xl font-semibold text-gray-800 mb-4">About This Project</h2>
-                        <p class="text-gray-700 leading-relaxed">
-                            This is an open-source research project born from years of frustration with music library management tools. We're exploring whether AI can match or exceed the playlist curation quality of major streaming platforms. This is experimental software built by music lovers, for music lovers.
-                        </p>
-                    </section>
-
-                    <!-- Section 2: Legal Disclaimer -->
-                    <section class="mb-8">
-                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Legal Disclaimer</h2>
-                        
-                        <div class="space-y-6">
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-800 mb-1">No Warranty</h3>
-                                <p class="text-gray-700 leading-relaxed">
-                                    This software is provided "as is" without warranty of any kind, express or implied.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-800 mb-2">User Responsibility</h3>
-                                <p class="text-gray-700  mb-2">You are solely responsible for:</p>
-                                <ul class="list-disc list-inside text-gray-700 space-y-1 ml-4">
-                                    <li>Ensuring you have proper rights to any music content processed through this application</li>
-                                    <li>Any data transmitted to third-party AI services</li>
-                                    <li>Backup of your music library before use</li>
-                                    <li>Any modifications made to your playlists or library</li>
-                                </ul>
-                            </div>
-
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-800 mb-2">Limitation of Liability</h3>
-                                <p class="text-gray-700 ">
-                                    The developers shall not be liable for any damages including but not limited to data loss, corruption of music libraries, or any other direct or indirect damages arising from use of this software.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-800 mb-2">Third-party Services</h3>
-                                <p class="text-gray-700">
-                                    This application integrates with external AI services. Your use of these services is subject to their respective terms of service.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-800 mb-2">Acceptance</h3>
-                                <p class="text-gray-700">
-                                    By using this software, you acknowledge and accept these terms.
-                                </p>
-                            </div>
-                        </div>
-                    </section>
-
-                
-                </div>
-
+                 {% include 'partials/terms.html' %}
 
             </main>
         </div>
@@ -791,9 +502,15 @@
             </div>
         </footer>
     </div>
-    <div id="toast-container" class="absolute top-2 right-2 w-full max-w-sm z-50 space-y-3 pointer-events-none">
+    <div id="toast-container" class="fixed top-2 right-2 w-full max-w-sm z-50 space-y-3 pointer-events-none">
         <!-- Toasts will be dynamically inserted here -->   
     </div>
-    <script src="/static/app.js?v=1.0.0"></script>
+    <script type="module" src="/static/js/core/utils.js"></script>
+    <script type="module" src="/static/js/core/navigation.js"></script>
+    <script type="module" src="/static/js/modules/main-app.js"></script>
+    <script type="module" src="/static/js/modules/playlist-generators.js"></script>
+    <script type="module" src="/static/js/modules/scan-library.js"></script>
+    <script type="module" src="/static/js/modules/system-check.js"></script>
+    <script type="module" src="/static/app.js?v=1.0.4"></script>
 </body>
 </html>

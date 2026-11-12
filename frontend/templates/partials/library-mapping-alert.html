@@ -1,0 +1,32 @@
+<!-- Library Setup Alert (shown only if mapping needed) -->
+<div id="library-setup-alert" class="hidden mb-6 bg-blue-50 border border-blue-500 text-sm text-gray-500 rounded-lg p-4" role="alert">
+    <div class="flex">
+        <div class="shrink-0">
+            <svg class="shrink-0 size-4 text-blue-600 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+            </svg>
+        </div>
+        <div class="ms-4 flex-1">
+            <h3 class="text-sm font-semibold text-blue-600">Music Library Setup Required</h3>
+            <div class="mt-1 text-sm">
+                Please map your music library paths to Navidrome libraries. This is a one-time setup.
+            </div>
+
+            <!-- Form content -->
+            <p class="mt-4 text-sm font-semibold">Match Your Music Libraries</p>
+            <p class="mt-1 text-sm mb-3">Select which Navidrome library corresponds to each music path from your configuration:</p>
+
+            <div id="library-mappings-container" class="space-y-3 mb-4">
+                <!-- Mapping pairs will be inserted here -->
+            </div>
+
+            <div class="flex gap-2">
+                <button id="save-library-mappings-btn" class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 text-sm">
+                    Save Mappings
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
