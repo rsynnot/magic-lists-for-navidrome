@@ -289,9 +289,9 @@ def get_ai_provider() -> AIProvider:
     
     provider_config = AIProviderConfig.PROVIDERS[provider_type]
     
-    # Check if API key is required
+    # OpenRouter without a key uses the local curation fallback in AIClient.
     api_key = os.getenv("AI_API_KEY")
-    if provider_config.requires_key and not api_key:
+    if provider_config.requires_key and not api_key and provider_type != "openrouter":
         raise ValueError(f"{provider_type} requires AI_API_KEY. Get one at: {provider_config.signup_url}")
     
     # Get model (user override or provider default)

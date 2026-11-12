@@ -1444,7 +1444,7 @@ async def track_library_size(db: DatabaseManager = Depends(get_db)):
 async def spa_router(request: Request, path: str):
     """Handle SPA routing - serve app for known paths, redirect unknown paths"""
     # Known SPA paths - serve the app and let frontend handle routing
-    spa_paths = ["this-is", "re-discover", "playlists", "terms"]
+    spa_paths = ["this-is", "genre-mix", "re-discover", "playlists", "terms"]
     
     if path in spa_paths:
         # Apply same system check logic as root
