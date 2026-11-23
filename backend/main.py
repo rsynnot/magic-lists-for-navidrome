@@ -49,6 +49,7 @@ from .schemas import CreatePlaylistRequest, CreateGenrePlaylistRequest, Playlist
 from .recipe_manager import recipe_manager
 from .rediscover import RediscoverWeekly, ReDiscoverV2Processor
 from .track_scoring import filter_tracks_for_this_is_playlist
+from .scheduling import get_server_timezone, server_now
 # SYSTEM CHECK FEATURE - START
 from .services.health_check_service import HealthCheckService
 # SYSTEM CHECK FEATURE - END
@@ -59,8 +60,10 @@ app = FastAPI(title="MagicLists Navidrome MVP")
 async def startup_event():
     """Initialize scheduler on app startup"""
     global scheduler, system_check_passed, system_check_results
-    scheduler = AsyncIOScheduler()
+    server_timezone = get_server_timezone()
+    scheduler = AsyncIOScheduler(timezone=server_timezone)
     scheduler.start()
+    scheduler_logger.info("Playlist refresh timezone: %s", server_timezone)
     scheduler_logger.info("✅ Scheduler started successfully")
     # Auto-start the cron job
     await start_scheduler_job()
@@ -925,7 +928,7 @@ async def create_rediscover_playlist(
 
 def calculate_next_refresh(frequency: str) -> datetime:
     """Calculate the next refresh time based on frequency"""
-    now = datetime.now()
+    now = server_now()
     if frequency == "daily":
         # Next day at 1:00 AM
         next_day = now + timedelta(days=1)
@@ -955,15 +958,16 @@ def schedule_playlist_refresh():
             'cron',
             hour='1,13',  # Run at 1 AM and 1 PM
             minute=1,     # Run at 1 minute past (1:01 AM and 1:01 PM)
+            timezone=scheduler.timezone,
             id='playlist_refresh',
             replace_existing=True
         )
-        scheduler_logger.info("🔄 Playlist refresh job scheduled to run every 12 hours (1:01 AM and 1:01 PM)")
+        scheduler_logger.info("🔄 Playlist refresh job scheduled for 1:01 AM and 1:01 PM (%s)", scheduler.timezone)
 
 async def refresh_scheduled_playlists():
     """Check for and refresh scheduled playlists that are due"""
     try:
-        current_time = datetime.now()
+        current_time = server_now()
         
         # Only log heartbeat in DEBUG mode, always log when tasks are found
         if LOG_LEVEL == "DEBUG":
@@ -980,7 +984,7 @@ async def refresh_scheduled_playlists():
         default_path = "/app/data/magiclists.db" if os.path.exists("/app/data") else "./magiclists.db"
         db_path = os.getenv("DATABASE_PATH", default_path)
         db = DatabaseManager(db_path)
-        current_time = datetime.now()
+        current_time = server_now()
         
         # Get playlists due for refresh (including 7-day catch-up window)
         scheduled_playlists = await db.get_scheduled_playlists_due(current_time, grace_hours=168)

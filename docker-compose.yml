@@ -10,6 +10,7 @@ services:
       - .env
     environment:
       - DATABASE_PATH=/app/data/magiclists.db
+      - TZ=${TZ:-Etc/UTC}
     volumes:
       - magiclists_data:/app/data
     restart: unless-stopped

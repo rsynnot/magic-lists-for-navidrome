@@ -230,6 +230,30 @@ If checks fail, detailed suggestions are provided to help resolve issues. You ca
 - `POST /api/scheduler/start` - Start the auto-refresh scheduler
 
 
+## Server Timezone
+
+Set `TZ` to an IANA timezone name in your `.env` file or container environment:
+
+```dotenv
+TZ=America/New_York
+```
+
+For Docker Compose, add `- TZ=America/New_York` under `environment:`. For
+`docker run`, add `-e TZ=America/New_York`. Recreate the container after changing
+its environment (for example, `docker compose up -d --force-recreate`). Restart
+the app after changing `.env` for a standalone installation.
+
+Playlist refresh checks run at **1:01 AM and 1:01 PM in the server timezone**.
+Daily, weekly and monthly refresh dates use that same timezone, including
+daylight-saving changes. The timezone applies to the whole MagicLists instance.
+With no `TZ` setting, standalone installations use the system timezone; the
+supplied Docker Compose configuration defaults to `Etc/UTC`.
+
+Existing refresh dates remain local wall times in the configured server timezone.
+Changing `TZ` changes how those dates are interpreted; it does not convert them
+to preserve their previous UTC instant. Check the startup log for the selected
+timezone. Invalid timezone names stop startup with a configuration error.
+
 ## AI Configuration (Optional)
 
 MagicLists supports multiple AI providers for enhanced playlist curation:
