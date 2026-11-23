@@ -230,6 +230,23 @@ If checks fail, detailed suggestions are provided to help resolve issues. You ca
 - `POST /api/scheduler/start` - Start the auto-refresh scheduler
 
 
+## Automated Builds and Releases
+
+Pull requests run regression tests and build an image without publishing. Every
+successful push to `main` publishes an `edge` image and a commit-specific `sha-`
+tag. These builds support both `linux/amd64` and `linux/arm64`.
+
+Stable releases are published by pushing a version tag such as `v1.4.3` from
+`main`. The workflow runs the tests, builds and publishes the multi-platform
+image as `1.4.3`, `v1.4.3`, `stable` and `latest`, then creates the GitHub release.
+Release notes can be supplied in `release-notes/v1.4.3.md`; otherwise GitHub
+generates them. The stable tags are not changed by ordinary `main` builds.
+
+Maintainers must configure the repository Actions secret `DOCKERHUB_TOKEN` with
+write access to the `rickysynnot/magic-lists-for-navidrome` Docker Hub repository.
+Store the token in GitHub settings, never in source files. The GitHub release
+uses the workflow's built-in token; it needs no personal GitHub API token.
+
 ## Server Timezone
 
 Set `TZ` to an IANA timezone name in your `.env` file or container environment:
