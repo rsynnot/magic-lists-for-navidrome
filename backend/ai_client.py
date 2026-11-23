@@ -43,20 +43,9 @@ class AIClient:
         
         if not self.api_key and self.provider.provider_type == "openrouter":
             print(f"❌ No AI API key configured, using fallback curation for {artist_name}")
-            # Processing tracks for curation (logging moved to scheduler_logger)
-            # Fallback: return first num_tracks by play count
-            sorted_tracks = sorted(
-                tracks_json,
-                key=lambda x: x.get("play_count", 0),
-                reverse=True
+            return self._fallback_this_is_selection(
+                tracks_json, num_tracks, include_reasoning, "No AI API key configured."
             )
-            track_ids = [track["id"] for track in sorted_tracks[:num_tracks]]
-
-            if include_reasoning:
-                fallback_reasoning = f"Fallback curation: Selected {len(track_ids)} tracks sorted by play count (highest first). No AI API key configured."
-                return track_ids, fallback_reasoning
-            else:
-                return track_ids
         
         try:
             # Using AI to curate playlist (logging moved to scheduler_logger)
@@ -354,13 +343,13 @@ Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
                 print(f"Failed to parse AI response: {e}")
                 print(f"Response content: {content}")
                 # Fall back to simple selection
-                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning)
+                return self._fallback_this_is_selection(tracks_json, num_tracks, include_reasoning, f"AI response validation failed: {e}")
                 
         except httpx.RequestError as e:
             print(f"🌐 Network error calling AI API: {e}")
             print(f"🔑 API Key present: {bool(self.api_key)}")
             print(f"🌐 Base URL: {self.base_url}")
-            return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"Network error: {e}")
+            return self._fallback_this_is_selection(tracks_json, num_tracks, include_reasoning, f"Network error: {e}")
         except httpx.HTTPStatusError as e:
             response_text = e.response.text
             
@@ -379,18 +368,36 @@ Return JSON: {{"track_ids": [indices], "reasoning": "summary"}}"""
                 else:
                     user_message = f"AI service error (HTTP {e.response.status_code}). Please try again."
                     
-                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, user_message)
+                return self._fallback_this_is_selection(tracks_json, num_tracks, include_reasoning, user_message)
             else:
                 # Normal error response, log as before
                 print(f"🚨 HTTP error from AI API: {e.response.status_code} - {response_text}")
                 print(f"🔑 API Key present: {bool(self.api_key)}")
                 print(f"🤖 Model: {self.model}")
-                return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {response_text}")
+                return self._fallback_this_is_selection(tracks_json, num_tracks, include_reasoning, f"HTTP {e.response.status_code}: {response_text}")
         except Exception as e:
-            print(f"💥 Unexpected error in Re-Discover Weekly AI curation: {e}")
+            print(f"💥 Unexpected error in This Is AI curation: {e}")
             import traceback
             print(f"📋 Traceback: {traceback.format_exc()}")
-            return self._fallback_rediscover_selection(candidate_tracks, num_tracks, include_reasoning, f"Unexpected error: {e}")
+            return self._fallback_this_is_selection(tracks_json, num_tracks, include_reasoning, f"Unexpected error: {e}")
+
+    def _fallback_this_is_selection(
+        self,
+        tracks_json: List[Dict[str, Any]],
+        num_tracks: int,
+        include_reasoning: bool = False,
+        error_reason: str = "AI service was unavailable",
+    ) -> Union[List[str], Tuple[List[str], str]]:
+        """Select the most-played artist tracks when AI curation is unavailable."""
+        sorted_tracks = sorted(tracks_json, key=lambda track: track.get("play_count", 0), reverse=True)
+        track_ids = [track["id"] for track in sorted_tracks[:num_tracks]]
+        if include_reasoning:
+            reasoning = (
+                f"Fallback curation: Selected {len(track_ids)} tracks sorted by play count "
+                f"(highest first). {error_reason}"
+            )
+            return track_ids, reasoning
+        return track_ids
 
     async def curate_rediscover_weekly(
         self,
