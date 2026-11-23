@@ -19,7 +19,7 @@ COPY frontend/ ./frontend/
 COPY recipes/ ./recipes/
 
 # Create database directory and set permissions
-RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/data /app/payloads && chmod 755 /app/data /app/payloads
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
